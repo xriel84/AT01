@@ -99,3 +99,75 @@ NB11 runs two parallel content tracks through the same EdBot toolchain:
 ### Shared
 - Any EdBot tool improvements: commit on AT01 first, JP pulls from upstream
 - Resolve projects: prefix EDBOT_ for AgileLens, RH_ for raptor-history, never mix
+
+## Session Update — 2026-02-24 (Evening)
+
+### Completed This Session
+
+#### ArtBot Agent Scaffold (AT01)
+- Full agent scaffold at `agents/artbot/` with 6 modules:
+  - `brief.py` — NLP → SDXL prompt conversion with library support
+  - `generate.py` — ComfyUI API integration (512x512 VACE constraint)
+  - `review.py` — Review manifest builder (JSON contract for JP's UI)
+  - `animate.py` — Still → animation via VACE/AnimateDiff
+  - `label.py` — AL taxonomy naming (`{project}_{subject}_{shot}_{action}_{seq}`)
+  - `promote.py` — 3-tier promotion gates (tier1 → tier2 → workspace → marketing)
+- `artbot.py` CLI with 6 subcommands
+- `ARTBOT.md` — Full API surface doc (492 lines)
+- `sdxl_library.json` — SDXL prompt keyword library (placeholder)
+- 68 new tests, all passing
+- Total test count: 277/277 green
+
+#### edbot-collab Worktree Organization
+- Added `agents/anabot/`, `agents/edbot/`, `agents/shared/` to edbot-collab
+- Copied message bus schema from AT01
+- Wrote `COLLABORATION.md` — roles, rules, branch conventions for AT/YD/JP
+- Pushed to `AgileLens/edbot.git` on `at-test` branch
+
+#### Monday Deliverables
+- `NB10-AT01.html` — 5-section animated story (NB10 → AT01 conversion narrative, 36KB)
+- `exec-summary-2026-02-24.html` — 6-card executive dashboard (13KB)
+- Both standalone HTML, GSAP animations, under 200KB, no external dependencies
+
+### Updated State
+
+| Item | Status |
+|------|--------|
+| AT01 tests | 277/277 green |
+| ArtBot scaffold | Complete — 6 modules, CLI, spec, 68 tests |
+| edbot-collab agents/ | Scaffolded with collaboration rules |
+| NB10-AT01.html | Built, ready for review |
+| exec-summary.html | Built, ready for review |
+| Stages 5/7/8 scripts | Built, tested offline (from prior session) |
+| EdBot T1 triage tools | Prompt written, not built |
+| JP01 sync | Behind AT01 — needs git pull |
+| raptor-history media | No footage imported yet |
+| YD machine | Pre-meeting setup in progress |
+| Resolve | Running |
+
+### Blockers (unchanged)
+
+| Blocker | Owner | Impact |
+|---------|-------|--------|
+| Resolve Studio license ($295) | AT/budget | Blocks video pipeline |
+| auto-editor, ultralytics, ollama not installed | AT | Blocks automated editing |
+| YD not added to AgileLens/edbot | Alex/Sam | Blocks YD clone |
+| Cloud drive folders TBD | AT | Blocks delivery pipeline |
+
+### Next Session Priorities
+
+#### AT Track
+1. Review Monday deliverables with team
+2. Build EdBot T1 triage tools
+3. Download RSC media → smoke test Stages 5/7/8
+4. ArtBot Tier 1: first ComfyUI generation test
+
+#### JP Track
+1. git pull upstream main on JP01
+2. Receive triage UI iterations from AT
+3. Polish review interface for ArtBot
+
+#### YD Track
+1. Clone AgileLens/edbot, run smoke test
+2. Connect social media accounts to AnaBot
+3. Start building analytics_fetch.py
