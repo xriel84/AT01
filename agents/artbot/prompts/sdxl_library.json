@@ -1,0 +1,10 @@
+{
+  "_note": "SDXL prompt keyword library — placeholder. Expand with tested prompt patterns.",
+  "quality_tags": ["masterpiece", "best quality", "highly detailed", "professional"],
+  "style_presets": {
+    "noir_gold": "film noir, gold accents, dramatic lighting, high contrast",
+    "corporate": "clean, modern, professional, minimal, white background",
+    "theatrical": "stage lighting, dramatic, warm tones, theatrical"
+  },
+  "negative_common": "blurry, low quality, watermark, text, signature, deformed"
+}
