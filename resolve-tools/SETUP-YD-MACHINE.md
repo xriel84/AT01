@@ -1,6 +1,33 @@
 # YD Machine Setup — EdBot Pipeline
 
-Run these in PowerShell on YD's machine. Resolve Studio must already be installed.
+Run these in PowerShell on YD's machine.
+
+## DaVinci Resolve Studio — Download + Activate
+
+EdBot's pipeline requires **Resolve Studio** (not the free version).
+Studio includes SmartReframe, which is how we auto-reframe landscape
+video to portrait/square for each platform.
+
+### Step 1: Download
+Go to https://www.blackmagicdesign.com/products/davinciresolve
+Click **"Download"** under **DaVinci Resolve Studio** (NOT the free version).
+Install with default settings.
+
+### Step 2: Activate
+1. Open DaVinci Resolve Studio
+2. It will prompt for activation on first launch
+3. Use the **Agile Lens license key** — ask Ari or Kevin for the key directly. Do not commit it anywhere.
+4. Select **"Activate"** — this registers your machine as the second seat on the 2-computer license
+
+### Step 3: Verify
+- Title bar should say **"DaVinci Resolve Studio"** (not just "DaVinci Resolve")
+- Version should be **20.x** or later
+- Help → About should show the license is active
+
+### Important
+- The license key is shared — do NOT post it in Slack, GitHub, or any doc
+- If activation fails, tell Ari — it may mean a seat needs to be deactivated first
+- Free Resolve will NOT work — SmartReframe is Studio-only
 
 ## 1. Verify Python 3.12
 ```powershell
