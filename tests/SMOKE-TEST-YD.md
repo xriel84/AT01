@@ -1,79 +1,189 @@
-# YD Smoke Test — EdBot Stages 5/7/8 with RSC Media
+# YD Claude Code Session: Machine Setup + RSC Test Media
 
-**Machine:** YD's workstation, Windows 11, PowerShell, Python 3.12
-**Repo:** Clone of xriel84/AT01
 **Date:** 2026-02-24
+**Machine:** YD's workstation, Windows 11, fresh install
 
-> **DISK SPACE WARNING**
-> The RSC Google Drive folder may contain several GB of video.
-> Before downloading, check your free space:
-> ```powershell
-> Get-PSDrive C | Select-Object @{N='FreeGB';E={[math]::Round($_.Free/1GB,1)}}
-> ```
-> You need at LEAST 20GB free (raw video + processed copies).
-> If under 20GB: STOP and tell AT before downloading.
+## Your Role
+You are helping onboard YD to the EdBot pipeline on a fresh Windows machine.
+AT is not available. Run YD through setup step by step.
 
-## Rules
-- `py -3.12` only — never bare `python`
-- PowerShell only — no CMD
-- Do NOT touch `C:\NB10\`
-- Do NOT commit media files to git
-- If anything fails: copy the full error, stop, paste to AT
+## Hard Rules (never deviate)
+- `py -3.12` only — never bare `python` or `python3`
+- PowerShell only — no CMD, no Unix syntax
+- `cd` to Resolve install dir before any Resolve script
+- Sequential GPU only — no parallel GPU stages
+- Use `polars` not `pandas` — pandas is not installed
+- No Goose, no Ollama — Claude Code only
+- If anything requires AT input, flag it clearly and WAIT — do not guess
+
+## Reference Stack (AT's machine ENKI64 — match these)
+| Package | Version |
+|---------|---------|
+| Python | 3.12.10 |
+| faster-whisper | 1.2.1 |
+| ultralytics | 8.4.14 |
+| auto-editor | 29.3.1 |
+| pysubs2 | 1.8.0 |
+| soundfile | 0.13.1 |
+| torch | 2.6.0+cu124 |
+| FFmpeg | gyan.dev full build (libass + h264_nvenc) |
+| Resolve Studio | 20.3.1.6 |
 
 ---
 
-## TEST 0: Preflight — run this FIRST
+# PART A: MACHINE SETUP (do first)
 
+## A0: Meeting Gates — confirm these BEFORE touching the machine
+Ask YD to confirm:
+1. **GPU spec** — what NVIDIA card? (determines CUDA packages)
+2. **Resolve Studio license key** — does YD have it from AT or Kevin?
+3. **GitHub access** — can YD clone xriel84/AT01?
+
+If GPU is unknown or not NVIDIA: install CPU-only packages, skip CUDA deps, flag for AT.
+
+## A1: Python 3.12
+```powershell
+py -3.12 --version
+```
+If missing: install from python.org Windows installer. Check "Add to PATH".
+
+GATE: prints `Python 3.12.x`
+
+## A2: FFmpeg
+```powershell
+ffmpeg -version
+```
+If missing:
+1. Download gyan.dev FULL build (not essentials) from https://www.gyan.dev/ffmpeg/builds/
+2. Extract to `C:\ffmpeg\`
+3. Add `C:\ffmpeg\bin` to system PATH
+4. Restart PowerShell
+
+GATE:
+```powershell
+ffmpeg -version 2>&1 | Select-String "libass"
+ffmpeg -encoders 2>&1 | Select-String "h264_nvenc"
+```
+`--enable-libass` MUST show. `h264_nvenc` only if NVIDIA GPU confirmed.
+
+## A3: DaVinci Resolve Studio
+1. Download Studio version from blackmagicdesign.com (NOT the free version)
+2. Install with defaults
+3. Activate with shared license key (from AT or Kevin — do not commit it anywhere)
+4. Launch — title bar must say "DaVinci Resolve Studio"
+
+## A4: Resolve Python API test
+Resolve MUST be running for this test.
+```powershell
+cd "C:\Program Files\Blackmagic Design\DaVinci Resolve"
+py -3.12 -c "
+import sys
+sys.path.append(r'C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\Scripting\Modules')
+import DaVinciResolveScript as dvr
+r = dvr.scriptapp('Resolve')
+print('Resolve API:', r.GetVersionString() if r else 'FAILED - check env vars')
+"
+```
+GATE: prints `Resolve API: 20.x.x.x`
+
+## A5: Python packages
+
+**Install regardless of GPU:**
+```powershell
+py -3.12 -m pip install pysubs2 soundfile requests PyYAML polars gdown --break-system-packages
+```
+
+**Install only if NVIDIA GPU with CUDA confirmed:**
+```powershell
+py -3.12 -m pip install faster-whisper ultralytics auto-editor "auto-subs[transcribe]" --break-system-packages
+```
+
+**No GPU or GPU unknown — install CPU-safe subset only:**
+```powershell
+py -3.12 -m pip install auto-editor "auto-subs[transcribe]" --break-system-packages
+# faster-whisper and ultralytics need CUDA — skip until GPU confirmed
+```
+
+## A6: Clone repo
+```powershell
+New-Item -ItemType Directory -Force C:\NB11
+cd C:\NB11
+git clone https://github.com/xriel84/AT01.git
+cd AT01
+py -3.12 -m pytest -v --tb=short 2>&1 | Select-Object -Last 5
+```
+GATE: 209 tests pass
+
+## A7: Preflight validation — RUN THIS, PASTE FULL OUTPUT
 ```powershell
 Write-Host "`n=== YD PREFLIGHT ===" -ForegroundColor Cyan
 
+py -3.12 --version
+ffmpeg -version 2>&1 | Select-Object -First 1
+ffmpeg -version 2>&1 | Select-String "libass|nvenc"
+
+py -3.12 -c "import pysubs2; print('pysubs2', pysubs2.VERSION)"
+py -3.12 -c "import soundfile; print('soundfile', soundfile.__version__)"
+py -3.12 -c "import polars; print('polars OK')"
+py -3.12 -c "import gdown; print('gdown', gdown.__version__)"
+
+# GPU packages (skip errors if no CUDA)
+py -3.12 -c "from faster_whisper import WhisperModel; print('faster-whisper OK')" 2>&1
+py -3.12 -c "from ultralytics import YOLO; print('YOLOv8 OK')" 2>&1
+py -3.12 -c "import auto_editor; print('auto-editor OK')" 2>&1
+py -3.12 -c "import autosubs; print('auto-subs OK')" 2>&1
+
+# Resolve (must be running)
+cd "C:\Program Files\Blackmagic Design\DaVinci Resolve"
+py -3.12 -c "
+import sys
+sys.path.append(r'C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\Scripting\Modules')
+import DaVinciResolveScript as dvr
+r = dvr.scriptapp('Resolve')
+print('Resolve:', r.GetVersionString() if r else 'FAILED')
+"
+
 # Disk space
 $freeGB = [math]::Round((Get-PSDrive C).Free / 1GB, 1)
-Write-Host "Free disk space: ${freeGB} GB" -ForegroundColor $(if($freeGB -gt 20){"Green"}else{"Red"})
-if ($freeGB -lt 20) { Write-Host "STOP — tell AT you need more disk space" -ForegroundColor Red; return }
+Write-Host "`nFree disk: ${freeGB} GB" -ForegroundColor $(if($freeGB -gt 20){"Green"}else{"Red"})
 
-# Repo
+# Tests
 cd C:\NB11\AT01
-git status
 py -3.12 -m pytest -v --tb=short 2>&1 | Select-Object -Last 3
-
-# Deps
-py -3.12 -c "import pysubs2, soundfile; print('deps OK')"
-auto-editor --version
-ffmpeg -version 2>&1 | Select-Object -First 1
 
 Write-Host "=== END PREFLIGHT ===" -ForegroundColor Cyan
 ```
 
-**GATE:** 209 tests pass, deps OK, 20+ GB free. If not, stop and report to AT.
+**STOP HERE.** Evaluate preflight output before proceeding to Part B.
+If any critical item fails, troubleshoot it. Do NOT proceed with media download on a broken environment.
 
 ---
 
-## TEST 1: Download RSC Media
+# PART B: RSC TEST MEDIA (after Part A is green)
 
+## Disk Space Check
 ```powershell
-py -3.12 -m pip install gdown --break-system-packages
+$freeGB = [math]::Round((Get-PSDrive C).Free / 1GB, 1)
+Write-Host "Free space: ${freeGB} GB" -ForegroundColor $(if($freeGB -gt 20){"Green"}else{"Red"})
+if ($freeGB -lt 20) { Write-Host "STOP - not enough space. Tell AT." -ForegroundColor Red; return }
+```
 
+## B1: Dry run — list files WITHOUT downloading
+```powershell
 $MEDIA_DIR = "C:\NB11\media\in\rsc"
 New-Item -ItemType Directory -Force -Path $MEDIA_DIR
 
-# DRY RUN FIRST — list files without downloading
 py -3.12 -m gdown --folder "https://drive.google.com/drive/folders/1BPi-ncgCvg3KCBJqMZmNzgQPW0RfQVpO" --remaining-ok --no-download
 ```
+**CHECKPOINT:** Review file list and total size. If over 15GB total, tell AT before continuing.
 
-**CHECKPOINT:** Review the file list. Note total size. If over 15GB, tell AT before continuing.
-
+## B2: Download
 ```powershell
-# ACTUAL DOWNLOAD — only after confirming size is OK
 py -3.12 -m gdown --folder "https://drive.google.com/drive/folders/1BPi-ncgCvg3KCBJqMZmNzgQPW0RfQVpO" -O $MEDIA_DIR --remaining-ok
 ```
+If auth/quota error: try `--no-cookies`. If still fails, stop and flag for AT.
 
-If gdown fails (auth/quota), try adding `--no-cookies`. If still fails, stop and tell AT.
-
----
-
-## TEST 2: Inventory — what did we get?
-
+## B3: Inventory
 ```powershell
 Write-Host "`n=== RSC INVENTORY ===" -ForegroundColor Cyan
 
@@ -83,31 +193,32 @@ Write-Host "Video files: $($videos.Count), Total: $totalMB MB`n"
 
 foreach ($v in ($videos | Sort-Object Length)) {
     $mb = [math]::Round($v.Length / 1MB, 1)
-    Write-Host "  $($v.Name) — $mb MB"
+    Write-Host "  $($v.Name) - $mb MB"
     ffprobe -v error -select_streams v:0 -show_entries stream=width,height,codec_name,r_frame_rate,duration -of csv=p=0 $v.FullName
 }
 
-# Pick smallest clip with speech as test candidate
 $TEST_CLIP = ($videos | Sort-Object Length | Select-Object -First 1).FullName
-Write-Host "`nSmallest clip (test candidate): $TEST_CLIP" -ForegroundColor Yellow
-Write-Host "=== END INVENTORY ===" -ForegroundColor Cyan
+Write-Host "`nTest candidate (smallest): $TEST_CLIP" -ForegroundColor Yellow
+Write-Host "=== END ===" -ForegroundColor Cyan
 ```
-
-**CHECKPOINT:** Copy the inventory output. If no .mp4 files found, stop and tell AT.
 
 ---
 
-## TEST 3: Stage 5 — Silence Removal (CPU only, safe)
+# PART C: SMOKE TESTS (after Parts A+B green)
 
+Use the smallest video from the RSC download as test clip.
+
+## C0: Setup work dirs
 ```powershell
-$TEST_CLIP = "C:\NB11\media\in\rsc\<REPLACE WITH SMALLEST VIDEO FILENAME>"
+$TEST_CLIP = "C:\NB11\media\in\rsc\<REPLACE WITH SMALLEST VIDEO FILENAME FROM B3>"
 $WORK = "C:\NB11\AT01\tests\fixtures\smoke_test"
-New-Item -ItemType Directory -Force -Path "$WORK\input", "$WORK\clean"
-
-# Copy single test clip to input dir
+New-Item -ItemType Directory -Force -Path "$WORK\input","$WORK\clean","$WORK\subs","$WORK\final"
 Copy-Item $TEST_CLIP "$WORK\input\"
-
 cd C:\NB11\AT01
+```
+
+## C1: Stage 5 — Silence removal (CPU only)
+```powershell
 py -3.12 -c "
 from pathlib import Path
 from agents.edbot.tools.silence_remove import remove_silence
@@ -120,19 +231,13 @@ result = remove_silence(
 print(json.dumps(result, indent=2))
 "
 ```
-
-**GATE:** Output shows `"processed": 1`. A .mp4 exists in `$WORK\clean\`.
-If error: copy full output, stop, send to AT.
+GATE: `"processed": 1`, .mp4 exists in `$WORK\clean\`
 
 ```powershell
-# Quick check
 Get-ChildItem "$WORK\clean\*.mp4" | Select-Object Name, @{N='MB';E={[math]::Round($_.Length/1MB,1)}}
 ```
 
----
-
-## TEST 4: Stage 7 — Subtitle Generation (uses GPU for whisper)
-
+## C2: Stage 7 — Subtitle generation (GPU if available)
 ```powershell
 $CLEAN_CLIP = (Get-ChildItem "$WORK\clean\*.mp4" | Select-Object -First 1).FullName
 
@@ -146,27 +251,19 @@ generate_all_platforms(
 )
 "
 ```
-
-**GATE:** `$WORK\subs\*_tiktok.ass` exists.
+GATE: `*_tiktok.ass` exists with `PlayResX: 1080`, `PlayResY: 1920`, `Dialogue:` lines
 
 ```powershell
-# Inspect the .ass file
 $ass = (Get-ChildItem "$WORK\subs\*_tiktok.ass" | Select-Object -First 1).FullName
-Write-Host "`n=== ASS HEADER ===" -ForegroundColor Cyan
 Get-Content $ass | Select-Object -First 25
-Write-Host "`n=== FIRST 5 DIALOGUE LINES ===" -ForegroundColor Cyan
 Get-Content $ass | Select-String "Dialogue:" | Select-Object -First 5
 ```
 
-If error mentions CUDA/GPU: that's OK, whisper may fall back to CPU (slower but works). Copy output either way.
+If error mentions CUDA/GPU: whisper may fall back to CPU (slower but works). Copy output either way.
 
----
-
-## TEST 5: Stage 8 — Subtitle Burn-in (uses GPU for h264_nvenc)
-
+## C3: Stage 8 — Subtitle burn-in (GPU for nvenc, CPU fallback OK)
 ```powershell
 $ASS_FILE = (Get-ChildItem "$WORK\subs\*_tiktok.ass" | Select-Object -First 1).FullName
-New-Item -ItemType Directory -Force -Path "$WORK\final"
 
 py -3.12 -c "
 from pathlib import Path
@@ -179,57 +276,43 @@ result = burn_subtitle(
 print(result)
 "
 ```
-
-**GATE:** `$WORK\final\test_tiktok_subbed.mp4` exists.
-
+GATE:
 ```powershell
-# Validate output
-Write-Host "`n=== FFPROBE ===" -ForegroundColor Cyan
 ffprobe -v error -select_streams v:0 -show_entries stream=width,height,codec_name,r_frame_rate -of csv=p=0 "$WORK\final\test_tiktok_subbed.mp4"
 ffprobe -v error -show_entries format=duration -of csv=p=0 "$WORK\final\test_tiktok_subbed.mp4"
 ```
 
----
-
-## TEST 6: Summary Report — copy this entire block to AT
-
+## C4: Full report — YD copies this entire output to AT
 ```powershell
 Write-Host "`n=== YD SMOKE TEST RESULTS ===" -ForegroundColor Cyan
+Write-Host "Free space: $([math]::Round((Get-PSDrive C).Free/1GB,1)) GB"
 
-# Disk
-Write-Host "Free space remaining: $([math]::Round((Get-PSDrive C).Free/1GB,1)) GB"
+$clean = Get-ChildItem "$WORK\clean\*.mp4" -EA SilentlyContinue
+$subs = Get-ChildItem "$WORK\subs\*.ass" -EA SilentlyContinue
+$final = Get-ChildItem "$WORK\final\*.mp4" -EA SilentlyContinue
 
-# Stage 5
-$clean = Get-ChildItem "$WORK\clean\*.mp4" -ErrorAction SilentlyContinue
 Write-Host "Stage 5 (silence): $($clean.Count) clips" -ForegroundColor $(if($clean){"Green"}else{"Red"})
-
-# Stage 7
-$subs = Get-ChildItem "$WORK\subs\*.ass" -ErrorAction SilentlyContinue
 Write-Host "Stage 7 (subs): $($subs.Count) .ass files" -ForegroundColor $(if($subs){"Green"}else{"Red"})
-
-# Stage 8
-$final = Get-ChildItem "$WORK\final\*.mp4" -ErrorAction SilentlyContinue
 Write-Host "Stage 8 (burn): $($final.Count) final clips" -ForegroundColor $(if($final){"Green"}else{"Red"})
 
 if ($final) {
-    Write-Host "`nFinal output specs:"
+    Write-Host "`nFinal specs:"
     ffprobe -v error -select_streams v:0 -show_entries stream=width,height,codec_name,r_frame_rate -of csv=p=0 $final[0].FullName
     ffprobe -v error -show_entries format=duration -of csv=p=0 $final[0].FullName
 }
 
-# Tests still green?
-Write-Host "`nRegression check:"
+Write-Host "`nTests:"
+cd C:\NB11\AT01
 py -3.12 -m pytest -v --tb=short 2>&1 | Select-Object -Last 3
 
-Write-Host "=== COPY EVERYTHING ABOVE THIS LINE TO AT ===" -ForegroundColor Yellow
+Write-Host "=== COPY EVERYTHING ABOVE TO AT ===" -ForegroundColor Yellow
 ```
 
 ---
 
 ## Rules for YD
-
-1. Run tests in order (0 through 6). Each test depends on the previous.
+1. Parts A, B, C in order. Each depends on the previous.
 2. At every GATE/CHECKPOINT: if it fails, STOP and send output to AT.
 3. Do NOT commit media files to git.
 4. Do NOT skip the disk space check.
-5. The final report (Test 6) is what AT needs — copy all of it.
+5. The final report (C4) is what AT needs — copy ALL of it.
