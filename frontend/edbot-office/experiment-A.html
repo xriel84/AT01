@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EdBot Office — Experiment A: Pipeline + Platform Grid</title>
+<style>
+  /* PLACEHOLDER: Replace with A9 Office design tokens when available */
+  :root {
+    --bg-primary: #0f1117;       /* PLACEHOLDER: A9 bg-primary */
+    --bg-secondary: #1a1d27;     /* PLACEHOLDER: A9 bg-secondary */
+    --bg-tertiary: #242836;      /* PLACEHOLDER: A9 bg-tertiary */
+    --border: #2e3348;           /* PLACEHOLDER: A9 border */
+    --text-primary: #e4e6ef;     /* PLACEHOLDER: A9 text-primary */
+    --text-secondary: #8b8fa7;   /* PLACEHOLDER: A9 text-secondary */
+    --text-muted: #5c6078;       /* PLACEHOLDER: A9 text-muted */
+    --accent: #6c8aff;           /* PLACEHOLDER: A9 accent */
+    --success: #3dd68c;          /* PLACEHOLDER: A9 success */
+    --warning: #f0b232;          /* PLACEHOLDER: A9 warning */
+    --danger: #f05252;           /* PLACEHOLDER: A9 danger */
+    --info: #58a6ff;             /* PLACEHOLDER: A9 info */
+    --radius: 8px;               /* PLACEHOLDER: A9 radius */
+    --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+  }
+
+  .header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .header-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  /* PLACEHOLDER: A9 blocker banner styling */
+  .blocker-banner {
+    background: rgba(240, 82, 82, 0.1);
+    border-bottom: 1px solid rgba(240, 82, 82, 0.3);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .blocker-banner .icon { font-size: 16px; }
+  .blocker-banner .label { color: var(--danger); font-weight: 600; }
+  .blocker-banner .message { color: var(--text-secondary); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .panel {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+  }
+
+  .panel-body { padding: 4px 0; }
+
+  /* Pipeline stage rows */
+  .stage-row {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--bg-primary);
+    font-size: 14px;
+  }
+
+  .stage-row:last-child { border-bottom: none; }
+
+  .stage-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+  }
+
+  .stage-num.proven { background: rgba(61, 214, 140, 0.15); color: var(--success); }
+  .stage-num.partial { background: rgba(88, 166, 255, 0.15); color: var(--info); }
+  .stage-num.designed { background: rgba(240, 178, 50, 0.15); color: var(--warning); }
+
+  .stage-name { font-weight: 500; }
+  .stage-detail { font-size: 12px; color: var(--text-muted); }
+
+  .stage-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    white-space: nowrap;
+  }
+
+  .badge-proven { background: rgba(61, 214, 140, 0.12); color: var(--success); }
+  .badge-partial { background: rgba(88, 166, 255, 0.12); color: var(--info); }
+  .badge-designed { background: rgba(240, 178, 50, 0.12); color: var(--warning); }
+
+  /* Platform grid */
+  .platform-grid { padding: 12px 18px; }
+
+  .platform-card {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+
+  .platform-card:last-child { margin-bottom: 0; }
+
+  .platform-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .platform-name {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .platform-clips {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  .platform-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .step-cell {
+    font-size: 11px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    text-align: center;
+    font-family: var(--font-mono);
+  }
+
+  .step-done { background: rgba(61, 214, 140, 0.1); color: var(--success); }
+  .step-fail { background: rgba(240, 82, 82, 0.1); color: var(--danger); }
+  .step-na { background: rgba(92, 96, 120, 0.15); color: var(--text-muted); }
+
+  .platform-card.crashed .platform-name { color: var(--danger); }
+
+  /* Summary bar */
+  .summary-bar {
+    display: flex;
+    gap: 24px;
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .summary-bar strong { color: var(--text-primary); }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>EdBot Office</h1>
+  <!-- PLACEHOLDER: A9 header actions / nav -->
+  <div class="header-meta">EXPERIMENT A — Pipeline + Grid</div>
+</div>
+
+<div class="blocker-banner">
+  <span class="icon">&#9888;</span>
+  <span class="label">BLOCKER</span>
+  <span class="message">Resolve crashed — needs manual relaunch</span>
+</div>
+
+<div class="layout">
+
+  <!-- Pipeline Stages Panel -->
+  <div class="panel">
+    <div class="panel-header">Pipeline Stages</div>
+    <div class="panel-body">
+      <div class="stage-row">
+        <div class="stage-num proven">1</div>
+        <div><div class="stage-name">Transcription</div></div>
+        <span class="stage-badge badge-proven">PROVEN</span>
+      </div>
+      <div class="stage-row">
+        <div class="stage-num proven">2</div>
+        <div><div class="stage-name">Highlight Analysis</div></div>
+        <span class="stage-badge badge-proven">PROVEN</span>
+      </div>
+      <div class="stage-row">
+        <div class="stage-num proven">3</div>
+        <div>
+          <div class="stage-name">Visual Filtering</div>
+          <div class="stage-detail">58/71 clips passed</div>
+        </div>
+        <span class="stage-badge badge-proven">PROVEN</span>
+      </div>
+      <div class="stage-row">
+        <div class="stage-num proven">4</div>
+        <div><div class="stage-name">Clip Extraction</div></div>
+        <span class="stage-badge badge-proven">PROVEN</span>
+      </div>
+      <div class="stage-row">
+        <div class="stage-num designed">5</div>
+        <div><div class="stage-name">Silence Removal</div></div>
+        <span class="stage-badge badge-designed">DESIGNED</span>
+      </div>
+      <div class="stage-row">
+        <div class="stage-num partial">6</div>
+        <div>
+          <div class="stage-name">Resolve Assembly</div>
+          <div class="stage-detail">3/5 platforms</div>
+        </div>
+        <span class="stage-badge badge-partial">PARTIAL</span>
+      </div>
+      <div class="stage-row">
+        <div class="stage-num designed">7</div>
+        <div><div class="stage-name">Subtitle Generation</div></div>
+        <span class="stage-badge badge-designed">DESIGNED</span>
+      </div>
+      <div class="stage-row">
+        <div class="stage-num designed">8</div>
+        <div><div class="stage-name">Subtitle Burn-in</div></div>
+        <span class="stage-badge badge-designed">DESIGNED</span>
+      </div>
+    </div>
+    <div class="summary-bar">
+      <span><strong>4</strong> Proven</span>
+      <span><strong>1</strong> Partial</span>
+      <span><strong>3</strong> Designed</span>
+    </div>
+  </div>
+
+  <!-- Platform Render Status Panel -->
+  <div class="panel">
+    <div class="panel-header">Platform Render Status</div>
+    <div class="platform-grid">
+
+      <div class="platform-card">
+        <div class="platform-header">
+          <span class="platform-name">TikTok</span>
+          <span class="platform-clips">3 clips</span>
+        </div>
+        <div class="platform-steps">
+          <div class="step-cell step-done">SmartReframe</div>
+          <div class="step-cell step-done">Timeline</div>
+          <div class="step-cell step-fail">Render</div>
+        </div>
+      </div>
+
+      <div class="platform-card">
+        <div class="platform-header">
+          <span class="platform-name">Reels</span>
+          <span class="platform-clips">5 clips</span>
+        </div>
+        <div class="platform-steps">
+          <div class="step-cell step-done">SmartReframe</div>
+          <div class="step-cell step-done">Timeline</div>
+          <div class="step-cell step-fail">Render</div>
+        </div>
+      </div>
+
+      <div class="platform-card">
+        <div class="platform-header">
+          <span class="platform-name">Shorts</span>
+          <span class="platform-clips">3 clips</span>
+        </div>
+        <div class="platform-steps">
+          <div class="step-cell step-done">SmartReframe</div>
+          <div class="step-cell step-done">Timeline</div>
+          <div class="step-cell step-fail">Render</div>
+        </div>
+      </div>
+
+      <div class="platform-card crashed">
+        <div class="platform-header">
+          <span class="platform-name">YouTube &#9888;</span>
+          <span class="platform-clips">28 clips</span>
+        </div>
+        <div class="platform-steps">
+          <div class="step-cell step-fail">SmartReframe</div>
+          <div class="step-cell step-fail">Timeline</div>
+          <div class="step-cell step-fail">Render</div>
+        </div>
+      </div>
+
+      <div class="platform-card">
+        <div class="platform-header">
+          <span class="platform-name">LinkedIn</span>
+          <span class="platform-clips">0 clips</span>
+        </div>
+        <div class="platform-steps">
+          <div class="step-cell step-na">SmartReframe</div>
+          <div class="step-cell step-na">Timeline</div>
+          <div class="step-cell step-na">Render</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
