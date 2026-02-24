@@ -1,3 +1,11 @@
 __pycache__/
 *.pyc
 comms/private/
+tests/fixtures/smoke_test/
+tests/demos/subtitle_samples/
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.wav
+*.mp3
