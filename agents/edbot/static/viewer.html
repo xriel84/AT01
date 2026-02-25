@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EdBot Clip Viewer</title>
+<style>
+/* --- Reset & Base --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    line-height: 1.4;
+    min-height: 100vh;
+}
+
+/* --- Header --- */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: #16213e;
+    border-bottom: 1px solid #0f3460;
+}
+.header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #e94560;
+    letter-spacing: 0.5px;
+}
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.header-controls label {
+    font-size: 12px;
+    color: #8899aa;
+}
+.header-controls input[type="text"] {
+    width: 320px;
+    padding: 5px 8px;
+    font-size: 12px;
+    font-family: monospace;
+    background: #0f3460;
+    border: 1px solid #1a4080;
+    color: #e0e0e0;
+    border-radius: 3px;
+}
+.header-controls input[type="text"]:focus {
+    outline: none;
+    border-color: #e94560;
+}
+.btn {
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #1a4080;
+    border-radius: 3px;
+    cursor: pointer;
+    background: #0f3460;
+    color: #e0e0e0;
+}
+.btn:hover { background: #1a4080; }
+.btn:active { background: #245090; }
+.btn-primary { background: #e94560; border-color: #e94560; color: #fff; }
+.btn-primary:hover { background: #d63050; }
+
+/* --- Main Layout --- */
+.main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* --- Video Section --- */
+.video-section {
+    background: #000;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+.video-section video {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    background: #000;
+}
+
+/* --- Timeline --- */
+.timeline-section {
+    background: #16213e;
+    border-radius: 4px;
+    padding: 8px 12px;
+}
+.timeline-section h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8899aa;
+    margin-bottom: 6px;
+}
+.timeline-bar-container {
+    position: relative;
+    height: 32px;
+    background: #0a0a1a;
+    border-radius: 3px;
+    cursor: pointer;
+    overflow: hidden;
+}
+.timeline-segment {
+    position: absolute;
+    top: 0;
+    height: 100%;
+}
+.timeline-segment.speech { background: #27ae60; }
+.timeline-segment.silence { background: #3a3a4a; }
+.timeline-playhead {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: #e94560;
+    pointer-events: none;
+    z-index: 10;
+    left: 0;
+}
+.timeline-time {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #667788;
+    margin-top: 3px;
+    font-family: monospace;
+}
+
+/* --- Waveform Placeholder --- */
+.waveform-section {
+    background: #16213e;
+    border-radius: 4px;
+    padding: 8px 12px;
+}
+.waveform-section h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8899aa;
+    margin-bottom: 6px;
+}
+.waveform-placeholder {
+    height: 40px;
+    background: linear-gradient(90deg, #2a2a3a 0%, #3a3a4a 50%, #2a2a3a 100%);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #556677;
+}
+
+/* --- Chunks List --- */
+.chunks-section {
+    background: #16213e;
+    border-radius: 4px;
+    padding: 8px 0;
+}
+.chunks-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px 8px 12px;
+    border-bottom: 1px solid #0f3460;
+}
+.chunks-header h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8899aa;
+}
+.chunks-header span {
+    font-size: 11px;
+    color: #667788;
+}
+.chunks-list {
+    max-height: 280px;
+    overflow-y: auto;
+}
+.chunks-list::-webkit-scrollbar { width: 6px; }
+.chunks-list::-webkit-scrollbar-track { background: #0f3460; }
+.chunks-list::-webkit-scrollbar-thumb { background: #1a4080; border-radius: 3px; }
+
+.chunk-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    border-bottom: 1px solid #0d1b3a;
+}
+.chunk-row:hover { background: #1a2a4a; }
+.chunk-row.active { background: #1a3050; border-left: 3px solid #e94560; padding-left: 9px; }
+.chunk-row.silence-row { opacity: 0.55; }
+
+.chunk-cb { flex-shrink: 0; }
+.chunk-id {
+    flex-shrink: 0;
+    width: 32px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #8899aa;
+}
+.chunk-time {
+    flex-shrink: 0;
+    width: 100px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #44bb88;
+}
+.chunk-words {
+    flex-shrink: 0;
+    width: 36px;
+    font-size: 10px;
+    color: #8899aa;
+    text-align: center;
+}
+.chunk-silence-ratio {
+    flex-shrink: 0;
+    width: 48px;
+    font-size: 10px;
+    text-align: right;
+    font-family: monospace;
+}
+.chunk-silence-ratio.low { color: #27ae60; }
+.chunk-silence-ratio.med { color: #f39c12; }
+.chunk-silence-ratio.high { color: #e74c3c; }
+.chunk-speaker {
+    flex-shrink: 0;
+    width: 80px;
+    font-size: 10px;
+    color: #667788;
+}
+.chunk-text {
+    flex: 1;
+    font-size: 12px;
+    color: #c0c0d0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.chunk-text.is-silence {
+    font-style: italic;
+    color: #556677;
+}
+
+/* --- Actions --- */
+.actions-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* --- Status Bar --- */
+.status-bar {
+    padding: 6px 12px;
+    background: #16213e;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
+    color: #8899aa;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.status-bar .status-label { color: #556677; }
+.status-bar .status-text { color: #e0e0e0; }
+.status-bar.error .status-text { color: #e74c3c; }
+.status-bar.success .status-text { color: #27ae60; }
+
+/* --- Message overlay --- */
+.message-overlay {
+    padding: 40px 20px;
+    text-align: center;
+    color: #667788;
+    font-size: 14px;
+}
+.message-overlay .hint {
+    font-size: 12px;
+    margin-top: 8px;
+    color: #445566;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <h1>EdBot Clip Viewer</h1>
+    <div class="header-controls">
+        <label for="video-path">Video:</label>
+        <input type="text" id="video-path" placeholder="C:\path\to\video.mov" />
+        <button class="btn" id="btn-load" title="Load video and fetch data">Load Video</button>
+    </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+    <!-- VIDEO PLAYER -->
+    <div class="video-section">
+        <video id="video-player" controls preload="metadata">
+            Your browser does not support the video element.
+        </video>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="timeline-section">
+        <h3>Timeline</h3>
+        <div class="timeline-bar-container" id="timeline-bar">
+            <div class="timeline-playhead" id="timeline-playhead"></div>
+        </div>
+        <div class="timeline-time">
+            <span id="time-current">0:00</span>
+            <span id="time-duration">0:00</span>
+        </div>
+    </div>
+
+    <!-- WAVEFORM PLACEHOLDER -->
+    <div class="waveform-section">
+        <h3>Waveform</h3>
+        <div class="waveform-placeholder">Waveform view (placeholder)</div>
+    </div>
+
+    <!-- CHUNKS -->
+    <div class="chunks-section">
+        <div class="chunks-header">
+            <h3>Chunks</h3>
+            <span id="chunks-count">0 chunks</span>
+        </div>
+        <div class="chunks-list" id="chunks-list">
+            <div class="message-overlay" id="chunks-message">
+                Loading chunk data...
+            </div>
+        </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="actions-section">
+        <button class="btn" id="btn-extract">Extract Selected</button>
+        <button class="btn" id="btn-remove-silence">Remove Silence</button>
+        <button class="btn btn-primary" id="btn-export-tiktok">Export TikTok</button>
+    </div>
+
+    <!-- STATUS -->
+    <div class="status-bar" id="status-bar">
+        <span class="status-label">STATUS:</span>
+        <span class="status-text" id="status-text">Ready</span>
+    </div>
+
+</div>
+
+<script>
+// ===========================================================================
+// EdBot Clip Viewer — Vanilla JS
+// ===========================================================================
+
+(function () {
+    "use strict";
+
+    // -----------------------------------------------------------------------
+    // Config
+    // -----------------------------------------------------------------------
+
+    const API_BASE = "";  // Same origin — served by FastAPI on :8901
+    const DEFAULT_VIDEO_PATH = String.raw`C:\NB10\media_test\in\IMG_5769.MOV`;
+
+    // -----------------------------------------------------------------------
+    // DOM refs
+    // -----------------------------------------------------------------------
+
+    const elVideo       = document.getElementById("video-player");
+    const elVideoPath   = document.getElementById("video-path");
+    const elBtnLoad     = document.getElementById("btn-load");
+    const elTimelineBar = document.getElementById("timeline-bar");
+    const elPlayhead    = document.getElementById("timeline-playhead");
+    const elTimeCurrent = document.getElementById("time-current");
+    const elTimeDuration= document.getElementById("time-duration");
+    const elChunksList  = document.getElementById("chunks-list");
+    const elChunksCount = document.getElementById("chunks-count");
+    const elChunksMsg   = document.getElementById("chunks-message");
+    const elBtnExtract  = document.getElementById("btn-extract");
+    const elBtnSilence  = document.getElementById("btn-remove-silence");
+    const elBtnExport   = document.getElementById("btn-export-tiktok");
+    const elStatusBar   = document.getElementById("status-bar");
+    const elStatusText  = document.getElementById("status-text");
+
+    // -----------------------------------------------------------------------
+    // State
+    // -----------------------------------------------------------------------
+
+    let chunksData   = null;  // { source, duration, chunks: [...] }
+    let silenceData  = null;  // { source, duration, gaps: [...], speech: [...], stats: {...} }
+    let videoDuration = 0;
+    let currentVideoPath = DEFAULT_VIDEO_PATH;
+    let activeChunkId = -1;
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    function fmtTime(secs) {
+        if (!isFinite(secs) || secs < 0) secs = 0;
+        var m = Math.floor(secs / 60);
+        var s = Math.floor(secs % 60);
+        return m + ":" + (s < 10 ? "0" : "") + s;
+    }
+
+    function fmtTimePrecise(secs) {
+        return secs.toFixed(1) + "s";
+    }
+
+    function truncText(text, maxLen) {
+        if (!text) return "";
+        if (text.length <= maxLen) return text;
+        return text.substring(0, maxLen) + "...";
+    }
+
+    function setStatus(msg, type) {
+        elStatusText.textContent = msg;
+        elStatusBar.className = "status-bar" + (type ? " " + type : "");
+    }
+
+    function videoUrl(filePath) {
+        // The server handles absolute paths at /video/{path:path}
+        // We need to encode the path for the URL but keep backslashes working.
+        return API_BASE + "/video/" + encodeURIComponent(filePath);
+    }
+
+    // -----------------------------------------------------------------------
+    // Video loading
+    // -----------------------------------------------------------------------
+
+    function loadVideo(filePath) {
+        currentVideoPath = filePath;
+        elVideoPath.value = filePath;
+        elVideo.src = videoUrl(filePath);
+        elVideo.load();
+        setStatus("Loading video: " + filePath);
+    }
+
+    // -----------------------------------------------------------------------
+    // API fetch
+    // -----------------------------------------------------------------------
+
+    async function fetchChunks() {
+        try {
+            var resp = await fetch(API_BASE + "/api/chunks");
+            if (resp.status === 404) return null;
+            if (!resp.ok) throw new Error("HTTP " + resp.status);
+            return await resp.json();
+        } catch (e) {
+            console.error("fetchChunks error:", e);
+            return null;
+        }
+    }
+
+    async function fetchSilenceMap() {
+        try {
+            var resp = await fetch(API_BASE + "/api/silence_map");
+            if (resp.status === 404) return null;
+            if (!resp.ok) throw new Error("HTTP " + resp.status);
+            return await resp.json();
+        } catch (e) {
+            console.error("fetchSilenceMap error:", e);
+            return null;
+        }
+    }
+
+    async function postExecute(actionBody) {
+        try {
+            var resp = await fetch(API_BASE + "/api/execute", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(actionBody),
+            });
+            var data = await resp.json();
+            if (!resp.ok) {
+                throw new Error(data.detail || "HTTP " + resp.status);
+            }
+            return data;
+        } catch (e) {
+            console.error("postExecute error:", e);
+            return { status: "error", error: e.message };
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Timeline rendering
+    // -----------------------------------------------------------------------
+
+    function renderTimeline() {
+        // Clear existing segments (keep playhead)
+        var segments = elTimelineBar.querySelectorAll(".timeline-segment");
+        for (var i = 0; i < segments.length; i++) {
+            segments[i].remove();
+        }
+
+        var dur = videoDuration || (chunksData && chunksData.duration) || (silenceData && silenceData.duration) || 0;
+        if (dur <= 0) {
+            // No data: solid gray bar (the container bg is already dark)
+            return;
+        }
+
+        // If we have silence data, render speech and gap segments
+        if (silenceData && silenceData.speech) {
+            // Render speech segments as green
+            var speechSegs = silenceData.speech || [];
+            for (var i = 0; i < speechSegs.length; i++) {
+                var seg = speechSegs[i];
+                var el = document.createElement("div");
+                el.className = "timeline-segment speech";
+                el.style.left = ((seg.start / dur) * 100) + "%";
+                el.style.width = (((seg.end - seg.start) / dur) * 100) + "%";
+                elTimelineBar.insertBefore(el, elPlayhead);
+            }
+
+            // Render gap segments as gray
+            var gapSegs = silenceData.gaps || [];
+            for (var i = 0; i < gapSegs.length; i++) {
+                var seg = gapSegs[i];
+                var el = document.createElement("div");
+                el.className = "timeline-segment silence";
+                el.style.left = ((seg.start / dur) * 100) + "%";
+                el.style.width = (((seg.end - seg.start) / dur) * 100) + "%";
+                elTimelineBar.insertBefore(el, elPlayhead);
+            }
+        } else {
+            // No silence data available: show full bar as a single gray segment
+            var el = document.createElement("div");
+            el.className = "timeline-segment silence";
+            el.style.left = "0%";
+            el.style.width = "100%";
+            elTimelineBar.insertBefore(el, elPlayhead);
+        }
+    }
+
+    function updatePlayhead() {
+        var dur = videoDuration || 1;
+        var currentTime = elVideo.currentTime || 0;
+        var pct = (currentTime / dur) * 100;
+        elPlayhead.style.left = pct + "%";
+        elTimeCurrent.textContent = fmtTime(currentTime);
+    }
+
+    // -----------------------------------------------------------------------
+    // Chunk list rendering
+    // -----------------------------------------------------------------------
+
+    function renderChunks() {
+        elChunksList.innerHTML = "";
+
+        if (!chunksData || !chunksData.chunks || chunksData.chunks.length === 0) {
+            elChunksList.innerHTML =
+                '<div class="message-overlay">' +
+                'No data loaded. Run transcription first.' +
+                '<div class="hint">POST /api/transcribe or POST /api/silence to generate data</div>' +
+                '</div>';
+            elChunksCount.textContent = "0 chunks";
+            return;
+        }
+
+        var chunks = chunksData.chunks;
+        elChunksCount.textContent = chunks.length + " chunks";
+
+        for (var i = 0; i < chunks.length; i++) {
+            var chunk = chunks[i];
+            var row = document.createElement("div");
+            row.className = "chunk-row" + (chunk.has_speech === false ? " silence-row" : "");
+            row.dataset.chunkId = chunk.id;
+            row.dataset.start = chunk.start;
+
+            // Checkbox
+            var cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.className = "chunk-cb";
+            cb.dataset.chunkId = chunk.id;
+            cb.addEventListener("click", function (e) { e.stopPropagation(); });
+            row.appendChild(cb);
+
+            // ID
+            var idEl = document.createElement("span");
+            idEl.className = "chunk-id";
+            idEl.textContent = "[" + chunk.id + "]";
+            row.appendChild(idEl);
+
+            // Time range
+            var timeEl = document.createElement("span");
+            timeEl.className = "chunk-time";
+            timeEl.textContent = fmtTimePrecise(chunk.start) + " - " + fmtTimePrecise(chunk.end);
+            row.appendChild(timeEl);
+
+            // Word count
+            var wordsEl = document.createElement("span");
+            wordsEl.className = "chunk-words";
+            wordsEl.textContent = chunk.word_count + "w";
+            row.appendChild(wordsEl);
+
+            // Silence ratio
+            var silEl = document.createElement("span");
+            var silPct = Math.round((chunk.silence_ratio || 0) * 100);
+            silEl.className = "chunk-silence-ratio" +
+                (silPct < 30 ? " low" : silPct < 70 ? " med" : " high");
+            silEl.textContent = silPct + "%";
+            silEl.title = "Silence ratio";
+            row.appendChild(silEl);
+
+            // Speaker placeholder
+            var spkEl = document.createElement("span");
+            spkEl.className = "chunk-speaker";
+            spkEl.textContent = "SPEAKER_1";
+            row.appendChild(spkEl);
+
+            // Text
+            var textEl = document.createElement("span");
+            textEl.className = "chunk-text" + (!chunk.text ? " is-silence" : "");
+            textEl.textContent = chunk.text ? truncText(chunk.text, 60) : "(silence)";
+            textEl.title = chunk.text || "(silence)";
+            row.appendChild(textEl);
+
+            // Click to seek
+            row.addEventListener("click", (function (startTime) {
+                return function () {
+                    elVideo.currentTime = startTime;
+                    elVideo.play();
+                };
+            })(chunk.start));
+
+            elChunksList.appendChild(row);
+        }
+    }
+
+    function highlightActiveChunk() {
+        if (!chunksData || !chunksData.chunks) return;
+
+        var currentTime = elVideo.currentTime || 0;
+        var newActiveId = -1;
+
+        var chunks = chunksData.chunks;
+        for (var i = 0; i < chunks.length; i++) {
+            if (currentTime >= chunks[i].start && currentTime < chunks[i].end) {
+                newActiveId = chunks[i].id;
+                break;
+            }
+        }
+
+        // If past the last chunk, highlight the last chunk
+        if (newActiveId === -1 && chunks.length > 0 && currentTime >= chunks[chunks.length - 1].start) {
+            newActiveId = chunks[chunks.length - 1].id;
+        }
+
+        if (newActiveId === activeChunkId) return;
+        activeChunkId = newActiveId;
+
+        var rows = elChunksList.querySelectorAll(".chunk-row");
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            if (parseInt(row.dataset.chunkId, 10) === activeChunkId) {
+                row.classList.add("active");
+                // Scroll into view if needed
+                var listRect = elChunksList.getBoundingClientRect();
+                var rowRect = row.getBoundingClientRect();
+                if (rowRect.top < listRect.top || rowRect.bottom > listRect.bottom) {
+                    row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                }
+            } else {
+                row.classList.remove("active");
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Selected chunks helper
+    // -----------------------------------------------------------------------
+
+    function getSelectedChunkIds() {
+        var ids = [];
+        var cbs = elChunksList.querySelectorAll(".chunk-cb:checked");
+        for (var i = 0; i < cbs.length; i++) {
+            ids.push(parseInt(cbs[i].dataset.chunkId, 10));
+        }
+        return ids;
+    }
+
+    // -----------------------------------------------------------------------
+    // Event: timeline bar click to seek
+    // -----------------------------------------------------------------------
+
+    elTimelineBar.addEventListener("click", function (e) {
+        var rect = elTimelineBar.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var pct = x / rect.width;
+        var dur = videoDuration || 1;
+        var seekTime = pct * dur;
+        elVideo.currentTime = seekTime;
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: video timeupdate
+    // -----------------------------------------------------------------------
+
+    elVideo.addEventListener("timeupdate", function () {
+        updatePlayhead();
+        highlightActiveChunk();
+    });
+
+    elVideo.addEventListener("loadedmetadata", function () {
+        videoDuration = elVideo.duration;
+        elTimeDuration.textContent = fmtTime(videoDuration);
+        renderTimeline();
+    });
+
+    elVideo.addEventListener("durationchange", function () {
+        videoDuration = elVideo.duration;
+        elTimeDuration.textContent = fmtTime(videoDuration);
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: Load Video button
+    // -----------------------------------------------------------------------
+
+    elBtnLoad.addEventListener("click", function () {
+        var path = elVideoPath.value.trim();
+        if (!path) {
+            setStatus("Enter a video path first", "error");
+            return;
+        }
+        loadVideo(path);
+        setStatus("Video source updated: " + path);
+    });
+
+    elVideoPath.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+            elBtnLoad.click();
+        }
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: Extract Selected (placeholder)
+    // -----------------------------------------------------------------------
+
+    elBtnExtract.addEventListener("click", function () {
+        var ids = getSelectedChunkIds();
+        console.log("extract", ids);
+        if (ids.length === 0) {
+            setStatus("No chunks selected for extraction");
+        } else {
+            setStatus("Extract requested for chunks: [" + ids.join(", ") + "] (placeholder)");
+        }
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: Remove Silence
+    // -----------------------------------------------------------------------
+
+    elBtnSilence.addEventListener("click", async function () {
+        setStatus("Removing silence...");
+        var body = {
+            action: {
+                action: "silence_remove",
+                params: { silence_threshold_db: -30 },
+                executor: "ffmpeg",
+                confidence: 1.0,
+            },
+            input_path: currentVideoPath,
+        };
+        var result = await postExecute(body);
+        if (result.status === "success") {
+            setStatus("Silence removed. Output: " + (result.output || "done"), "success");
+        } else {
+            setStatus("Silence removal failed: " + (result.error || "unknown error"), "error");
+        }
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: Export TikTok
+    // -----------------------------------------------------------------------
+
+    elBtnExport.addEventListener("click", async function () {
+        setStatus("Exporting for TikTok...");
+        var body = {
+            action: {
+                action: "platform_export",
+                params: { platform: "tiktok", max_duration: 60, aspect: "9:16" },
+                executor: "ffmpeg",
+                confidence: 1.0,
+            },
+            input_path: currentVideoPath,
+        };
+        var result = await postExecute(body);
+        if (result.status === "success") {
+            setStatus("TikTok export complete. Output: " + (result.output || "done"), "success");
+        } else {
+            setStatus("TikTok export failed: " + (result.error || "unknown error"), "error");
+        }
+    });
+
+    // -----------------------------------------------------------------------
+    // Init: load data and video on page load
+    // -----------------------------------------------------------------------
+
+    async function init() {
+        // Set default video path in input
+        elVideoPath.value = DEFAULT_VIDEO_PATH;
+
+        // Load video
+        loadVideo(DEFAULT_VIDEO_PATH);
+
+        // Fetch chunks and silence map in parallel
+        setStatus("Fetching data from server...");
+
+        var results = await Promise.all([fetchChunks(), fetchSilenceMap()]);
+        chunksData = results[0];
+        silenceData = results[1];
+
+        if (!chunksData && !silenceData) {
+            setStatus("No data loaded. Run transcription first.");
+        } else {
+            var parts = [];
+            if (chunksData) parts.push(chunksData.chunks.length + " chunks");
+            if (silenceData) parts.push(silenceData.stats.gap_count + " silence gaps");
+            setStatus("Loaded: " + parts.join(", "), "success");
+        }
+
+        renderChunks();
+
+        // Render timeline after video metadata or immediately if we have data
+        if (silenceData && silenceData.duration) {
+            videoDuration = videoDuration || silenceData.duration;
+            elTimeDuration.textContent = fmtTime(videoDuration);
+        } else if (chunksData && chunksData.duration) {
+            videoDuration = videoDuration || chunksData.duration;
+            elTimeDuration.textContent = fmtTime(videoDuration);
+        }
+        renderTimeline();
+    }
+
+    init();
+
+})();
+</script>
+</body>
+</html>
