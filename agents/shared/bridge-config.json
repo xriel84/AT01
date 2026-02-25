@@ -1,0 +1,21 @@
+{
+  "bridges": {
+    "at01-jp01": {
+      "at01_repo": "C:\\AT01",
+      "at01_github": "xriel84/AT01",
+      "at01_owner": "xriel84",
+      "jp01_repo": "C:\\JP01",
+      "jp01_github": "NewEccentric/JP01",
+      "jp01_owner": "NewEccentric",
+      "at01_branch_on_jp": "at01-bridge",
+      "jp01_branch_on_at": "jp01-bridge",
+      "bus_files": [
+        "jasperbot-to-artbot.json",
+        "artbot-to-jasperbot.json",
+        "jasperbot-to-anabot.json",
+        "anabot-to-jasperbot.json"
+      ],
+      "style_firewall": "ENFORCED — al_ prefix AT01, jp_ prefix JP01. No cross-contamination."
+    }
+  }
+}
