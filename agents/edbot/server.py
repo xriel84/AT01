@@ -94,8 +94,9 @@ def safe_gpu_call(func, *args, **kwargs):
         return func(*args, **kwargs)
     except Exception as exc:
         error_str = str(exc).lower()
-        if any(term in error_str for term in ("cuda", "gpu", "cublas", "cudnn", "nccl")):
-            return {"error": f"GPU failed: {exc}", "fallback": True}
+        if any(term in error_str for term in ("cuda", "gpu", "cublas", "cudnn", "nccl",
+                                               "exit 127", "out of memory", "oom")):
+            return {"error": f"GPU failed: {exc}", "method": "gpu_failed", "fallback": True}
         raise
 
 # ---------------------------------------------------------------------------
@@ -257,6 +258,29 @@ def api_speakers():
         raise HTTPException(status_code=500, detail=result["error"])
     _session["speaker_map"] = result
     return result
+
+
+class LabelRequest(BaseModel):
+    labels: dict[str, str]  # {"SPEAKER_0": "Ari", "SPEAKER_1": "Alex"}
+
+
+@app.post("/api/label_speakers")
+def api_label_speakers(req: LabelRequest):
+    """Update speaker labels in session speaker_map."""
+    speaker_map = _session.get("speaker_map")
+    if speaker_map is None:
+        raise HTTPException(status_code=404, detail="no speaker map — run /api/speakers first")
+    # Replace labels in segments and chunk_speakers
+    for seg in speaker_map.get("segments", []):
+        if seg.get("speaker") in req.labels:
+            seg["speaker"] = req.labels[seg["speaker"]]
+    for chunk_id, spk in list(speaker_map.get("chunk_speakers", {}).items()):
+        if spk in req.labels:
+            speaker_map["chunk_speakers"][chunk_id] = req.labels[spk]
+    # Update speakers list
+    speaker_map["speakers"] = [req.labels.get(s, s) for s in speaker_map.get("speakers", [])]
+    _session["speaker_map"] = speaker_map
+    return speaker_map
 
 
 @app.post("/api/portrait_crop")

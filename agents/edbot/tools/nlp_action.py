@@ -69,6 +69,10 @@ _ACTION_PATTERNS: list[tuple[re.Pattern[str], str, dict[str, Any]]] = [
     (re.compile(r"(remove|cut|delete)\s*(the\s+)?silence"),
      "silence_remove", {}),
 
+    # tiktok batch (plural "tiktoks" → batch, must precede single "tiktok" platform)
+    (re.compile(r"(make|create|generate)\s+(the\s+)?tiktoks"),
+     "tiktok_batch", {"platform": "tiktok", "max_duration": 60, "aspect": "9:16"}),
+
     # platform shortcuts — tiktok / shorts / reels
     (re.compile(r"make\s+.*?(tiktok|tik\s*tok)"),
      "platform_export",
@@ -102,30 +106,36 @@ _ACTION_PATTERNS: list[tuple[re.Pattern[str], str, dict[str, Any]]] = [
      "platform_export", {}),
 
     # chapter detection
-    (re.compile(r"(find|detect|split)\s*(the\s+)?chapter"),
+    (re.compile(r"(detect|find|generate|get)\s*(the\s+)?(chapter|chapters)"),
      "chapter_detect", {}),
 
     (re.compile(r"chapter\s*(split|detect|boundar)"),
      "chapter_detect", {}),
 
+    (re.compile(r"chapter"),
+     "chapter_detect", {}),
+
     # speaker detection
-    (re.compile(r"(find|detect|identify)\s*(the\s+)?speaker"),
+    (re.compile(r"(who is|who's)\s+talking"),
+     "speaker_detect", {}),
+
+    (re.compile(r"(detect|find|identify)\s*(the\s+)?speaker"),
      "speaker_detect", {}),
 
     (re.compile(r"speaker\s*(detect|diariz|identif)"),
      "speaker_detect", {}),
 
-    # label speakers
+    # label speakers (distinct action from speaker_detect)
     (re.compile(r"label\s*(the\s+)?speaker"),
-     "speaker_detect", {}),
+     "label_speakers", {}),
 
-    # tiktok batch
+    # tiktok batch (non-"make" triggers)
     (re.compile(r"(batch|auto)\s*(generate|create|make)?\s*tiktok"),
-     "tiktok_batch", {}),
+     "tiktok_batch", {"platform": "tiktok", "max_duration": 60, "aspect": "9:16"}),
 
-    # portrait crop
-    (re.compile(r"(portrait|vertical)\s*crop"),
-     "portrait_crop", {"aspect": "9:16"}),
+    # portrait crop (maps to crop action with 9:16)
+    (re.compile(r"portrait\s+crop"),
+     "crop", {"aspect": "9:16"}),
 
     # transcribe
     (re.compile(r"transcribe"),

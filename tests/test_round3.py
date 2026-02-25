@@ -378,12 +378,18 @@ def test_nlp_chapter_detect_patterns(text):
 @pytest.mark.parametrize("text", [
     "find speakers",
     "speaker detection",
-    "label speakers",
 ])
 def test_nlp_speaker_detect_patterns(text):
     """Various speaker detection phrases return action='speaker_detect'."""
     result = parse_command(text)
     assert result["action"] == "speaker_detect"
+    assert result["confidence"] >= 0.9
+
+
+def test_nlp_label_speakers_pattern():
+    """'label speakers' maps to distinct 'label_speakers' action."""
+    result = parse_command("label speakers")
+    assert result["action"] == "label_speakers"
     assert result["confidence"] >= 0.9
 
 
@@ -406,14 +412,11 @@ def test_nlp_tiktok_batch_pattern(text):
 # 16. test_nlp_portrait_crop_pattern
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("text", [
-    "portrait crop this video",
-    "vertical crop",
-])
-def test_nlp_portrait_crop_pattern(text):
-    """Portrait crop phrases return action='portrait_crop'."""
-    result = parse_command(text)
-    assert result["action"] == "portrait_crop"
+def test_nlp_portrait_crop_pattern():
+    """'portrait crop' maps to 'crop' action with 9:16 aspect."""
+    result = parse_command("portrait crop this video")
+    assert result["action"] == "crop"
+    assert result["params"]["aspect"] == "9:16"
     assert result["confidence"] >= 0.9
 
 
@@ -643,3 +646,158 @@ def test_safe_gpu_call_returns_function_result():
         return x + y
 
     assert safe_gpu_call(_ok, 3, 7) == 10
+
+
+# ===========================================================================
+# Additional tests from Round 3 refined spec
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# 29. test_safe_gpu_call_catches_exit_127
+# ---------------------------------------------------------------------------
+
+def test_safe_gpu_call_catches_exit_127():
+    """safe_gpu_call catches 'exit 127' errors (CUDA native code crash)."""
+    def _crash():
+        raise RuntimeError("Process terminated with exit 127")
+
+    result = safe_gpu_call(_crash)
+    assert result["fallback"] is True
+    assert "GPU failed" in result["error"]
+    assert result.get("method") == "gpu_failed"
+
+
+# ---------------------------------------------------------------------------
+# 30. test_safe_gpu_call_catches_oom
+# ---------------------------------------------------------------------------
+
+def test_safe_gpu_call_catches_oom():
+    """safe_gpu_call catches out of memory errors."""
+    def _oom():
+        raise RuntimeError("CUDA out of memory. Tried to allocate 2.00 GiB")
+
+    result = safe_gpu_call(_oom)
+    assert result["fallback"] is True
+    assert "GPU failed" in result["error"]
+
+
+# ---------------------------------------------------------------------------
+# 31. test_nlp_who_is_talking
+# ---------------------------------------------------------------------------
+
+def test_nlp_who_is_talking():
+    """'who is talking' maps to speaker_detect action."""
+    result = parse_command("who is talking")
+    assert result["action"] == "speaker_detect"
+    assert result["confidence"] >= 0.9
+
+
+# ---------------------------------------------------------------------------
+# 32. test_nlp_make_the_tiktoks_batch
+# ---------------------------------------------------------------------------
+
+def test_nlp_make_the_tiktoks_batch():
+    """'make the tiktoks' maps to tiktok_batch with platform params."""
+    result = parse_command("make the tiktoks")
+    assert result["action"] == "tiktok_batch"
+    assert result["params"]["platform"] == "tiktok"
+    assert result["params"]["max_duration"] == 60
+
+
+# ---------------------------------------------------------------------------
+# 33. test_nlp_bare_chapter
+# ---------------------------------------------------------------------------
+
+def test_nlp_bare_chapter():
+    """Bare 'chapter' keyword maps to chapter_detect."""
+    result = parse_command("chapter")
+    assert result["action"] == "chapter_detect"
+
+
+# ---------------------------------------------------------------------------
+# 34. test_server_label_speakers
+# ---------------------------------------------------------------------------
+
+@patch("agents.edbot.server.detect_speakers", return_value=MOCK_SPEAKER_MAP)
+def test_server_label_speakers(mock_ds, client):
+    """POST /api/label_speakers replaces SPEAKER_N labels with human names."""
+    # First populate speaker_map via /api/speakers
+    _session["video_path"] = "C:/AT01/input/test.mp4"
+    resp = client.get("/api/speakers")
+    assert resp.status_code == 200
+
+    # Now label the speakers
+    resp = client.post("/api/label_speakers", json={
+        "labels": {"SPEAKER_0": "Ari", "SPEAKER_1": "Alex"},
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "Ari" in data["speakers"]
+    assert "Alex" in data["speakers"]
+    # chunk_speakers should be updated too
+    for spk in data.get("chunk_speakers", {}).values():
+        assert spk in ("Ari", "Alex")
+
+
+# ---------------------------------------------------------------------------
+# 35. test_server_label_speakers_needs_speaker_map
+# ---------------------------------------------------------------------------
+
+def test_server_label_speakers_needs_speaker_map(client):
+    """POST /api/label_speakers returns 404 when no speaker_map in session."""
+    resp = client.post("/api/label_speakers", json={
+        "labels": {"SPEAKER_0": "Ari"},
+    })
+    assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# 36. test_silence_detect_default_threshold_is_50
+# ---------------------------------------------------------------------------
+
+def test_silence_detect_default_threshold_is_50():
+    """silence_detect.py default threshold is -50dB, not -30."""
+    import inspect
+    from silence_detect import detect_silence
+    sig = inspect.signature(detect_silence)
+    default = sig.parameters["threshold_db"].default
+    assert default == -50.0, f"Expected -50.0, got {default}"
+
+
+# ===========================================================================
+# Duplicates from user's 22-test spec that are ALREADY covered in per-tool
+# test files — noted here, not re-implemented:
+#
+# chapter_detect (6 requested, 5 overlap):
+#   - test_chapter_basic → test_chapter_detect.py::TestBasicChapterDetectionWithSilenceMap
+#   - test_chapter_silence_splits → test_chapter_detect.py::TestBasicChapterDetectionWithSilenceMap::test_sub_threshold_gap_ignored
+#   - test_chapter_merge_short → test_chapter_detect.py::TestMinChapterDurationMerging
+#   - test_chapter_split_long → NOT IMPLEMENTED (spec feature not built)
+#   - test_chapter_bullets → NOT IMPLEMENTED (chapters don't have bullets field)
+#   - test_chapter_summary → chapter title is ~8 words, covered in TestChapterTitleGeneration
+#
+# speaker_detect (4 requested, 3 overlap):
+#   - test_speaker_two_speakers → test_speaker_detect.py::TestSpeakerChangeDetection
+#   - test_speaker_energy_fallback → test_speaker_detect.py::TestPyannoteImportFailure
+#   - test_speaker_labeling → NEW: test_server_label_speakers above
+#   - test_speaker_coverage → NOT IMPLEMENTED (no stats percentages in speaker_detect)
+#
+# portrait_crop (3 requested, all overlap):
+#   - test_portrait_crop_916 → test_portrait_crop.py::TestCenterCropCommand
+#   - test_portrait_face_center → test_portrait_crop.py::TestMethodSelection::test_face_method_with_mocked_mediapipe
+#   - test_portrait_center_fallback → test_portrait_crop.py::TestMediapipeImportFailure
+#
+# tiktok_chunk (4 requested, 3 overlap):
+#   - test_tiktok_max_60s → test_tiktok_chunk.py::TestChapterExceedsMaxDuration
+#   - test_tiktok_speaker_turn_split → NOT IMPLEMENTED (tiktok_chunk splits by chunks, not speaker turns)
+#   - test_tiktok_chapter_ref → test_tiktok_chunk.py::TestOutputSchema
+#   - test_tiktok_schema → test_tiktok_chunk.py::TestOutputSchema
+#
+# server (5 requested):
+#   - test_server_session → test_api_session_returns_state above
+#   - test_server_chapters → test_api_chapters_returns_chapters above
+#   - test_server_tiktok → test_api_tiktok_success above
+#   - test_server_label → test_server_label_speakers above
+#   - test_server_scan → test_session_state_populated_by_transcribe above
+# ===========================================================================

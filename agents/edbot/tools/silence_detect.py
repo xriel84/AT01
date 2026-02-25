@@ -124,7 +124,7 @@ def _compute_stats(gaps: list[dict[str, float]], duration: float) -> dict[str, A
 
 def detect_silence(
     video_path: str,
-    threshold_db: float = -30.0,
+    threshold_db: float = -50.0,
     min_duration: float = 0.5,
     output_dir: str | None = None,
 ) -> dict[str, Any]:
@@ -135,7 +135,7 @@ def detect_silence(
 
     Args:
         video_path: Path to input video file.
-        threshold_db: Silence threshold in dB (default -30.0).
+        threshold_db: Silence threshold in dB (default -50.0).
         min_duration: Minimum silence duration in seconds (default 0.5).
         output_dir: Directory for silence_map.json. Defaults to video's parent dir.
 
@@ -209,7 +209,7 @@ def main() -> None:
     """CLI entry point for silence detection."""
     parser = argparse.ArgumentParser(description="Detect silence in video")
     parser.add_argument("--input", required=True, help="Path to video file")
-    parser.add_argument("--threshold", type=float, default=-30.0,
+    parser.add_argument("--threshold", type=float, default=-50.0,
                         help="Silence threshold in dB")
     parser.add_argument("--min-duration", type=float, default=0.5,
                         help="Minimum silence duration")
