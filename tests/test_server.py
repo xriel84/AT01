@@ -126,7 +126,8 @@ def test_health(client):
 # ---------------------------------------------------------------------------
 
 @patch("agents.edbot.server.transcribe_video", return_value=MOCK_CHUNKS)
-def test_transcribe_endpoint(mock_tv, client):
+@patch("agents.edbot.server.Path.exists", return_value=True)
+def test_transcribe_endpoint(mock_exists, mock_tv, client):
     """POST /api/transcribe returns chunks data."""
     resp = client.post("/api/transcribe", json={
         "input_path": "C:/AT01/input/test.mp4",
@@ -199,7 +200,8 @@ def test_execute_endpoint(mock_ea, client):
 # ---------------------------------------------------------------------------
 
 @patch("agents.edbot.server.transcribe_video", return_value=MOCK_CHUNKS)
-def test_chunks_cache(mock_tv, client):
+@patch("agents.edbot.server.Path.exists", return_value=True)
+def test_chunks_cache(mock_exists, mock_tv, client):
     """GET /api/chunks returns cached data after transcribe."""
     # Before transcribe — 404
     resp = client.get("/api/chunks")

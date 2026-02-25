@@ -1,6 +1,7 @@
 """EdBot FastAPI server — wraps pipeline tools and serves clip viewer UI.
 
 Endpoints:
+    GET  /health              -> health alias (same as /api/health)
     GET  /api/health          -> tool status
     POST /api/transcribe      -> run transcription
     POST /api/silence         -> run silence detection
@@ -8,7 +9,7 @@ Endpoints:
     POST /api/execute         -> run executor
     GET  /api/chunks          -> cached chunks.json
     GET  /api/silence_map     -> cached silence_map.json
-    GET  /api/outputs         -> list output files
+    GET  /api/outputs         -> output manifest (watcher-backed)
     GET  /api/chapters        -> run chapter detection
     GET  /api/speakers        -> run speaker detection
     POST /api/portrait_crop   -> crop video to portrait
@@ -16,21 +17,28 @@ Endpoints:
     GET  /api/session         -> current session state
     GET  /api/clips_manifest  -> cached clips manifest
     GET  /api/gpu_status      -> CUDA availability check
+    GET  /api/analytics_inbox -> unread analytics feedback
+    WS   /ws/progress         -> real-time progress + new_output events
     GET  /                    -> serve viewer HTML
     GET  /video/{path}        -> serve video files with byte-range support
 """
 
+import asyncio
+import logging
 import mimetypes
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, Response, StreamingResponse
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Tool imports — tools live in agents/edbot/tools/
@@ -47,13 +55,18 @@ from chapter_detect import detect_chapters
 from speaker_detect import detect_speakers
 from portrait_crop import portrait_crop
 from tiktok_chunk import generate_tiktok_chunks
+from analytics_reader import read_messages
+from output_watcher import OutputWatcher
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
 TOOL_NAMES = ["transcribe", "silence_detect", "nlp_action", "executor",
-              "chapter_detect", "speaker_detect", "portrait_crop", "tiktok_chunk"]
+              "chapter_detect", "speaker_detect", "portrait_crop", "tiktok_chunk",
+              "analytics_reader"]
+
+MEDIA_EXTENSIONS = {".mp4", ".mov", ".mkv", ".avi", ".webm"}
 
 ALLOWED_VIDEO_DIRS = [
     Path(r"C:\AT01\input").resolve(),
@@ -88,6 +101,14 @@ _session: dict[str, Any] = {
 # Helpers
 # ---------------------------------------------------------------------------
 
+def error_response(status_code: int, error_msg: str, error_code: str):
+    """Raise HTTPException with a consistent JSON error body."""
+    raise HTTPException(
+        status_code=status_code,
+        detail={"status": "error", "error": error_msg, "code": error_code},
+    )
+
+
 def safe_gpu_call(func, *args, **kwargs):
     """Run a GPU-capable function, falling back gracefully on CUDA errors."""
     try:
@@ -98,6 +119,77 @@ def safe_gpu_call(func, *args, **kwargs):
                                                "exit 127", "out of memory", "oom")):
             return {"error": f"GPU failed: {exc}", "method": "gpu_failed", "fallback": True}
         raise
+
+# ---------------------------------------------------------------------------
+# WebSocket connection manager
+# ---------------------------------------------------------------------------
+
+class ConnectionManager:
+    """Manages WebSocket connections for real-time event broadcasting."""
+
+    def __init__(self):
+        self.active: list[WebSocket] = []
+
+    async def connect(self, ws: WebSocket) -> None:
+        await ws.accept()
+        self.active.append(ws)
+
+    def disconnect(self, ws: WebSocket) -> None:
+        if ws in self.active:
+            self.active.remove(ws)
+
+    async def broadcast(self, message: dict) -> None:
+        for ws in list(self.active):
+            try:
+                await ws.send_json(message)
+            except Exception:
+                self.disconnect(ws)
+
+
+manager = ConnectionManager()
+
+
+# ---------------------------------------------------------------------------
+# OutputWatcher integration
+# ---------------------------------------------------------------------------
+
+def _on_new_output(file_info: dict) -> None:
+    """Callback from OutputWatcher — broadcast new_output to WebSocket clients."""
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(manager.broadcast({
+            "type": "new_output",
+            "file": file_info,
+        }))
+    except RuntimeError:
+        # No event loop running (e.g. during tests). Skip broadcast.
+        pass
+
+
+_watcher: OutputWatcher | None = None
+
+
+def get_watcher() -> OutputWatcher:
+    """Get or create the singleton OutputWatcher."""
+    global _watcher
+    if _watcher is None:
+        _watcher = OutputWatcher(
+            watch_dir=str(OUTPUT_DIR),
+            manifest_path=str(OUTPUT_DIR / "manifest.json"),
+            on_new_file=_on_new_output,
+        )
+    return _watcher
+
+
+async def broadcast_progress(stage: str, status: str, detail: str = "") -> None:
+    """Broadcast a pipeline progress event to all WebSocket clients."""
+    await manager.broadcast({
+        "type": "progress",
+        "stage": stage,
+        "status": status,
+        "detail": detail,
+    })
+
 
 # ---------------------------------------------------------------------------
 # Pydantic models
@@ -157,12 +249,24 @@ async def health():
     return {"status": "ok", "tools": TOOL_NAMES}
 
 
+@app.get("/health")
+async def health_alias():
+    """Alias for /api/health — return server status and available tool list."""
+    return {"status": "ok", "tools": TOOL_NAMES}
+
+
 @app.post("/api/transcribe")
 def api_transcribe(req: ProcessRequest):
     """Run transcribe_video and return chunks data."""
+    # Input validation
+    p = Path(req.input_path)
+    if not p.exists():
+        error_response(400, f"file not found: {req.input_path}", "FILE_NOT_FOUND")
+    if p.suffix.lower() not in MEDIA_EXTENSIONS:
+        error_response(400, f"unsupported file extension: {p.suffix}", "INVALID_INPUT")
     result = transcribe_video(req.input_path, req.output_dir)
     if result.get("error"):
-        raise HTTPException(status_code=500, detail=result["error"])
+        error_response(500, result["error"], "TOOL_ERROR")
     _cache["chunks"] = result
     _cache["last_input"] = req.input_path
     _session["video_path"] = req.input_path
@@ -175,7 +279,7 @@ def api_silence(req: ProcessRequest):
     """Run silence detection and return silence map."""
     result = detect_silence(req.input_path, output_dir=req.output_dir)
     if result.get("error"):
-        raise HTTPException(status_code=500, detail=result["error"])
+        error_response(500, result["error"], "TOOL_ERROR")
     _cache["silence_map"] = result
     _cache["last_input"] = req.input_path
     _session["silence_map"] = result
@@ -194,7 +298,7 @@ def api_execute(req: ExecuteRequest):
     """Run executor on an action dict and return result."""
     result = execute_action(req.action, req.input_path)
     if result.get("status") == "error":
-        raise HTTPException(status_code=500, detail=result.get("error", "execution failed"))
+        error_response(500, result.get("error", "execution failed"), "TOOL_ERROR")
     return result
 
 
@@ -202,7 +306,7 @@ def api_execute(req: ExecuteRequest):
 async def api_chunks():
     """Return last cached chunks result."""
     if _cache["chunks"] is None:
-        raise HTTPException(status_code=404, detail="no chunks cached — run /api/transcribe first")
+        error_response(404, "no chunks cached — run /api/transcribe first", "NO_TRANSCRIPT")
     return _cache["chunks"]
 
 
@@ -210,24 +314,29 @@ async def api_chunks():
 async def api_silence_map():
     """Return last cached silence map."""
     if _cache["silence_map"] is None:
-        raise HTTPException(status_code=404, detail="no silence map cached — run /api/silence first")
+        error_response(404, "no silence map cached — run /api/silence first", "NO_SESSION")
     return _cache["silence_map"]
 
 
 @app.get("/api/outputs")
 async def api_outputs():
-    """List files in the output directory."""
+    """Return output manifest from OutputWatcher (falls back to dir listing)."""
+    watcher = get_watcher()
+    manifest = watcher.get_manifest()
+    if manifest.get("files"):
+        return manifest
+    # Fallback: direct dir listing if manifest is empty
     if not OUTPUT_DIR.exists():
-        return {"files": []}
+        return {"watch_dir": str(OUTPUT_DIR), "files": [], "last_updated": None}
     files = []
     for f in OUTPUT_DIR.iterdir():
         if f.is_file():
             files.append({
-                "name": f.name,
-                "size": f.stat().st_size,
+                "filename": f.name,
                 "path": str(f),
+                "size_mb": round(f.stat().st_size / (1024 * 1024), 2),
             })
-    return {"files": files}
+    return {"watch_dir": str(OUTPUT_DIR), "files": files, "last_updated": None}
 
 
 # ---------------------------------------------------------------------------
@@ -239,7 +348,7 @@ def api_chapters():
     """Run chapter detection on cached chunks + silence_map."""
     chunks = _session.get("chunks") or (_cache.get("chunks") or {}).get("chunks")
     if not chunks:
-        raise HTTPException(status_code=404, detail="no chunks — run /api/transcribe first")
+        error_response(400, "no chunks — run /api/transcribe first", "NO_TRANSCRIPT")
     silence_map = _session.get("silence_map") or _cache.get("silence_map")
     chapters = detect_chapters(chunks, silence_map=silence_map)
     _session["chapters"] = chapters
@@ -251,11 +360,11 @@ def api_speakers():
     """Run speaker detection on session video."""
     video_path = _session.get("video_path") or _cache.get("last_input")
     if not video_path:
-        raise HTTPException(status_code=404, detail="no video path — load a video first")
+        error_response(400, "no video path — load a video first", "NO_SESSION")
     chunks = _session.get("chunks") or (_cache.get("chunks") or {}).get("chunks")
     result = detect_speakers(video_path, chunks=chunks)
     if result.get("error"):
-        raise HTTPException(status_code=500, detail=result["error"])
+        error_response(500, result["error"], "TOOL_ERROR")
     _session["speaker_map"] = result
     return result
 
@@ -267,9 +376,15 @@ class LabelRequest(BaseModel):
 @app.post("/api/label_speakers")
 def api_label_speakers(req: LabelRequest):
     """Update speaker labels in session speaker_map."""
+    # Validate label keys match SPEAKER_\d+ and values are non-empty strings
+    for key, value in req.labels.items():
+        if not re.fullmatch(r"SPEAKER_\d+", key):
+            error_response(400, f"invalid speaker key: {key} (expected SPEAKER_N)", "INVALID_INPUT")
+        if not isinstance(value, str) or not value.strip():
+            error_response(400, f"speaker label for {key} must be a non-empty string", "INVALID_INPUT")
     speaker_map = _session.get("speaker_map")
     if speaker_map is None:
-        raise HTTPException(status_code=404, detail="no speaker map — run /api/speakers first")
+        error_response(400, "no speaker map — run /api/speakers first", "NO_SPEAKERS")
     # Replace labels in segments and chunk_speakers
     for seg in speaker_map.get("segments", []):
         if seg.get("speaker") in req.labels:
@@ -286,27 +401,33 @@ def api_label_speakers(req: LabelRequest):
 @app.post("/api/portrait_crop")
 def api_portrait_crop(req: CropRequest):
     """Crop a video to portrait orientation."""
+    if req.method not in ("center", "face"):
+        error_response(400, f"invalid crop method: {req.method} (expected 'center' or 'face')", "INVALID_INPUT")
     input_path = req.input_path or _session.get("video_path") or _cache.get("last_input")
     if not input_path:
-        raise HTTPException(status_code=400, detail="no input path")
+        error_response(400, "no input path", "NO_SESSION")
     result = portrait_crop(input_path, req.output_dir, method=req.method, start=req.start, end=req.end)
     if result.get("status") == "error":
-        raise HTTPException(status_code=500, detail=result.get("error", "crop failed"))
+        error_response(500, result.get("error", "crop failed"), "TOOL_ERROR")
     return result
 
 
 @app.post("/api/tiktok")
 def api_tiktok(req: TikTokRequest):
     """Generate TikTok chunks from video."""
+    if req.max_duration <= 0 or req.max_duration > 300:
+        error_response(400, f"max_duration must be > 0 and <= 300, got {req.max_duration}", "INVALID_INPUT")
+    if req.crop_method not in ("center", "face"):
+        error_response(400, f"invalid crop_method: {req.crop_method} (expected 'center' or 'face')", "INVALID_INPUT")
     input_path = req.input_path or _session.get("video_path") or _cache.get("last_input")
     if not input_path:
-        raise HTTPException(status_code=400, detail="no input path")
+        error_response(400, "no input path", "NO_SESSION")
     chapters = _session.get("chapters")
     if not chapters:
         # Auto-detect chapters first
         chunks = _session.get("chunks") or (_cache.get("chunks") or {}).get("chunks")
         if not chunks:
-            raise HTTPException(status_code=404, detail="no chunks — run /api/transcribe first")
+            error_response(400, "no chunks — run /api/transcribe first", "NO_TRANSCRIPT")
         silence_map = _session.get("silence_map") or _cache.get("silence_map")
         chapters = detect_chapters(chunks, silence_map=silence_map)
         _session["chapters"] = chapters
@@ -317,6 +438,28 @@ def api_tiktok(req: TikTokRequest):
                                      crop_method=req.crop_method)
     _session["clips_manifest"] = result
     return result
+
+
+@app.get("/api/analytics_inbox")
+async def api_analytics_inbox():
+    """Return unread FEEDBACK messages from anabot-to-edbot bus."""
+    messages = read_messages(filter_type="FEEDBACK", unread_only=True)
+    return {"messages": messages, "count": len(messages)}
+
+
+# ---------------------------------------------------------------------------
+# WebSocket endpoint
+# ---------------------------------------------------------------------------
+
+@app.websocket("/ws/progress")
+async def ws_progress(ws: WebSocket):
+    """Real-time events: new_output notifications + pipeline progress."""
+    await manager.connect(ws)
+    try:
+        while True:
+            await ws.receive_text()  # keepalive
+    except WebSocketDisconnect:
+        manager.disconnect(ws)
 
 
 @app.get("/api/session")
@@ -337,7 +480,7 @@ async def api_clips_manifest():
     """Return cached clips manifest."""
     manifest = _session.get("clips_manifest")
     if manifest is None:
-        raise HTTPException(status_code=404, detail="no clips manifest — run /api/tiktok first")
+        error_response(400, "no clips manifest — run /api/tiktok first", "NO_SESSION")
     return manifest
 
 
@@ -489,6 +632,24 @@ async def serve_viewer_v1():
     if not viewer_path.exists():
         raise HTTPException(status_code=404, detail="viewer.html not found")
     return FileResponse(str(viewer_path), media_type="text/html")
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle: start/stop watcher with server
+# ---------------------------------------------------------------------------
+
+@app.on_event("startup")
+async def startup_event():
+    watcher = get_watcher()
+    watcher.start()
+    logger.info("OutputWatcher started with server")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    watcher = get_watcher()
+    watcher.stop()
+    logger.info("OutputWatcher stopped with server")
 
 
 # ---------------------------------------------------------------------------

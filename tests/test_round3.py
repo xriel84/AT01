@@ -175,10 +175,11 @@ def test_api_chapters_returns_chapters(mock_dc, client):
 # ---------------------------------------------------------------------------
 
 def test_api_chapters_needs_chunks(client):
-    """GET /api/chapters returns 404 when no chunks are cached."""
+    """GET /api/chapters returns 400 when no chunks are cached."""
     resp = client.get("/api/chapters")
-    assert resp.status_code == 404
-    assert "chunks" in resp.json()["detail"].lower() or "transcribe" in resp.json()["detail"].lower()
+    assert resp.status_code == 400
+    detail = resp.json()["detail"]
+    assert detail["code"] == "NO_TRANSCRIPT"
 
 
 # ---------------------------------------------------------------------------
@@ -204,10 +205,11 @@ def test_api_speakers_returns_speaker_map(mock_ds, client):
 # ---------------------------------------------------------------------------
 
 def test_api_speakers_needs_video(client):
-    """GET /api/speakers returns 404 when no video path is set."""
+    """GET /api/speakers returns 400 when no video path is set."""
     resp = client.get("/api/speakers")
-    assert resp.status_code == 404
-    assert "video" in resp.json()["detail"].lower()
+    assert resp.status_code == 400
+    detail = resp.json()["detail"]
+    assert detail["code"] == "NO_SESSION"
 
 
 # ---------------------------------------------------------------------------
@@ -242,7 +244,8 @@ def test_api_portrait_crop_needs_input(client):
         "output_dir": "output",
     })
     assert resp.status_code == 400
-    assert "input" in resp.json()["detail"].lower()
+    detail = resp.json()["detail"]
+    assert detail["code"] == "NO_SESSION"
 
 
 # ---------------------------------------------------------------------------
@@ -275,15 +278,13 @@ def test_api_tiktok_success(mock_dc, mock_gtc, client):
 # ---------------------------------------------------------------------------
 
 def test_api_tiktok_needs_chunks(client):
-    """POST /api/tiktok returns 404 when no chunks are available for chapter detection."""
-    # No input_path in session either, so should get 400 for no input path.
-    # Set input_path so we get to the chunks check.
+    """POST /api/tiktok returns 400 when no chunks are available for chapter detection."""
     resp = client.post("/api/tiktok", json={
         "input_path": "C:/AT01/input/test.mp4",
     })
-    assert resp.status_code == 404
-    detail = resp.json()["detail"].lower()
-    assert "chunks" in detail or "transcribe" in detail
+    assert resp.status_code == 400
+    detail = resp.json()["detail"]
+    assert detail["code"] == "NO_TRANSCRIPT"
 
 
 # ---------------------------------------------------------------------------
@@ -330,11 +331,12 @@ def test_api_clips_manifest_returns_cached(client):
 # 11. test_api_clips_manifest_404
 # ---------------------------------------------------------------------------
 
-def test_api_clips_manifest_404(client):
-    """GET /api/clips_manifest returns 404 when no manifest is cached."""
+def test_api_clips_manifest_needs_session(client):
+    """GET /api/clips_manifest returns 400 when no manifest is cached."""
     resp = client.get("/api/clips_manifest")
-    assert resp.status_code == 404
-    assert "manifest" in resp.json()["detail"].lower()
+    assert resp.status_code == 400
+    detail = resp.json()["detail"]
+    assert detail["code"] == "NO_SESSION"
 
 
 # ---------------------------------------------------------------------------
@@ -480,7 +482,8 @@ def test_chapters_to_tiktok_pipeline(mock_dc, mock_gtc, client):
 # ---------------------------------------------------------------------------
 
 @patch("agents.edbot.server.transcribe_video", return_value=MOCK_TRANSCRIBE_RESULT)
-def test_session_state_populated_by_transcribe(mock_tv, client):
+@patch("agents.edbot.server.Path.exists", return_value=True)
+def test_session_state_populated_by_transcribe(mock_exists, mock_tv, client):
     """POST /api/transcribe populates _session with video_path and chunks."""
     resp = client.post("/api/transcribe", json={
         "input_path": "C:/AT01/input/test.mp4",
@@ -745,11 +748,13 @@ def test_server_label_speakers(mock_ds, client):
 # ---------------------------------------------------------------------------
 
 def test_server_label_speakers_needs_speaker_map(client):
-    """POST /api/label_speakers returns 404 when no speaker_map in session."""
+    """POST /api/label_speakers returns 400 when no speaker_map in session."""
     resp = client.post("/api/label_speakers", json={
         "labels": {"SPEAKER_0": "Ari"},
     })
-    assert resp.status_code == 404
+    assert resp.status_code == 400
+    detail = resp.json()["detail"]
+    assert detail["code"] == "NO_SPEAKERS"
 
 
 # ---------------------------------------------------------------------------

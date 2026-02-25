@@ -9,3 +9,5 @@ tests/demos/subtitle_samples/
 *.webm
 *.wav
 *.mp3
+
+.worktrees/
