@@ -144,7 +144,7 @@ class TestDefaults:
 
     def test_silence_threshold(self):
         r = parse_command("remove silence")
-        assert r["params"]["silence_threshold_db"] == -30
+        assert r["params"]["silence_threshold_db"] == -50
 
     def test_caption_style(self):
         r = parse_command("add captions")

@@ -14,7 +14,7 @@ from typing import Any
 # Constants
 # ---------------------------------------------------------------------------
 
-SILENCE_THRESHOLD_DB: int = -30
+SILENCE_THRESHOLD_DB: int = -50
 CAPTION_STYLE: str = "default"
 
 RESOLVE_ACTIONS: set[str] = {"color_grade", "fusion_comp"}
@@ -100,6 +100,32 @@ _ACTION_PATTERNS: list[tuple[re.Pattern[str], str, dict[str, Any]]] = [
     # export for <platform>
     (re.compile(r"export\s+for\s+(\w+)"),
      "platform_export", {}),
+
+    # chapter detection
+    (re.compile(r"(find|detect|split)\s*(the\s+)?chapter"),
+     "chapter_detect", {}),
+
+    (re.compile(r"chapter\s*(split|detect|boundar)"),
+     "chapter_detect", {}),
+
+    # speaker detection
+    (re.compile(r"(find|detect|identify)\s*(the\s+)?speaker"),
+     "speaker_detect", {}),
+
+    (re.compile(r"speaker\s*(detect|diariz|identif)"),
+     "speaker_detect", {}),
+
+    # label speakers
+    (re.compile(r"label\s*(the\s+)?speaker"),
+     "speaker_detect", {}),
+
+    # tiktok batch
+    (re.compile(r"(batch|auto)\s*(generate|create|make)?\s*tiktok"),
+     "tiktok_batch", {}),
+
+    # portrait crop
+    (re.compile(r"(portrait|vertical)\s*crop"),
+     "portrait_crop", {"aspect": "9:16"}),
 
     # transcribe
     (re.compile(r"transcribe"),

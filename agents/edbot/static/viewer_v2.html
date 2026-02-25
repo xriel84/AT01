@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EdBot Clip Viewer v2</title>
+<style>
+/* --- Reset & Base --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    line-height: 1.4;
+    min-height: 100vh;
+}
+
+/* --- Header --- */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: #16213e;
+    border-bottom: 1px solid #0f3460;
+}
+.header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #e94560;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.header-controls label {
+    font-size: 12px;
+    color: #8899aa;
+}
+.header-controls input[type="text"] {
+    width: 320px;
+    padding: 5px 8px;
+    font-size: 12px;
+    font-family: monospace;
+    background: #0f3460;
+    border: 1px solid #1a4080;
+    color: #e0e0e0;
+    border-radius: 3px;
+}
+.header-controls input[type="text"]:focus {
+    outline: none;
+    border-color: #e94560;
+}
+
+/* --- Buttons --- */
+.btn {
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #1a4080;
+    border-radius: 3px;
+    cursor: pointer;
+    background: #0f3460;
+    color: #e0e0e0;
+    white-space: nowrap;
+}
+.btn:hover { background: #1a4080; }
+.btn:active { background: #245090; }
+.btn-primary { background: #e94560; border-color: #e94560; color: #fff; }
+.btn-primary:hover { background: #d63050; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* --- Two-column layout --- */
+.main {
+    display: flex;
+    gap: 12px;
+    padding: 12px 16px;
+    max-width: 1600px;
+    margin: 0 auto;
+    min-height: calc(100vh - 50px);
+}
+.col-left {
+    flex: 6;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+.col-right {
+    flex: 4;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+/* --- Panel base --- */
+.panel {
+    background: #16213e;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid #0f3460;
+}
+.panel-header h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8899aa;
+}
+.panel-header span {
+    font-size: 11px;
+    color: #667788;
+}
+.panel-body {
+    padding: 8px 12px;
+}
+
+/* --- Video Section --- */
+.video-section {
+    background: #000;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+.video-section video {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    background: #000;
+}
+
+/* --- Timeline --- */
+.timeline-bar-container {
+    position: relative;
+    height: 32px;
+    background: #0a0a1a;
+    border-radius: 3px;
+    cursor: pointer;
+    overflow: hidden;
+}
+.timeline-segment {
+    position: absolute;
+    top: 0;
+    height: 100%;
+}
+.timeline-segment.speech { background: #27ae60; }
+.timeline-segment.silence { background: #3a3a4a; }
+.timeline-playhead {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: #e94560;
+    pointer-events: none;
+    z-index: 10;
+    left: 0;
+}
+.timeline-chapter-marker {
+    position: absolute;
+    top: 0;
+    width: 1px;
+    height: 100%;
+    border-left: 1px dashed rgba(233, 69, 96, 0.5);
+    pointer-events: none;
+    z-index: 5;
+}
+.timeline-time {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #667788;
+    margin-top: 3px;
+    font-family: monospace;
+}
+
+/* --- Chunks List --- */
+.chunks-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+.chunks-list::-webkit-scrollbar { width: 6px; }
+.chunks-list::-webkit-scrollbar-track { background: #0f3460; }
+.chunks-list::-webkit-scrollbar-thumb { background: #1a4080; border-radius: 3px; }
+
+.chunk-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    border-bottom: 1px solid #0d1b3a;
+}
+.chunk-row:hover { background: #1a2a4a; }
+.chunk-row.active { background: #1a3050; border-left: 3px solid #e94560; padding-left: 9px; }
+.chunk-row.silence-row { opacity: 0.55; }
+
+.chunk-cb { flex-shrink: 0; }
+.chunk-id {
+    flex-shrink: 0;
+    width: 32px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #8899aa;
+}
+.chunk-time {
+    flex-shrink: 0;
+    width: 100px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #44bb88;
+}
+.chunk-words {
+    flex-shrink: 0;
+    width: 36px;
+    font-size: 10px;
+    color: #8899aa;
+    text-align: center;
+}
+.chunk-silence-ratio {
+    flex-shrink: 0;
+    width: 48px;
+    font-size: 10px;
+    text-align: right;
+    font-family: monospace;
+}
+.chunk-silence-ratio.low { color: #27ae60; }
+.chunk-silence-ratio.med { color: #f39c12; }
+.chunk-silence-ratio.high { color: #e74c3c; }
+.chunk-speaker {
+    flex-shrink: 0;
+    width: 80px;
+    font-size: 10px;
+    font-family: monospace;
+}
+.chunk-text {
+    flex: 1;
+    font-size: 12px;
+    color: #c0c0d0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.chunk-text.is-silence {
+    font-style: italic;
+    color: #556677;
+}
+
+/* --- Chapter Panel --- */
+.chapter-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+.chapter-list::-webkit-scrollbar { width: 6px; }
+.chapter-list::-webkit-scrollbar-track { background: #0f3460; }
+.chapter-list::-webkit-scrollbar-thumb { background: #1a4080; border-radius: 3px; }
+
+.chapter-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    border-bottom: 1px solid #0d1b3a;
+}
+.chapter-row:hover { background: #1a2a4a; }
+.chapter-row.active { background: #1a3050; border-left: 3px solid #e94560; padding-left: 9px; }
+.chapter-id {
+    flex-shrink: 0;
+    width: 28px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #8899aa;
+}
+.chapter-time {
+    flex-shrink: 0;
+    width: 100px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #44bb88;
+}
+.chapter-dur {
+    flex-shrink: 0;
+    width: 40px;
+    font-family: monospace;
+    font-size: 10px;
+    color: #667788;
+    text-align: right;
+}
+.chapter-title {
+    flex: 1;
+    font-size: 12px;
+    color: #c0c0d0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- Speaker Panel --- */
+.speaker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.speaker-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 12px;
+}
+.speaker-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.speaker-name {
+    font-family: monospace;
+    font-size: 11px;
+    color: #e0e0e0;
+}
+.speaker-count {
+    font-size: 10px;
+    color: #667788;
+    margin-left: auto;
+}
+
+/* --- Session State --- */
+.session-dots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.session-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #8899aa;
+}
+.session-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #3a3a4a;
+}
+.session-dot.active {
+    background: #27ae60;
+}
+
+/* --- Action Panel --- */
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* --- Status Bar --- */
+.status-bar {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-family: monospace;
+    color: #8899aa;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top: 1px solid #0f3460;
+    margin-top: 4px;
+}
+.status-bar .status-label { color: #556677; }
+.status-bar .status-text { color: #e0e0e0; }
+.status-bar.error .status-text { color: #e74c3c; }
+.status-bar.success .status-text { color: #27ae60; }
+
+/* --- Progress bar --- */
+.progress-bar-container {
+    width: 100%;
+    height: 4px;
+    background: #0a0a1a;
+    border-radius: 2px;
+    overflow: hidden;
+    display: none;
+}
+.progress-bar-container.visible { display: block; }
+.progress-bar-fill {
+    height: 100%;
+    background: #e94560;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+/* --- Message overlay --- */
+.message-overlay {
+    padding: 20px;
+    text-align: center;
+    color: #667788;
+    font-size: 13px;
+}
+.message-overlay .hint {
+    font-size: 11px;
+    margin-top: 6px;
+    color: #445566;
+}
+
+/* --- Responsive: single column below 900px --- */
+@media (max-width: 900px) {
+    .main {
+        flex-direction: column;
+    }
+    .col-left, .col-right {
+        flex: none;
+        width: 100%;
+    }
+    .header {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+    .header-controls {
+        width: 100%;
+    }
+    .header-controls input[type="text"] {
+        flex: 1;
+        width: auto;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <h1>EdBot Clip Viewer v2</h1>
+    <div class="header-controls">
+        <label for="video-path">Video:</label>
+        <input type="text" id="video-path" placeholder="C:\path\to\video.mov" />
+        <button class="btn" id="btn-load" title="Load video and fetch data">Load Video</button>
+    </div>
+</div>
+
+<!-- MAIN: TWO COLUMNS -->
+<div class="main">
+
+    <!-- LEFT COLUMN: Video + Timeline + Chunks -->
+    <div class="col-left">
+
+        <!-- VIDEO PLAYER -->
+        <div class="video-section">
+            <video id="video-player" controls preload="metadata">
+                Your browser does not support the video element.
+            </video>
+        </div>
+
+        <!-- TIMELINE -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Timeline</h3>
+            </div>
+            <div class="panel-body">
+                <div class="timeline-bar-container" id="timeline-bar">
+                    <div class="timeline-playhead" id="timeline-playhead"></div>
+                </div>
+                <div class="timeline-time">
+                    <span id="time-current">0:00</span>
+                    <span id="time-duration">0:00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHUNKS -->
+        <div class="panel" style="flex: 1; display: flex; flex-direction: column;">
+            <div class="panel-header">
+                <h3>Chunks</h3>
+                <span id="chunks-count">0 chunks</span>
+            </div>
+            <div class="chunks-list" id="chunks-list" style="flex: 1;">
+                <div class="message-overlay" id="chunks-message">
+                    Loading chunk data...
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Chapters + Speakers + Actions + Session -->
+    <div class="col-right">
+
+        <!-- CHAPTERS -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Chapters</h3>
+                <button class="btn" id="btn-detect-chapters">Detect Chapters</button>
+            </div>
+            <div class="chapter-list" id="chapter-list">
+                <div class="message-overlay">No chapters detected yet.</div>
+            </div>
+        </div>
+
+        <!-- SPEAKERS -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Speakers</h3>
+                <button class="btn" id="btn-detect-speakers">Detect Speakers</button>
+            </div>
+            <div class="panel-body">
+                <div class="speaker-list" id="speaker-list">
+                    <div class="message-overlay" style="padding: 10px;">No speakers detected yet.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Actions</h3>
+            </div>
+            <div class="panel-body">
+                <div class="action-buttons">
+                    <button class="btn" id="btn-remove-silence">Remove Silence</button>
+                    <button class="btn btn-primary" id="btn-export-tiktok">Export TikTok</button>
+                    <button class="btn btn-primary" id="btn-batch-tiktok">Batch TikTok</button>
+                    <button class="btn" id="btn-portrait-crop">Portrait Crop</button>
+                </div>
+                <div class="progress-bar-container" id="progress-bar-container">
+                    <div class="progress-bar-fill" id="progress-bar-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SESSION STATE -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Session</h3>
+            </div>
+            <div class="panel-body">
+                <div class="session-dots" id="session-dots">
+                    <div class="session-item">
+                        <div class="session-dot" id="dot-chunks"></div>
+                        <span>Chunks</span>
+                    </div>
+                    <div class="session-item">
+                        <div class="session-dot" id="dot-silence"></div>
+                        <span>Silence Map</span>
+                    </div>
+                    <div class="session-item">
+                        <div class="session-dot" id="dot-chapters"></div>
+                        <span>Chapters</span>
+                    </div>
+                    <div class="session-item">
+                        <div class="session-dot" id="dot-speakers"></div>
+                        <span>Speakers</span>
+                    </div>
+                    <div class="session-item">
+                        <div class="session-dot" id="dot-clips"></div>
+                        <span>Clips</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATUS -->
+        <div class="panel">
+            <div class="status-bar" id="status-bar">
+                <span class="status-label">STATUS:</span>
+                <span class="status-text" id="status-text">Ready</span>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+// ===========================================================================
+// EdBot Clip Viewer v2 — Vanilla JS
+// ===========================================================================
+
+(function () {
+    "use strict";
+
+    // -----------------------------------------------------------------------
+    // Config
+    // -----------------------------------------------------------------------
+
+    var API_BASE = "";  // Same origin — served by FastAPI on :8901
+    var DEFAULT_VIDEO_PATH = String.raw`C:\NB10\media_test\in\IMG_5769.MOV`;
+    var SPEAKER_COLORS = ['#00bcd4', '#ff9800', '#4caf50', '#e91e63', '#9c27b0', '#cddc39'];
+
+    // -----------------------------------------------------------------------
+    // DOM refs
+    // -----------------------------------------------------------------------
+
+    var elVideo         = document.getElementById("video-player");
+    var elVideoPath     = document.getElementById("video-path");
+    var elBtnLoad       = document.getElementById("btn-load");
+    var elTimelineBar   = document.getElementById("timeline-bar");
+    var elPlayhead      = document.getElementById("timeline-playhead");
+    var elTimeCurrent   = document.getElementById("time-current");
+    var elTimeDuration  = document.getElementById("time-duration");
+    var elChunksList    = document.getElementById("chunks-list");
+    var elChunksCount   = document.getElementById("chunks-count");
+    var elChapterList   = document.getElementById("chapter-list");
+    var elSpeakerList   = document.getElementById("speaker-list");
+    var elSessionDots   = document.getElementById("session-dots");
+    var elBtnDetectChapters = document.getElementById("btn-detect-chapters");
+    var elBtnDetectSpeakers = document.getElementById("btn-detect-speakers");
+    var elBtnSilence    = document.getElementById("btn-remove-silence");
+    var elBtnExport     = document.getElementById("btn-export-tiktok");
+    var elBtnBatch      = document.getElementById("btn-batch-tiktok");
+    var elBtnPortrait   = document.getElementById("btn-portrait-crop");
+    var elProgressBar   = document.getElementById("progress-bar-container");
+    var elProgressFill  = document.getElementById("progress-bar-fill");
+    var elStatusBar     = document.getElementById("status-bar");
+    var elStatusText    = document.getElementById("status-text");
+    var elDotChunks     = document.getElementById("dot-chunks");
+    var elDotSilence    = document.getElementById("dot-silence");
+    var elDotChapters   = document.getElementById("dot-chapters");
+    var elDotSpeakers   = document.getElementById("dot-speakers");
+    var elDotClips      = document.getElementById("dot-clips");
+
+    // -----------------------------------------------------------------------
+    // State
+    // -----------------------------------------------------------------------
+
+    var chunksData      = null;  // { source, duration, chunks: [...] }
+    var silenceData     = null;  // { source, duration, gaps: [...], speech: [...], stats: {...} }
+    var chaptersData    = null;  // [ { id, start, end, title, ... } ]
+    var speakersData    = null;  // { speakers: [...], chunk_speakers: {...} }
+    var sessionData     = null;  // { has_chunks, has_silence_map, has_chapters, ... }
+    var videoDuration   = 0;
+    var currentVideoPath = DEFAULT_VIDEO_PATH;
+    var activeChunkId   = -1;
+    var activeChapterId = -1;
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    function fmtTime(secs) {
+        if (!isFinite(secs) || secs < 0) secs = 0;
+        var m = Math.floor(secs / 60);
+        var s = Math.floor(secs % 60);
+        return m + ":" + (s < 10 ? "0" : "") + s;
+    }
+
+    function fmtTimePrecise(secs) {
+        return secs.toFixed(1) + "s";
+    }
+
+    function truncText(text, maxLen) {
+        if (!text) return "";
+        if (text.length <= maxLen) return text;
+        return text.substring(0, maxLen) + "...";
+    }
+
+    function setStatus(msg, type) {
+        elStatusText.textContent = msg;
+        elStatusBar.className = "status-bar" + (type ? " " + type : "");
+    }
+
+    function videoUrl(filePath) {
+        return API_BASE + "/video/" + encodeURIComponent(filePath);
+    }
+
+    function speakerColor(index) {
+        return SPEAKER_COLORS[index % SPEAKER_COLORS.length];
+    }
+
+    function speakerIndex(label) {
+        // Extract number from "SPEAKER_0", "SPEAKER_1", etc.
+        if (!label) return 0;
+        var match = label.match(/(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
+    }
+
+    function showProgress(visible) {
+        elProgressBar.className = "progress-bar-container" + (visible ? " visible" : "");
+        if (!visible) {
+            elProgressFill.style.width = "0%";
+        }
+    }
+
+    function setProgress(pct) {
+        elProgressFill.style.width = Math.min(100, Math.max(0, pct)) + "%";
+    }
+
+    // -----------------------------------------------------------------------
+    // Video loading
+    // -----------------------------------------------------------------------
+
+    function loadVideo(filePath) {
+        currentVideoPath = filePath;
+        elVideoPath.value = filePath;
+        elVideo.src = videoUrl(filePath);
+        elVideo.load();
+        setStatus("Loading video: " + filePath);
+    }
+
+    // -----------------------------------------------------------------------
+    // API fetch helpers
+    // -----------------------------------------------------------------------
+
+    async function apiFetch(endpoint) {
+        try {
+            var resp = await fetch(API_BASE + endpoint);
+            if (resp.status === 404) return null;
+            if (!resp.ok) throw new Error("HTTP " + resp.status);
+            return await resp.json();
+        } catch (e) {
+            console.error("apiFetch " + endpoint + " error:", e);
+            return null;
+        }
+    }
+
+    async function apiPost(endpoint, body) {
+        try {
+            var resp = await fetch(API_BASE + endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            var data = await resp.json();
+            if (!resp.ok) {
+                throw new Error(data.detail || "HTTP " + resp.status);
+            }
+            return data;
+        } catch (e) {
+            console.error("apiPost " + endpoint + " error:", e);
+            return { status: "error", error: e.message };
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Session state
+    // -----------------------------------------------------------------------
+
+    async function fetchSession() {
+        sessionData = await apiFetch("/api/session");
+        renderSessionDots();
+        return sessionData;
+    }
+
+    function renderSessionDots() {
+        if (!sessionData) {
+            elDotChunks.className = "session-dot";
+            elDotSilence.className = "session-dot";
+            elDotChapters.className = "session-dot";
+            elDotSpeakers.className = "session-dot";
+            elDotClips.className = "session-dot";
+            return;
+        }
+        elDotChunks.className = "session-dot" + (sessionData.has_chunks ? " active" : "");
+        elDotSilence.className = "session-dot" + (sessionData.has_silence_map ? " active" : "");
+        elDotChapters.className = "session-dot" + (sessionData.has_chapters ? " active" : "");
+        elDotSpeakers.className = "session-dot" + (sessionData.has_speaker_map ? " active" : "");
+        elDotClips.className = "session-dot" + (sessionData.has_clips_manifest ? " active" : "");
+    }
+
+    // -----------------------------------------------------------------------
+    // Timeline rendering
+    // -----------------------------------------------------------------------
+
+    function renderTimeline() {
+        // Clear existing segments and markers (keep playhead)
+        var old = elTimelineBar.querySelectorAll(".timeline-segment, .timeline-chapter-marker");
+        for (var i = 0; i < old.length; i++) {
+            old[i].remove();
+        }
+
+        var dur = videoDuration || (chunksData && chunksData.duration) || (silenceData && silenceData.duration) || 0;
+        if (dur <= 0) return;
+
+        // Render speech/silence segments
+        if (silenceData && silenceData.speech) {
+            var speechSegs = silenceData.speech || [];
+            for (var i = 0; i < speechSegs.length; i++) {
+                var seg = speechSegs[i];
+                var el = document.createElement("div");
+                el.className = "timeline-segment speech";
+                el.style.left = ((seg.start / dur) * 100) + "%";
+                el.style.width = (((seg.end - seg.start) / dur) * 100) + "%";
+                elTimelineBar.insertBefore(el, elPlayhead);
+            }
+
+            var gapSegs = silenceData.gaps || [];
+            for (var i = 0; i < gapSegs.length; i++) {
+                var seg = gapSegs[i];
+                var el = document.createElement("div");
+                el.className = "timeline-segment silence";
+                el.style.left = ((seg.start / dur) * 100) + "%";
+                el.style.width = (((seg.end - seg.start) / dur) * 100) + "%";
+                elTimelineBar.insertBefore(el, elPlayhead);
+            }
+        } else {
+            var el = document.createElement("div");
+            el.className = "timeline-segment silence";
+            el.style.left = "0%";
+            el.style.width = "100%";
+            elTimelineBar.insertBefore(el, elPlayhead);
+        }
+
+        // Render chapter markers
+        if (chaptersData && chaptersData.length > 0) {
+            for (var i = 0; i < chaptersData.length; i++) {
+                var ch = chaptersData[i];
+                var marker = document.createElement("div");
+                marker.className = "timeline-chapter-marker";
+                marker.style.left = ((ch.start / dur) * 100) + "%";
+                marker.title = "Ch " + (ch.id != null ? ch.id : i) + ": " + (ch.title || "");
+                elTimelineBar.insertBefore(marker, elPlayhead);
+            }
+        }
+    }
+
+    function updatePlayhead() {
+        var dur = videoDuration || 1;
+        var currentTime = elVideo.currentTime || 0;
+        var pct = (currentTime / dur) * 100;
+        elPlayhead.style.left = pct + "%";
+        elTimeCurrent.textContent = fmtTime(currentTime);
+    }
+
+    // -----------------------------------------------------------------------
+    // Chunk list rendering
+    // -----------------------------------------------------------------------
+
+    function getChunkSpeaker(chunkId) {
+        if (!speakersData || !speakersData.chunk_speakers) return null;
+        // chunk_speakers keys may be string IDs
+        var label = speakersData.chunk_speakers[String(chunkId)];
+        if (!label) label = speakersData.chunk_speakers[chunkId];
+        return label || null;
+    }
+
+    function renderChunks() {
+        elChunksList.innerHTML = "";
+
+        if (!chunksData || !chunksData.chunks || chunksData.chunks.length === 0) {
+            elChunksList.innerHTML =
+                '<div class="message-overlay">' +
+                'No data loaded. Run transcription first.' +
+                '<div class="hint">POST /api/transcribe or POST /api/silence to generate data</div>' +
+                '</div>';
+            elChunksCount.textContent = "0 chunks";
+            return;
+        }
+
+        var chunks = chunksData.chunks;
+        elChunksCount.textContent = chunks.length + " chunks";
+
+        for (var i = 0; i < chunks.length; i++) {
+            var chunk = chunks[i];
+            var row = document.createElement("div");
+            row.className = "chunk-row" + (chunk.has_speech === false ? " silence-row" : "");
+            row.dataset.chunkId = chunk.id;
+            row.dataset.start = chunk.start;
+
+            // Checkbox
+            var cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.className = "chunk-cb";
+            cb.dataset.chunkId = chunk.id;
+            cb.addEventListener("click", function (e) { e.stopPropagation(); });
+            row.appendChild(cb);
+
+            // ID
+            var idEl = document.createElement("span");
+            idEl.className = "chunk-id";
+            idEl.textContent = "[" + chunk.id + "]";
+            row.appendChild(idEl);
+
+            // Time range
+            var timeEl = document.createElement("span");
+            timeEl.className = "chunk-time";
+            timeEl.textContent = fmtTimePrecise(chunk.start) + " - " + fmtTimePrecise(chunk.end);
+            row.appendChild(timeEl);
+
+            // Word count
+            var wordsEl = document.createElement("span");
+            wordsEl.className = "chunk-words";
+            wordsEl.textContent = chunk.word_count + "w";
+            row.appendChild(wordsEl);
+
+            // Silence ratio
+            var silEl = document.createElement("span");
+            var silPct = Math.round((chunk.silence_ratio || 0) * 100);
+            silEl.className = "chunk-silence-ratio" +
+                (silPct < 30 ? " low" : silPct < 70 ? " med" : " high");
+            silEl.textContent = silPct + "%";
+            silEl.title = "Silence ratio";
+            row.appendChild(silEl);
+
+            // Speaker label
+            var spkEl = document.createElement("span");
+            spkEl.className = "chunk-speaker";
+            var spkLabel = getChunkSpeaker(chunk.id);
+            if (spkLabel) {
+                spkEl.textContent = spkLabel;
+                spkEl.style.color = speakerColor(speakerIndex(spkLabel));
+            } else {
+                spkEl.textContent = "--";
+                spkEl.style.color = "#445566";
+            }
+            row.appendChild(spkEl);
+
+            // Text
+            var textEl = document.createElement("span");
+            textEl.className = "chunk-text" + (!chunk.text ? " is-silence" : "");
+            textEl.textContent = chunk.text ? truncText(chunk.text, 60) : "(silence)";
+            textEl.title = chunk.text || "(silence)";
+            row.appendChild(textEl);
+
+            // Click to seek
+            row.addEventListener("click", (function (startTime) {
+                return function () {
+                    elVideo.currentTime = startTime;
+                    elVideo.play();
+                };
+            })(chunk.start));
+
+            elChunksList.appendChild(row);
+        }
+    }
+
+    function highlightActiveChunk() {
+        if (!chunksData || !chunksData.chunks) return;
+
+        var currentTime = elVideo.currentTime || 0;
+        var newActiveId = -1;
+
+        var chunks = chunksData.chunks;
+        for (var i = 0; i < chunks.length; i++) {
+            if (currentTime >= chunks[i].start && currentTime < chunks[i].end) {
+                newActiveId = chunks[i].id;
+                break;
+            }
+        }
+
+        if (newActiveId === -1 && chunks.length > 0 && currentTime >= chunks[chunks.length - 1].start) {
+            newActiveId = chunks[chunks.length - 1].id;
+        }
+
+        if (newActiveId === activeChunkId) return;
+        activeChunkId = newActiveId;
+
+        var rows = elChunksList.querySelectorAll(".chunk-row");
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            if (parseInt(row.dataset.chunkId, 10) === activeChunkId) {
+                row.classList.add("active");
+                var listRect = elChunksList.getBoundingClientRect();
+                var rowRect = row.getBoundingClientRect();
+                if (rowRect.top < listRect.top || rowRect.bottom > listRect.bottom) {
+                    row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                }
+            } else {
+                row.classList.remove("active");
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Chapter panel rendering
+    // -----------------------------------------------------------------------
+
+    function renderChapters() {
+        elChapterList.innerHTML = "";
+
+        if (!chaptersData || chaptersData.length === 0) {
+            elChapterList.innerHTML = '<div class="message-overlay">No chapters detected yet.</div>';
+            return;
+        }
+
+        for (var i = 0; i < chaptersData.length; i++) {
+            var ch = chaptersData[i];
+            var row = document.createElement("div");
+            row.className = "chapter-row";
+            row.dataset.chapterId = ch.id != null ? ch.id : i;
+            row.dataset.start = ch.start;
+
+            var idEl = document.createElement("span");
+            idEl.className = "chapter-id";
+            idEl.textContent = "#" + (ch.id != null ? ch.id : i);
+            row.appendChild(idEl);
+
+            var timeEl = document.createElement("span");
+            timeEl.className = "chapter-time";
+            timeEl.textContent = fmtTimePrecise(ch.start) + " - " + fmtTimePrecise(ch.end);
+            row.appendChild(timeEl);
+
+            var durEl = document.createElement("span");
+            durEl.className = "chapter-dur";
+            durEl.textContent = fmtTime(ch.end - ch.start);
+            row.appendChild(durEl);
+
+            var titleEl = document.createElement("span");
+            titleEl.className = "chapter-title";
+            titleEl.textContent = ch.title || "Chapter " + (ch.id != null ? ch.id : i);
+            titleEl.title = ch.title || "";
+            row.appendChild(titleEl);
+
+            // Click to seek
+            row.addEventListener("click", (function (startTime) {
+                return function () {
+                    elVideo.currentTime = startTime;
+                    elVideo.play();
+                };
+            })(ch.start));
+
+            elChapterList.appendChild(row);
+        }
+    }
+
+    function highlightActiveChapter() {
+        if (!chaptersData || chaptersData.length === 0) return;
+
+        var currentTime = elVideo.currentTime || 0;
+        var newActiveId = -1;
+
+        for (var i = 0; i < chaptersData.length; i++) {
+            var ch = chaptersData[i];
+            if (currentTime >= ch.start && currentTime < ch.end) {
+                newActiveId = ch.id != null ? ch.id : i;
+                break;
+            }
+        }
+
+        if (newActiveId === activeChapterId) return;
+        activeChapterId = newActiveId;
+
+        var rows = elChapterList.querySelectorAll(".chapter-row");
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            if (parseInt(row.dataset.chapterId, 10) === activeChapterId) {
+                row.classList.add("active");
+                var listRect = elChapterList.getBoundingClientRect();
+                var rowRect = row.getBoundingClientRect();
+                if (rowRect.top < listRect.top || rowRect.bottom > listRect.bottom) {
+                    row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                }
+            } else {
+                row.classList.remove("active");
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Speaker panel rendering
+    // -----------------------------------------------------------------------
+
+    function renderSpeakers() {
+        elSpeakerList.innerHTML = "";
+
+        if (!speakersData || !speakersData.speakers || speakersData.speakers.length === 0) {
+            elSpeakerList.innerHTML = '<div class="message-overlay" style="padding: 10px;">No speakers detected yet.</div>';
+            return;
+        }
+
+        var speakers = speakersData.speakers;
+
+        // Count segments per speaker
+        var counts = {};
+        if (speakersData.chunk_speakers) {
+            var cs = speakersData.chunk_speakers;
+            var keys = Object.keys(cs);
+            for (var i = 0; i < keys.length; i++) {
+                var label = cs[keys[i]];
+                counts[label] = (counts[label] || 0) + 1;
+            }
+        }
+
+        for (var i = 0; i < speakers.length; i++) {
+            var spk = speakers[i];
+            var label = typeof spk === "string" ? spk : (spk.label || spk.name || "SPEAKER_" + i);
+            var idx = speakerIndex(label);
+
+            var row = document.createElement("div");
+            row.className = "speaker-row";
+
+            var dot = document.createElement("div");
+            dot.className = "speaker-dot";
+            dot.style.background = speakerColor(idx);
+            row.appendChild(dot);
+
+            var nameEl = document.createElement("span");
+            nameEl.className = "speaker-name";
+            nameEl.textContent = label;
+            nameEl.style.color = speakerColor(idx);
+            row.appendChild(nameEl);
+
+            var countEl = document.createElement("span");
+            countEl.className = "speaker-count";
+            var segCount = counts[label] || 0;
+            countEl.textContent = segCount + " segment" + (segCount !== 1 ? "s" : "");
+            row.appendChild(countEl);
+
+            elSpeakerList.appendChild(row);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Selected chunks helper
+    // -----------------------------------------------------------------------
+
+    function getSelectedChunkIds() {
+        var ids = [];
+        var cbs = elChunksList.querySelectorAll(".chunk-cb:checked");
+        for (var i = 0; i < cbs.length; i++) {
+            ids.push(parseInt(cbs[i].dataset.chunkId, 10));
+        }
+        return ids;
+    }
+
+    // -----------------------------------------------------------------------
+    // Event: timeline bar click to seek
+    // -----------------------------------------------------------------------
+
+    elTimelineBar.addEventListener("click", function (e) {
+        var rect = elTimelineBar.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var pct = x / rect.width;
+        var dur = videoDuration || 1;
+        var seekTime = pct * dur;
+        elVideo.currentTime = seekTime;
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: video timeupdate
+    // -----------------------------------------------------------------------
+
+    elVideo.addEventListener("timeupdate", function () {
+        updatePlayhead();
+        highlightActiveChunk();
+        highlightActiveChapter();
+    });
+
+    elVideo.addEventListener("loadedmetadata", function () {
+        videoDuration = elVideo.duration;
+        elTimeDuration.textContent = fmtTime(videoDuration);
+        renderTimeline();
+    });
+
+    elVideo.addEventListener("durationchange", function () {
+        videoDuration = elVideo.duration;
+        elTimeDuration.textContent = fmtTime(videoDuration);
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: Load Video button
+    // -----------------------------------------------------------------------
+
+    elBtnLoad.addEventListener("click", function () {
+        var path = elVideoPath.value.trim();
+        if (!path) {
+            setStatus("Enter a video path first", "error");
+            return;
+        }
+        loadVideo(path);
+        setStatus("Video source updated: " + path);
+    });
+
+    elVideoPath.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+            elBtnLoad.click();
+        }
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: Detect Chapters
+    // -----------------------------------------------------------------------
+
+    elBtnDetectChapters.addEventListener("click", async function () {
+        elBtnDetectChapters.disabled = true;
+        setStatus("Detecting chapters...");
+        var result = await apiFetch("/api/chapters");
+        elBtnDetectChapters.disabled = false;
+
+        if (result && result.chapters) {
+            chaptersData = result.chapters;
+            renderChapters();
+            renderTimeline();  // Re-render to add chapter markers
+            setStatus("Detected " + chaptersData.length + " chapters", "success");
+        } else {
+            setStatus("Chapter detection failed or no data available", "error");
+        }
+        fetchSession();
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: Detect Speakers
+    // -----------------------------------------------------------------------
+
+    elBtnDetectSpeakers.addEventListener("click", async function () {
+        elBtnDetectSpeakers.disabled = true;
+        setStatus("Detecting speakers (this may take a moment)...");
+        var result = await apiFetch("/api/speakers");
+        elBtnDetectSpeakers.disabled = false;
+
+        if (result && !result.error) {
+            speakersData = result;
+            renderSpeakers();
+            renderChunks();  // Re-render chunks to show speaker labels
+            setStatus("Detected " + (result.speakers ? result.speakers.length : 0) + " speakers", "success");
+        } else {
+            setStatus("Speaker detection failed: " + (result ? result.error : "no response"), "error");
+        }
+        fetchSession();
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: Remove Silence
+    // -----------------------------------------------------------------------
+
+    elBtnSilence.addEventListener("click", async function () {
+        elBtnSilence.disabled = true;
+        setStatus("Removing silence...");
+        var body = {
+            action: {
+                action: "silence_remove",
+                params: { silence_threshold_db: -30 },
+                executor: "ffmpeg",
+                confidence: 1.0,
+            },
+            input_path: currentVideoPath,
+        };
+        var result = await apiPost("/api/execute", body);
+        elBtnSilence.disabled = false;
+
+        if (result.status === "success") {
+            setStatus("Silence removed. Output: " + (result.output || "done"), "success");
+        } else {
+            setStatus("Silence removal failed: " + (result.error || "unknown error"), "error");
+        }
+        fetchSession();
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: Export TikTok (single clip)
+    // -----------------------------------------------------------------------
+
+    elBtnExport.addEventListener("click", async function () {
+        elBtnExport.disabled = true;
+        setStatus("Exporting for TikTok...");
+        var body = {
+            action: {
+                action: "platform_export",
+                params: { platform: "tiktok", max_duration: 60, aspect: "9:16" },
+                executor: "ffmpeg",
+                confidence: 1.0,
+            },
+            input_path: currentVideoPath,
+        };
+        var result = await apiPost("/api/execute", body);
+        elBtnExport.disabled = false;
+
+        if (result.status === "success") {
+            setStatus("TikTok export complete. Output: " + (result.output || "done"), "success");
+        } else {
+            setStatus("TikTok export failed: " + (result.error || "unknown error"), "error");
+        }
+        fetchSession();
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: Batch TikTok
+    // -----------------------------------------------------------------------
+
+    elBtnBatch.addEventListener("click", async function () {
+        elBtnBatch.disabled = true;
+        setStatus("Generating TikTok batch...");
+        showProgress(true);
+        setProgress(10);
+
+        var body = {
+            input_path: currentVideoPath,
+            output_dir: "output",
+            max_duration: 60.0,
+            crop_method: "center",
+        };
+
+        setProgress(30);
+        var result = await apiPost("/api/tiktok", body);
+        setProgress(90);
+
+        elBtnBatch.disabled = false;
+
+        if (result && !result.error) {
+            var clipCount = result.clips ? result.clips.length : 0;
+            setStatus("Batch TikTok complete: " + clipCount + " clips generated", "success");
+            setProgress(100);
+            setTimeout(function () { showProgress(false); }, 1500);
+        } else {
+            setStatus("Batch TikTok failed: " + (result ? result.error : "unknown error"), "error");
+            showProgress(false);
+        }
+        fetchSession();
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: Portrait Crop
+    // -----------------------------------------------------------------------
+
+    elBtnPortrait.addEventListener("click", async function () {
+        elBtnPortrait.disabled = true;
+        setStatus("Cropping to portrait...");
+        var body = {
+            input_path: currentVideoPath,
+            output_dir: "output",
+            method: "center",
+        };
+        var result = await apiPost("/api/portrait_crop", body);
+        elBtnPortrait.disabled = false;
+
+        if (result && result.status !== "error" && !result.error) {
+            setStatus("Portrait crop complete. Output: " + (result.output_path || "done"), "success");
+        } else {
+            setStatus("Portrait crop failed: " + (result ? (result.error || result.detail) : "unknown error"), "error");
+        }
+        fetchSession();
+    });
+
+    // -----------------------------------------------------------------------
+    // Init
+    // -----------------------------------------------------------------------
+
+    async function init() {
+        // Set default video path
+        elVideoPath.value = DEFAULT_VIDEO_PATH;
+
+        // Load video
+        loadVideo(DEFAULT_VIDEO_PATH);
+
+        // Fetch chunks, silence map, and session in parallel
+        setStatus("Fetching data from server...");
+
+        var results = await Promise.all([
+            apiFetch("/api/chunks"),
+            apiFetch("/api/silence_map"),
+            apiFetch("/api/session"),
+        ]);
+
+        chunksData = results[0];
+        silenceData = results[1];
+        sessionData = results[2];
+
+        // Render session dots
+        renderSessionDots();
+
+        // If session shows chapters or speakers, fetch them too
+        var extraFetches = [];
+        if (sessionData && sessionData.has_chapters) {
+            extraFetches.push(apiFetch("/api/chapters").then(function (r) {
+                if (r && r.chapters) chaptersData = r.chapters;
+            }));
+        }
+        if (sessionData && sessionData.has_speaker_map) {
+            extraFetches.push(apiFetch("/api/speakers").then(function (r) {
+                if (r && !r.error) speakersData = r;
+            }));
+        }
+
+        if (extraFetches.length > 0) {
+            await Promise.all(extraFetches);
+        }
+
+        // Report status
+        if (!chunksData && !silenceData) {
+            setStatus("No data loaded. Run transcription first.");
+        } else {
+            var parts = [];
+            if (chunksData) parts.push(chunksData.chunks.length + " chunks");
+            if (silenceData) parts.push(silenceData.stats.gap_count + " silence gaps");
+            if (chaptersData) parts.push(chaptersData.length + " chapters");
+            if (speakersData && speakersData.speakers) parts.push(speakersData.speakers.length + " speakers");
+            setStatus("Loaded: " + parts.join(", "), "success");
+        }
+
+        // Render all panels
+        renderChunks();
+        renderChapters();
+        renderSpeakers();
+
+        // Set duration from data if video hasn't loaded yet
+        if (silenceData && silenceData.duration) {
+            videoDuration = videoDuration || silenceData.duration;
+            elTimeDuration.textContent = fmtTime(videoDuration);
+        } else if (chunksData && chunksData.duration) {
+            videoDuration = videoDuration || chunksData.duration;
+            elTimeDuration.textContent = fmtTime(videoDuration);
+        }
+        renderTimeline();
+    }
+
+    init();
+
+})();
+</script>
+</body>
+</html>

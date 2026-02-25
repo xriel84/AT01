@@ -18,7 +18,7 @@ if _tools_dir not in sys.path:
 
 from fastapi.testclient import TestClient
 
-from agents.edbot.server import app, _cache, ALLOWED_VIDEO_DIRS
+from agents.edbot.server import app, _cache, _session, ALLOWED_VIDEO_DIRS
 
 
 # ---------------------------------------------------------------------------
@@ -27,10 +27,12 @@ from agents.edbot.server import app, _cache, ALLOWED_VIDEO_DIRS
 
 @pytest.fixture(autouse=True)
 def _clear_cache():
-    """Reset server cache before each test."""
+    """Reset server cache and session before each test."""
     _cache["chunks"] = None
     _cache["silence_map"] = None
     _cache["last_input"] = None
+    for key in _session:
+        _session[key] = None
     yield
 
 

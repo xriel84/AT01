@@ -1,16 +1,23 @@
 """EdBot FastAPI server — wraps pipeline tools and serves clip viewer UI.
 
 Endpoints:
-    GET  /api/health       -> tool status
-    POST /api/transcribe   -> run transcription
-    POST /api/silence      -> run silence detection
-    POST /api/parse        -> run NLP action parser
-    POST /api/execute      -> run executor
-    GET  /api/chunks       -> cached chunks.json
-    GET  /api/silence_map  -> cached silence_map.json
-    GET  /api/outputs      -> list output files
-    GET  /                 -> serve viewer HTML
-    GET  /video/{path}     -> serve video files with byte-range support
+    GET  /api/health          -> tool status
+    POST /api/transcribe      -> run transcription
+    POST /api/silence         -> run silence detection
+    POST /api/parse           -> run NLP action parser
+    POST /api/execute         -> run executor
+    GET  /api/chunks          -> cached chunks.json
+    GET  /api/silence_map     -> cached silence_map.json
+    GET  /api/outputs         -> list output files
+    GET  /api/chapters        -> run chapter detection
+    GET  /api/speakers        -> run speaker detection
+    POST /api/portrait_crop   -> crop video to portrait
+    POST /api/tiktok          -> generate TikTok chunks
+    GET  /api/session         -> current session state
+    GET  /api/clips_manifest  -> cached clips manifest
+    GET  /api/gpu_status      -> CUDA availability check
+    GET  /                    -> serve viewer HTML
+    GET  /video/{path}        -> serve video files with byte-range support
 """
 
 import mimetypes
@@ -36,12 +43,17 @@ from transcribe import transcribe_video
 from silence_detect import detect_silence
 from nlp_action import parse_command
 from executor import execute_action
+from chapter_detect import detect_chapters
+from speaker_detect import detect_speakers
+from portrait_crop import portrait_crop
+from tiktok_chunk import generate_tiktok_chunks
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-TOOL_NAMES = ["transcribe", "silence_detect", "nlp_action", "executor"]
+TOOL_NAMES = ["transcribe", "silence_detect", "nlp_action", "executor",
+              "chapter_detect", "speaker_detect", "portrait_crop", "tiktok_chunk"]
 
 ALLOWED_VIDEO_DIRS = [
     Path(r"C:\AT01\input").resolve(),
@@ -63,6 +75,29 @@ _cache: dict[str, Any] = {
     "last_input": None,
 }
 
+_session: dict[str, Any] = {
+    "video_path": None,
+    "chunks": None,
+    "silence_map": None,
+    "chapters": None,
+    "speaker_map": None,
+    "clips_manifest": None,
+}
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def safe_gpu_call(func, *args, **kwargs):
+    """Run a GPU-capable function, falling back gracefully on CUDA errors."""
+    try:
+        return func(*args, **kwargs)
+    except Exception as exc:
+        error_str = str(exc).lower()
+        if any(term in error_str for term in ("cuda", "gpu", "cublas", "cudnn", "nccl")):
+            return {"error": f"GPU failed: {exc}", "fallback": True}
+        raise
+
 # ---------------------------------------------------------------------------
 # Pydantic models
 # ---------------------------------------------------------------------------
@@ -80,6 +115,21 @@ class ParseRequest(BaseModel):
 class ExecuteRequest(BaseModel):
     action: dict
     input_path: str | None = None
+
+
+class CropRequest(BaseModel):
+    input_path: str | None = None
+    output_dir: str = "output"
+    method: str = "center"
+    start: float | None = None
+    end: float | None = None
+
+
+class TikTokRequest(BaseModel):
+    input_path: str | None = None
+    output_dir: str = "output"
+    max_duration: float = 60.0
+    crop_method: str = "center"
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +164,8 @@ def api_transcribe(req: ProcessRequest):
         raise HTTPException(status_code=500, detail=result["error"])
     _cache["chunks"] = result
     _cache["last_input"] = req.input_path
+    _session["video_path"] = req.input_path
+    _session["chunks"] = result.get("chunks")
     return result
 
 
@@ -125,6 +177,7 @@ def api_silence(req: ProcessRequest):
         raise HTTPException(status_code=500, detail=result["error"])
     _cache["silence_map"] = result
     _cache["last_input"] = req.input_path
+    _session["silence_map"] = result
     return result
 
 
@@ -174,6 +227,106 @@ async def api_outputs():
                 "path": str(f),
             })
     return {"files": files}
+
+
+# ---------------------------------------------------------------------------
+# Round 3 endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/chapters")
+def api_chapters():
+    """Run chapter detection on cached chunks + silence_map."""
+    chunks = _session.get("chunks") or (_cache.get("chunks") or {}).get("chunks")
+    if not chunks:
+        raise HTTPException(status_code=404, detail="no chunks — run /api/transcribe first")
+    silence_map = _session.get("silence_map") or _cache.get("silence_map")
+    chapters = detect_chapters(chunks, silence_map=silence_map)
+    _session["chapters"] = chapters
+    return {"chapters": chapters}
+
+
+@app.get("/api/speakers")
+def api_speakers():
+    """Run speaker detection on session video."""
+    video_path = _session.get("video_path") or _cache.get("last_input")
+    if not video_path:
+        raise HTTPException(status_code=404, detail="no video path — load a video first")
+    chunks = _session.get("chunks") or (_cache.get("chunks") or {}).get("chunks")
+    result = detect_speakers(video_path, chunks=chunks)
+    if result.get("error"):
+        raise HTTPException(status_code=500, detail=result["error"])
+    _session["speaker_map"] = result
+    return result
+
+
+@app.post("/api/portrait_crop")
+def api_portrait_crop(req: CropRequest):
+    """Crop a video to portrait orientation."""
+    input_path = req.input_path or _session.get("video_path") or _cache.get("last_input")
+    if not input_path:
+        raise HTTPException(status_code=400, detail="no input path")
+    result = portrait_crop(input_path, req.output_dir, method=req.method, start=req.start, end=req.end)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=500, detail=result.get("error", "crop failed"))
+    return result
+
+
+@app.post("/api/tiktok")
+def api_tiktok(req: TikTokRequest):
+    """Generate TikTok chunks from video."""
+    input_path = req.input_path or _session.get("video_path") or _cache.get("last_input")
+    if not input_path:
+        raise HTTPException(status_code=400, detail="no input path")
+    chapters = _session.get("chapters")
+    if not chapters:
+        # Auto-detect chapters first
+        chunks = _session.get("chunks") or (_cache.get("chunks") or {}).get("chunks")
+        if not chunks:
+            raise HTTPException(status_code=404, detail="no chunks — run /api/transcribe first")
+        silence_map = _session.get("silence_map") or _cache.get("silence_map")
+        chapters = detect_chapters(chunks, silence_map=silence_map)
+        _session["chapters"] = chapters
+    chunks = _session.get("chunks") or (_cache.get("chunks") or {}).get("chunks")
+    result = generate_tiktok_chunks(input_path, chapters, chunks=chunks,
+                                     output_dir=req.output_dir,
+                                     max_duration=req.max_duration,
+                                     crop_method=req.crop_method)
+    _session["clips_manifest"] = result
+    return result
+
+
+@app.get("/api/session")
+async def api_session():
+    """Return current session state."""
+    return {
+        "video_path": _session.get("video_path"),
+        "has_chunks": _session.get("chunks") is not None or _cache.get("chunks") is not None,
+        "has_silence_map": _session.get("silence_map") is not None or _cache.get("silence_map") is not None,
+        "has_chapters": _session.get("chapters") is not None,
+        "has_speaker_map": _session.get("speaker_map") is not None,
+        "has_clips_manifest": _session.get("clips_manifest") is not None,
+    }
+
+
+@app.get("/api/clips_manifest")
+async def api_clips_manifest():
+    """Return cached clips manifest."""
+    manifest = _session.get("clips_manifest")
+    if manifest is None:
+        raise HTTPException(status_code=404, detail="no clips manifest — run /api/tiktok first")
+    return manifest
+
+
+@app.get("/api/gpu_status")
+async def api_gpu_status():
+    """Check CUDA availability."""
+    try:
+        import torch
+        cuda_available = torch.cuda.is_available()
+        device_name = torch.cuda.get_device_name(0) if cuda_available else None
+        return {"cuda_available": cuda_available, "device": device_name}
+    except ImportError:
+        return {"cuda_available": False, "device": None, "error": "torch not installed"}
 
 
 # ---------------------------------------------------------------------------
@@ -290,15 +443,27 @@ async def serve_video(path: str, request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_viewer():
-    """Serve the clip viewer HTML page."""
+    """Serve the clip viewer v2 HTML page (falls back to v1)."""
+    v2_path = STATIC_DIR / "viewer_v2.html"
+    v1_path = STATIC_DIR / "viewer.html"
+    if v2_path.exists():
+        return FileResponse(str(v2_path), media_type="text/html")
+    if v1_path.exists():
+        return FileResponse(str(v1_path), media_type="text/html")
+    return HTMLResponse(
+        content="<html><body><h1>EdBot Clip Viewer</h1>"
+        "<p>No viewer found. Place viewer.html or viewer_v2.html in agents/edbot/static/</p>"
+        "</body></html>",
+        status_code=200,
+    )
+
+
+@app.get("/v1", response_class=HTMLResponse)
+async def serve_viewer_v1():
+    """Serve the original clip viewer HTML page."""
     viewer_path = STATIC_DIR / "viewer.html"
     if not viewer_path.exists():
-        return HTMLResponse(
-            content="<html><body><h1>EdBot Clip Viewer</h1>"
-            "<p>viewer.html not found. Place it in agents/edbot/static/</p>"
-            "</body></html>",
-            status_code=200,
-        )
+        raise HTTPException(status_code=404, detail="viewer.html not found")
     return FileResponse(str(viewer_path), media_type="text/html")
 
 
