@@ -28,6 +28,11 @@ try:
 except ImportError:
     _transcribe_video = None  # type: ignore[assignment]
 
+try:
+    from resolve_bridge import resolve_export as _resolve_export
+except ImportError:
+    _resolve_export = None  # type: ignore[assignment]
+
 
 # ---------------------------------------------------------------------------
 # Platform export presets
@@ -44,7 +49,7 @@ PLATFORM_PRESETS: dict[str, dict[str, Any]] = {
 # Supported action types that this executor handles.
 SUPPORTED_ACTIONS: set[str] = {
     "silence_remove", "trim", "crop", "caption_burn",
-    "platform_export", "transcribe",
+    "platform_export", "transcribe", "resolve_export",
 }
 
 
@@ -322,6 +327,9 @@ def execute_action(
     if action_type == "transcribe":
         return _execute_transcribe(in_path, out_dir, params, t0)
 
+    if action_type == "resolve_export":
+        return _execute_resolve_export(in_path, out_dir, params, t0)
+
     # --- Get input duration ---
     duration_in = _get_duration(in_path)
 
@@ -514,4 +522,87 @@ def _execute_transcribe(
         ffmpeg_cmd=None,
         elapsed_seconds=elapsed,
         error=None,
+    )
+
+
+def _execute_resolve_export(
+    in_path: Path, out_dir: Path, params: dict[str, Any], t0: float,
+) -> dict[str, Any]:
+    """Render a timeline from DaVinci Resolve via resolve_bridge.
+
+    Requires Resolve running. Never silently falls back to FFmpeg.
+    """
+    if _resolve_export is None:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error",
+            action="resolve_export",
+            input_path=str(in_path),
+            output_path=None,
+            duration_in=None,
+            duration_out=None,
+            ffmpeg_cmd=None,
+            elapsed_seconds=elapsed,
+            error="resolve_bridge module not available",
+        )
+
+    timeline_name = params.get("timeline_name")
+    if not timeline_name:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error",
+            action="resolve_export",
+            input_path=str(in_path),
+            output_path=None,
+            duration_in=None,
+            duration_out=None,
+            ffmpeg_cmd=None,
+            elapsed_seconds=elapsed,
+            error="resolve_export requires 'timeline_name' in params",
+        )
+
+    preset = params.get("preset", "h264_mp4")
+    out_path = _safe_output_path(out_dir, in_path.stem, "resolve_export", ".mp4")
+
+    try:
+        result = _resolve_export(timeline_name, str(out_path), preset=preset)
+    except RuntimeError as exc:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error",
+            action="resolve_export",
+            input_path=str(in_path),
+            output_path=str(out_path),
+            duration_in=None,
+            duration_out=None,
+            ffmpeg_cmd=None,
+            elapsed_seconds=elapsed,
+            error=str(exc),
+        )
+
+    elapsed = result.get("elapsed_seconds", time.perf_counter() - t0)
+    if result.get("success"):
+        duration_out = _get_duration(out_path)
+        return _result_dict(
+            status="success",
+            action="resolve_export",
+            input_path=str(in_path),
+            output_path=result.get("output_path", str(out_path)),
+            duration_in=None,
+            duration_out=duration_out,
+            ffmpeg_cmd=None,
+            elapsed_seconds=elapsed,
+            error=None,
+        )
+
+    return _result_dict(
+        status="error",
+        action="resolve_export",
+        input_path=str(in_path),
+        output_path=str(out_path),
+        duration_in=None,
+        duration_out=None,
+        ffmpeg_cmd=None,
+        elapsed_seconds=elapsed,
+        error=result.get("error", "resolve render failed"),
     )
