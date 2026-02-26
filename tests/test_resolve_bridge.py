@@ -22,9 +22,18 @@ from resolve_bridge import (
     export_timeline_markers,
     import_edl,
     resolve_export,
+    resolve_available,
+    list_projects,
+    create_timeline_from_video,
+    add_markers_from_chapters,
+    render_timeline,
+    get_render_status,
+    _render_jobs,
     RENDER_PRESETS,
 )
 from executor import execute_action
+from fastapi.testclient import TestClient
+from agents.edbot.server import app, _cache, _session
 
 
 # ---------------------------------------------------------------------------
@@ -449,3 +458,324 @@ def test_render_presets_keys():
     for preset in RENDER_PRESETS.values():
         assert "format" in preset
         assert "codec" in preset
+
+
+# ===========================================================================
+# Session 6: resolve_available tests (2)
+# ===========================================================================
+
+def test_resolve_available_when_connected():
+    """resolve_available returns available=True when Resolve is reachable."""
+    mock_dvr = MagicMock()
+    mock_resolve = MagicMock()
+    mock_resolve.GetProductName.return_value = "DaVinci Resolve Studio"
+    mock_resolve.GetVersion.return_value = [20, 3, 1, ""]
+    mock_dvr.scriptapp.return_value = mock_resolve
+
+    with patch.dict("sys.modules", {"DaVinciResolveScript": mock_dvr}):
+        result = resolve_available()
+
+    assert result["available"] is True
+    assert result["version"] == "20.3.1"
+    assert result["product"] == "DaVinci Resolve Studio"
+    assert result["error"] is None
+
+
+def test_resolve_available_when_offline():
+    """resolve_available returns available=False when Resolve is unreachable."""
+    mock_dvr = MagicMock()
+    mock_dvr.scriptapp.return_value = None
+
+    with patch.dict("sys.modules", {"DaVinciResolveScript": mock_dvr}):
+        result = resolve_available()
+
+    assert result["available"] is False
+    assert result["version"] is None
+    assert "Resolve" in result["error"]
+
+
+# ===========================================================================
+# Session 6: list_projects tests (2)
+# ===========================================================================
+
+def test_list_projects_success():
+    """list_projects returns project names and current project."""
+    mock_dvr = MagicMock()
+    mock_resolve = MagicMock()
+    mock_pm = MagicMock()
+    mock_pm.GetProjectListInCurrentFolder.return_value = ["Project A", "Project B"]
+    mock_project = MagicMock()
+    mock_project.GetName.return_value = "Project A"
+    mock_pm.GetCurrentProject.return_value = mock_project
+    mock_resolve.GetProjectManager.return_value = mock_pm
+    mock_dvr.scriptapp.return_value = mock_resolve
+
+    with patch.dict("sys.modules", {"DaVinciResolveScript": mock_dvr}):
+        result = list_projects()
+
+    assert result["projects"] == ["Project A", "Project B"]
+    assert result["current"] == "Project A"
+    assert result["count"] == 2
+    assert result["error"] is None
+
+
+def test_list_projects_offline():
+    """list_projects returns error dict when Resolve is offline."""
+    mock_dvr = MagicMock()
+    mock_dvr.scriptapp.return_value = None
+
+    with patch.dict("sys.modules", {"DaVinciResolveScript": mock_dvr}):
+        result = list_projects()
+
+    assert result["projects"] == []
+    assert result["count"] == 0
+    assert result["error"] is not None
+
+
+# ===========================================================================
+# Session 6: create_timeline_from_video tests (3)
+# ===========================================================================
+
+def test_create_timeline_file_not_found():
+    """create_timeline_from_video returns error for missing file."""
+    result = create_timeline_from_video("C:/nonexistent/video.mp4")
+    assert result["success"] is False
+    assert "not found" in result["error"]
+
+
+def test_create_timeline_success(tmp_path):
+    """create_timeline_from_video creates timeline from video file."""
+    video = tmp_path / "test.mp4"
+    video.write_bytes(b"\x00" * 100)
+
+    mock_dvr = MagicMock()
+    mock_resolve = MagicMock()
+    mock_pm = MagicMock()
+    mock_project = MagicMock()
+    mock_pool = MagicMock()
+    mock_pool.ImportMedia.return_value = [MagicMock()]
+    mock_tl = MagicMock()
+    mock_tl.GetName.return_value = "test"
+    mock_pool.CreateTimelineFromClips.return_value = mock_tl
+    mock_project.GetMediaPool.return_value = mock_pool
+    mock_pm.GetCurrentProject.return_value = mock_project
+    mock_resolve.GetProjectManager.return_value = mock_pm
+    mock_dvr.scriptapp.return_value = mock_resolve
+
+    with patch.dict("sys.modules", {"DaVinciResolveScript": mock_dvr}):
+        result = create_timeline_from_video(str(video))
+
+    assert result["success"] is True
+    assert result["timeline_name"] == "test"
+
+
+def test_create_timeline_custom_name(tmp_path):
+    """create_timeline_from_video uses custom timeline name."""
+    video = tmp_path / "test.mp4"
+    video.write_bytes(b"\x00" * 100)
+
+    mock_dvr = MagicMock()
+    mock_resolve = MagicMock()
+    mock_pm = MagicMock()
+    mock_project = MagicMock()
+    mock_pool = MagicMock()
+    mock_pool.ImportMedia.return_value = [MagicMock()]
+    mock_tl = MagicMock()
+    mock_tl.GetName.return_value = "My Custom TL"
+    mock_pool.CreateTimelineFromClips.return_value = mock_tl
+    mock_project.GetMediaPool.return_value = mock_pool
+    mock_pm.GetCurrentProject.return_value = mock_project
+    mock_resolve.GetProjectManager.return_value = mock_pm
+    mock_dvr.scriptapp.return_value = mock_resolve
+
+    with patch.dict("sys.modules", {"DaVinciResolveScript": mock_dvr}):
+        result = create_timeline_from_video(str(video), "My Custom TL")
+
+    assert result["success"] is True
+    mock_pool.CreateTimelineFromClips.assert_called_once()
+
+
+# ===========================================================================
+# Session 6: add_markers_from_chapters tests (3)
+# ===========================================================================
+
+def test_add_markers_empty_chapters():
+    """add_markers_from_chapters returns error for empty chapter list."""
+    result = add_markers_from_chapters([])
+    assert result["success"] is False
+    assert "no chapters" in result["error"]
+
+
+def test_add_markers_success():
+    """add_markers_from_chapters adds markers to current timeline."""
+    chapters = [
+        {"title": "Intro", "start": 0, "summary": "Opening remarks"},
+        {"title": "Main", "start": 60, "summary": "Core content"},
+        {"title": "Outro", "start": 300, "summary": "Closing"},
+    ]
+
+    mock_dvr = MagicMock()
+    mock_resolve = MagicMock()
+    mock_pm = MagicMock()
+    mock_project = MagicMock()
+    mock_tl = MagicMock()
+    mock_tl.AddMarker.return_value = True
+    mock_project.GetCurrentTimeline.return_value = mock_tl
+    mock_pm.GetCurrentProject.return_value = mock_project
+    mock_resolve.GetProjectManager.return_value = mock_pm
+    mock_dvr.scriptapp.return_value = mock_resolve
+
+    with patch.dict("sys.modules", {"DaVinciResolveScript": mock_dvr}):
+        result = add_markers_from_chapters(chapters)
+
+    assert result["success"] is True
+    assert result["markers_added"] == 3
+    assert mock_tl.AddMarker.call_count == 3
+
+
+def test_add_markers_named_timeline():
+    """add_markers_from_chapters finds timeline by name."""
+    chapters = [{"title": "Test", "start": 10, "summary": ""}]
+
+    mock_dvr = MagicMock()
+    mock_resolve = MagicMock()
+    mock_pm = MagicMock()
+    mock_project = MagicMock()
+    mock_project.GetTimelineCount.return_value = 2
+    mock_tl_1 = MagicMock()
+    mock_tl_1.GetName.return_value = "Other"
+    mock_tl_2 = MagicMock()
+    mock_tl_2.GetName.return_value = "Target TL"
+    mock_tl_2.AddMarker.return_value = True
+    mock_project.GetTimelineByIndex.side_effect = lambda i: [None, mock_tl_1, mock_tl_2][i]
+    mock_pm.GetCurrentProject.return_value = mock_project
+    mock_resolve.GetProjectManager.return_value = mock_pm
+    mock_dvr.scriptapp.return_value = mock_resolve
+
+    with patch.dict("sys.modules", {"DaVinciResolveScript": mock_dvr}):
+        result = add_markers_from_chapters(chapters, timeline_name="Target TL")
+
+    assert result["success"] is True
+    assert result["markers_added"] == 1
+
+
+# ===========================================================================
+# Session 6: render_timeline + get_render_status tests (3)
+# ===========================================================================
+
+def test_render_timeline_creates_job():
+    """render_timeline creates a tracked job entry."""
+    _render_jobs.clear()
+
+    # Mock resolve_export to return failure (no Resolve)
+    with patch("resolve_bridge.resolve_export", return_value={
+        "success": False, "output_path": None, "elapsed_seconds": 0.1,
+        "error": "Timeline not found: FakeTL",
+    }):
+        result = render_timeline("FakeTL", "output/test.mp4")
+
+    assert result["status"] == "failed"
+    assert result["id"] is not None
+    assert len(_render_jobs) == 1
+
+
+def test_render_timeline_success():
+    """render_timeline returns complete status on success."""
+    _render_jobs.clear()
+
+    with patch("resolve_bridge.resolve_export", return_value={
+        "success": True, "output_path": "output/test.mp4",
+        "elapsed_seconds": 12.5, "error": None,
+    }):
+        result = render_timeline("Main Edit", "output/test.mp4")
+
+    assert result["status"] == "complete"
+    assert result["elapsed_seconds"] == 12.5
+
+
+def test_get_render_status_not_found():
+    """get_render_status returns error for unknown job ID."""
+    _render_jobs.clear()
+    result = get_render_status("nonexistent")
+    assert result["status"] == "error"
+    assert "not found" in result["error"]
+
+
+def test_get_render_status_all_jobs():
+    """get_render_status with no ID returns all jobs."""
+    _render_jobs.clear()
+    _render_jobs["abc"] = {"id": "abc", "status": "complete"}
+    _render_jobs["def"] = {"id": "def", "status": "failed"}
+
+    result = get_render_status()
+    assert result["count"] == 2
+    assert len(result["jobs"]) == 2
+
+
+# ===========================================================================
+# Session 6: Server endpoint integration tests (5)
+# ===========================================================================
+
+@pytest.fixture(autouse=True)
+def _clear_server_state():
+    _cache["chunks"] = None
+    _cache["silence_map"] = None
+    _cache["last_input"] = None
+    for key in _session:
+        _session[key] = None
+    yield
+
+
+@pytest.fixture()
+def client():
+    return TestClient(app)
+
+
+def test_resolve_status_endpoint(client):
+    """GET /api/resolve/status returns availability info."""
+    with patch("agents.edbot.server.resolve_available", return_value={
+        "available": False, "version": None, "product": None,
+        "error": "Resolve not running",
+    }):
+        resp = client.get("/api/resolve/status")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["available"] is False
+
+
+def test_resolve_status_endpoint_online(client):
+    """GET /api/resolve/status returns version when online."""
+    with patch("agents.edbot.server.resolve_available", return_value={
+        "available": True, "version": "20.3.1",
+        "product": "DaVinci Resolve Studio", "error": None,
+    }):
+        resp = client.get("/api/resolve/status")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["available"] is True
+    assert data["version"] == "20.3.1"
+
+
+def test_resolve_timeline_endpoint_missing_file(client):
+    """POST /api/resolve/timeline returns 400 for missing file."""
+    resp = client.post("/api/resolve/timeline", json={
+        "video_path": "C:/nonexistent/video.mp4",
+    })
+    assert resp.status_code == 400
+
+
+def test_resolve_markers_endpoint_empty(client):
+    """POST /api/resolve/markers returns 400 for empty chapters."""
+    resp = client.post("/api/resolve/markers", json={
+        "chapters": [],
+    })
+    assert resp.status_code == 400
+
+
+def test_resolve_render_status_not_found(client):
+    """GET /api/resolve/render/{job_id} returns 404 for unknown job."""
+    _render_jobs.clear()
+    with patch("agents.edbot.server.get_render_status",
+               return_value={"status": "error", "error": "job not found: xyz"}):
+        resp = client.get("/api/resolve/render/xyz")
+    assert resp.status_code == 404

@@ -327,3 +327,209 @@ def resolve_export(
         "elapsed_seconds": elapsed,
         "error": "Render completed but output file not found",
     }
+
+
+# ---------------------------------------------------------------------------
+# Session 6: Higher-level bridge functions
+# ---------------------------------------------------------------------------
+
+_render_jobs: dict[str, dict[str, Any]] = {}
+
+
+def resolve_available() -> dict[str, Any]:
+    """Check if DaVinci Resolve is reachable via scripting API.
+
+    Returns dict with: available, version, product, error.
+    """
+    try:
+        info = get_resolve_info()
+        return {
+            "available": True,
+            "version": info.get("version_string"),
+            "product": info.get("product"),
+            "error": None,
+        }
+    except RuntimeError as exc:
+        return {
+            "available": False,
+            "version": None,
+            "product": None,
+            "error": str(exc),
+        }
+
+
+def list_projects() -> dict[str, Any]:
+    """List projects in current Resolve database.
+
+    Returns dict with: projects (list of names), current, count, error.
+    """
+    try:
+        resolve = connect()
+        pm = resolve.GetProjectManager()
+        projects = pm.GetProjectListInCurrentFolder() or []
+        current = pm.GetCurrentProject()
+        current_name = current.GetName() if current else None
+        return {
+            "projects": list(projects),
+            "current": current_name,
+            "count": len(projects),
+            "error": None,
+        }
+    except RuntimeError as exc:
+        return {
+            "projects": [],
+            "current": None,
+            "count": 0,
+            "error": str(exc),
+        }
+
+
+def create_timeline_from_video(
+    video_path: str,
+    timeline_name: str | None = None,
+) -> dict[str, Any]:
+    """Import a video file into Resolve media pool and create a timeline.
+
+    Args:
+        video_path: Absolute path to the video file.
+        timeline_name: Name for the new timeline. Defaults to video stem.
+
+    Returns dict with: success, timeline_name, error.
+    """
+    p = Path(video_path)
+    if not p.exists():
+        return {"success": False, "timeline_name": None, "error": f"file not found: {video_path}"}
+
+    if timeline_name is None:
+        timeline_name = p.stem
+
+    try:
+        project = _get_current_project()
+        media_pool = project.GetMediaPool()
+        if media_pool is None:
+            return {"success": False, "timeline_name": None, "error": "could not access media pool"}
+
+        media_items = media_pool.ImportMedia([str(p)])
+        if not media_items:
+            return {"success": False, "timeline_name": None, "error": "media import failed"}
+
+        timeline = media_pool.CreateTimelineFromClips(timeline_name, media_items)
+        if timeline is None:
+            return {"success": False, "timeline_name": timeline_name, "error": "timeline creation failed"}
+
+        return {
+            "success": True,
+            "timeline_name": timeline.GetName(),
+            "error": None,
+        }
+    except RuntimeError as exc:
+        return {"success": False, "timeline_name": None, "error": str(exc)}
+
+
+def add_markers_from_chapters(
+    chapters: list[dict[str, Any]],
+    timeline_name: str | None = None,
+    fps: float = 24.0,
+) -> dict[str, Any]:
+    """Add chapter markers to a Resolve timeline.
+
+    Args:
+        chapters: List of chapter dicts with 'title', 'start', 'summary'.
+        timeline_name: Target timeline name. Defaults to current timeline.
+        fps: Frame rate for converting seconds to frames.
+
+    Returns dict with: success, markers_added, error.
+    """
+    if not chapters:
+        return {"success": False, "markers_added": 0, "error": "no chapters provided"}
+
+    try:
+        project = _get_current_project()
+
+        if timeline_name:
+            timeline = None
+            for i in range(1, project.GetTimelineCount() + 1):
+                tl = project.GetTimelineByIndex(i)
+                if tl and tl.GetName() == timeline_name:
+                    timeline = tl
+                    break
+            if timeline is None:
+                return {"success": False, "markers_added": 0, "error": f"timeline not found: {timeline_name}"}
+        else:
+            timeline = project.GetCurrentTimeline()
+            if timeline is None:
+                return {"success": False, "markers_added": 0, "error": "no active timeline"}
+
+        added = 0
+        for ch in chapters:
+            start_sec = ch.get("start", 0)
+            frame = int(start_sec * fps)
+            title = ch.get("title", f"Chapter {added + 1}")
+            note = ch.get("summary", "")
+
+            success = timeline.AddMarker(frame, "Blue", title, note, 1)
+            if success:
+                added += 1
+
+        return {
+            "success": True,
+            "markers_added": added,
+            "error": None,
+        }
+    except RuntimeError as exc:
+        return {"success": False, "markers_added": 0, "error": str(exc)}
+
+
+def render_timeline(
+    timeline_name: str,
+    output_path: str,
+    preset: str = "h264_mp4",
+) -> dict[str, Any]:
+    """Start a render job for a timeline with job ID tracking.
+
+    Wraps resolve_export and stores result in _render_jobs dict.
+
+    Returns dict with: id, status, timeline, output_path, error.
+    """
+    import uuid
+    job_id = str(uuid.uuid4())[:8]
+
+    _render_jobs[job_id] = {
+        "id": job_id,
+        "status": "starting",
+        "timeline": timeline_name,
+        "output_path": output_path,
+        "preset": preset,
+        "error": None,
+    }
+
+    result = resolve_export(timeline_name, output_path, preset)
+
+    if result.get("success"):
+        _render_jobs[job_id]["status"] = "complete"
+        _render_jobs[job_id]["elapsed_seconds"] = result.get("elapsed_seconds")
+    else:
+        _render_jobs[job_id]["status"] = "failed"
+        _render_jobs[job_id]["error"] = result.get("error")
+
+    return _render_jobs[job_id]
+
+
+def get_render_status(job_id: str | None = None) -> dict[str, Any]:
+    """Get render job status.
+
+    Args:
+        job_id: Specific job ID. If None, returns all jobs.
+
+    Returns dict with job info, or list of all jobs.
+    """
+    if job_id is not None:
+        job = _render_jobs.get(job_id)
+        if job is None:
+            return {"error": f"job not found: {job_id}", "status": "error"}
+        return job
+
+    return {
+        "jobs": list(_render_jobs.values()),
+        "count": len(_render_jobs),
+    }

@@ -55,8 +55,12 @@ from chapter_detect import detect_chapters
 from speaker_detect import detect_speakers
 from portrait_crop import portrait_crop
 from tiktok_chunk import generate_tiktok_chunks
-from analytics_reader import read_messages
+from analytics_reader import read_messages, mark_message
 from output_watcher import OutputWatcher
+from resolve_bridge import (
+    resolve_available, list_projects, create_timeline_from_video,
+    add_markers_from_chapters, render_timeline, get_render_status,
+)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -64,7 +68,7 @@ from output_watcher import OutputWatcher
 
 TOOL_NAMES = ["transcribe", "silence_detect", "nlp_action", "executor",
               "chapter_detect", "speaker_detect", "portrait_crop", "tiktok_chunk",
-              "analytics_reader"]
+              "analytics_reader", "resolve_bridge"]
 
 MEDIA_EXTENSIONS = {".mp4", ".mov", ".mkv", ".avi", ".webm"}
 
@@ -223,6 +227,28 @@ class TikTokRequest(BaseModel):
     output_dir: str = "output"
     max_duration: float = 60.0
     crop_method: str = "center"
+
+
+class ResolveTimelineRequest(BaseModel):
+    video_path: str
+    timeline_name: str | None = None
+
+
+class ResolveMarkersRequest(BaseModel):
+    chapters: list[dict]
+    timeline_name: str | None = None
+    fps: float = 24.0
+
+
+class ResolveRenderRequest(BaseModel):
+    timeline_name: str
+    output_path: str
+    preset: str = "h264_mp4"
+
+
+class AnalyticsMarkRequest(BaseModel):
+    message_id: str
+    new_status: str = "read"
 
 
 # ---------------------------------------------------------------------------
@@ -690,6 +716,70 @@ async def api_analytics_inbox():
     """Return unread FEEDBACK messages from anabot-to-edbot bus."""
     messages = read_messages(filter_type="FEEDBACK", unread_only=True)
     return {"messages": messages, "count": len(messages)}
+
+
+@app.post("/api/analytics/mark")
+def api_analytics_mark(req: AnalyticsMarkRequest):
+    """Mark an analytics message as read or actioned."""
+    result = mark_message(
+        bus_path="agents/shared/anabot-to-edbot.json",
+        message_id=req.message_id,
+        new_status=req.new_status,
+    )
+    if result.get("code"):
+        error_response(400, result["error"], result["code"])
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Round 7: Resolve bridge endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/resolve/status")
+def api_resolve_status():
+    """Check if DaVinci Resolve is reachable."""
+    return resolve_available()
+
+
+@app.post("/api/resolve/timeline")
+def api_resolve_timeline(req: ResolveTimelineRequest):
+    """Create a Resolve timeline from a video file."""
+    p = Path(req.video_path)
+    if not p.exists():
+        error_response(400, f"file not found: {req.video_path}", "FILE_NOT_FOUND")
+    result = create_timeline_from_video(req.video_path, req.timeline_name)
+    if not result.get("success"):
+        error_response(500, result.get("error", "timeline creation failed"), "TOOL_ERROR")
+    return result
+
+
+@app.post("/api/resolve/markers")
+def api_resolve_markers(req: ResolveMarkersRequest):
+    """Add chapter markers to a Resolve timeline."""
+    if not req.chapters:
+        error_response(400, "no chapters provided", "INVALID_INPUT")
+    result = add_markers_from_chapters(req.chapters, req.timeline_name, req.fps)
+    if not result.get("success"):
+        error_response(500, result.get("error", "marker creation failed"), "TOOL_ERROR")
+    return result
+
+
+@app.post("/api/resolve/render")
+def api_resolve_render(req: ResolveRenderRequest):
+    """Start a Resolve render job."""
+    result = render_timeline(req.timeline_name, req.output_path, req.preset)
+    if result.get("status") == "failed":
+        error_response(500, result.get("error", "render failed"), "TOOL_ERROR")
+    return result
+
+
+@app.get("/api/resolve/render/{job_id}")
+def api_resolve_render_status(job_id: str):
+    """Get status of a Resolve render job."""
+    result = get_render_status(job_id)
+    if result.get("status") == "error":
+        error_response(404, result.get("error", "job not found"), "NOT_FOUND")
+    return result
 
 
 # ---------------------------------------------------------------------------

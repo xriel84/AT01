@@ -173,6 +173,55 @@ def mark_message(
     }
 
 
+def apply_recommendations(
+    bus_path: str = "agents/shared/anabot-to-edbot.json",
+) -> dict[str, Any]:
+    """Read unread FEEDBACK messages and extract actionable recommendations.
+
+    Marks each processed message as 'read' and returns a summary of
+    recommendations grouped by type.
+
+    Returns dict with: applied (list of actioned items), skipped, errors, count.
+    """
+    messages = read_messages(bus_path, filter_type="FEEDBACK", unread_only=True)
+    if not messages:
+        return {"applied": [], "skipped": 0, "errors": 0, "count": 0}
+
+    applied: list[dict[str, Any]] = []
+    skipped = 0
+    errors = 0
+
+    for msg in messages:
+        msg_id = msg.get("id", "")
+        subject = msg.get("subject", "")
+        body = msg.get("body", "")
+        recommendation = msg.get("recommendation", body)
+
+        if not recommendation:
+            skipped += 1
+            continue
+
+        # Mark as read
+        result = mark_message(bus_path, msg_id, "read")
+        if result.get("code"):
+            errors += 1
+            continue
+
+        applied.append({
+            "id": msg_id,
+            "subject": subject,
+            "recommendation": recommendation,
+            "status": "read",
+        })
+
+    return {
+        "applied": applied,
+        "skipped": skipped,
+        "errors": errors,
+        "count": len(applied),
+    }
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------

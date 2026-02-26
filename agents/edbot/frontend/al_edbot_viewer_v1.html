@@ -330,8 +330,16 @@
 <!-- Header -->
 <div class="al-header">
   <h1>EdBot Viewer</h1>
-  <div id="al-session-status" class="al-header-status">
-    <span class="dot off"></span> disconnected
+  <div style="display:flex;gap:16px;align-items:center;">
+    <div id="al-session-status" class="al-header-status">
+      <span class="dot off"></span> disconnected
+    </div>
+    <div id="al-resolve-status" class="al-header-status">
+      <span class="dot off"></span> Resolve
+    </div>
+    <div id="al-inbox-badge" class="al-header-status" style="cursor:pointer;" title="Analytics inbox">
+      <span class="dot off"></span> Inbox
+    </div>
   </div>
   <div class="al-header-meta">AT01 — al_edbot_viewer_v1</div>
 </div>
@@ -776,8 +784,41 @@
     }
   });
 
+  // --- Resolve status check ---
+  function checkResolve() {
+    apiFetch("/api/resolve/status").then(function(d) {
+      var el = document.getElementById("al-resolve-status");
+      if (d.available) {
+        el.innerHTML = '<span class="dot on"></span> Resolve ' + (d.version || "");
+      } else {
+        el.innerHTML = '<span class="dot off"></span> Resolve offline';
+      }
+    }).catch(function() {
+      document.getElementById("al-resolve-status").innerHTML =
+        '<span class="dot off"></span> Resolve';
+    });
+  }
+
+  // --- Analytics inbox check ---
+  function checkInbox() {
+    apiFetch("/api/analytics_inbox").then(function(d) {
+      var el = document.getElementById("al-inbox-badge");
+      var count = d.count || 0;
+      if (count > 0) {
+        el.innerHTML = '<span class="dot on" style="background:var(--al-warning)"></span> Inbox (' + count + ')';
+      } else {
+        el.innerHTML = '<span class="dot on" style="background:var(--al-text-muted)"></span> Inbox (0)';
+      }
+    }).catch(function() {
+      document.getElementById("al-inbox-badge").innerHTML =
+        '<span class="dot off"></span> Inbox';
+    });
+  }
+
   // --- Init ---
   checkSession();
+  checkResolve();
+  checkInbox();
 
 })();
 </script>
