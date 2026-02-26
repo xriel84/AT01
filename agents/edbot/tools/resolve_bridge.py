@@ -8,6 +8,7 @@ Scripting API: C:\\ProgramData\\Blackmagic Design\\DaVinci Resolve\\Support\\Dev
 """
 
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -16,7 +17,7 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Resolve scripting module path
+# Resolve scripting module path — runtime safety net for machines without env vars
 # ---------------------------------------------------------------------------
 
 _RESOLVE_SCRIPT_PATH = (
@@ -24,8 +25,8 @@ _RESOLVE_SCRIPT_PATH = (
     r"\Support\Developer\Scripting\Modules"
 )
 
-if _RESOLVE_SCRIPT_PATH not in sys.path:
-    sys.path.append(_RESOLVE_SCRIPT_PATH)
+if os.path.isdir(_RESOLVE_SCRIPT_PATH) and _RESOLVE_SCRIPT_PATH not in sys.path:
+    sys.path.insert(0, _RESOLVE_SCRIPT_PATH)
 
 
 # ---------------------------------------------------------------------------
