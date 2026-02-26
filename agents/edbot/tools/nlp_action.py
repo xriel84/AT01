@@ -140,6 +140,28 @@ _ACTION_PATTERNS: list[tuple[re.Pattern[str], str, dict[str, Any]]] = [
     # transcribe
     (re.compile(r"transcribe"),
      "transcribe", {}),
+
+    # --- Short-form conversion commands ---
+    (re.compile(r"(make|create|convert)\s*(a\s+|to\s+)?(short|shorts|tiktok|reel|reels)\b"),
+     "assemble_short", {"aspect": "9:16", "max_duration": 60}),
+
+    (re.compile(r"(make|create|convert)\s*(a\s+|to\s+)?(square|1.1)\b"),
+     "assemble_short", {"aspect": "1:1", "max_duration": 60}),
+
+    (re.compile(r"(portrait|vertical)\s+(crop|version|video)"),
+     "assemble_short", {"aspect": "9:16"}),
+
+    (re.compile(r"(auto|smart)\s*[-\s]?(crop|reframe)"),
+     "smart_crop", {}),
+
+    (re.compile(r"(track|find|detect)\s+(person|people|subject)"),
+     "person_track", {}),
+
+    (re.compile(r"(add|generate|create)\s+animated\s+(caption|subtitle)"),
+     "animated_captions", {}),
+
+    (re.compile(r"batch\s+shorts"),
+     "batch_shorts", {"aspect": "9:16", "max_duration": 60}),
 ]
 
 # Duration extraction patterns (applied after action match)

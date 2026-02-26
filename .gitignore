@@ -11,3 +11,4 @@ tests/demos/subtitle_samples/
 *.mp3
 
 .worktrees/
+*.pt

@@ -440,6 +440,136 @@ def api_tiktok(req: TikTokRequest):
     return result
 
 
+# ---------------------------------------------------------------------------
+# Shorts pipeline endpoints
+# ---------------------------------------------------------------------------
+
+class ShortsAssembleRequest(BaseModel):
+    video_path: str
+    target_aspect: str = "9:16"
+    max_duration: float = 60.0
+    caption_style: str = "highlight_word"
+    enable_face_zoom: bool = True
+    enable_emphasis_zoom: bool = True
+
+
+class ShortsBatchRequest(BaseModel):
+    input_dir: str
+    target_aspect: str = "9:16"
+    max_duration: float = 60.0
+
+
+class ShortsTrackRequest(BaseModel):
+    video_path: str
+
+
+class ShortsCropPreviewRequest(BaseModel):
+    video_path: str
+    target_aspect: str = "9:16"
+
+
+class ShortsCaptionsRequest(BaseModel):
+    video_path: str | None = None
+    transcript_path: str | None = None
+    style: str = "highlight_word"
+
+
+@app.post("/api/shorts/assemble")
+def api_shorts_assemble(req: ShortsAssembleRequest):
+    """Assemble a short-form video from landscape source."""
+    p = Path(req.video_path)
+    if not p.exists():
+        error_response(400, f"file not found: {req.video_path}", "FILE_NOT_FOUND")
+    try:
+        from shorts.shorts_assembler import assemble_short
+        result = assemble_short(
+            req.video_path,
+            target_aspect=req.target_aspect,
+            max_duration=req.max_duration,
+            caption_style=req.caption_style,
+            enable_face_zoom=req.enable_face_zoom,
+            enable_emphasis_zoom=req.enable_emphasis_zoom,
+        )
+        return result
+    except Exception as exc:
+        error_response(500, str(exc), "TOOL_ERROR")
+
+
+@app.post("/api/shorts/batch")
+def api_shorts_batch(req: ShortsBatchRequest):
+    """Batch process videos into shorts."""
+    p = Path(req.input_dir)
+    if not p.exists():
+        error_response(400, f"directory not found: {req.input_dir}", "FILE_NOT_FOUND")
+    try:
+        from shorts.shorts_assembler import batch_assemble_shorts
+        result = batch_assemble_shorts(
+            req.input_dir,
+            target_aspect=req.target_aspect,
+            max_duration=req.max_duration,
+        )
+        return result
+    except Exception as exc:
+        error_response(500, str(exc), "TOOL_ERROR")
+
+
+@app.post("/api/shorts/track")
+def api_shorts_track(req: ShortsTrackRequest):
+    """Run person tracking on a video (for debug/preview)."""
+    p = Path(req.video_path)
+    if not p.exists():
+        error_response(400, f"file not found: {req.video_path}", "FILE_NOT_FOUND")
+    try:
+        from shorts.person_tracker import track_persons
+        result = track_persons(req.video_path)
+        return result
+    except Exception as exc:
+        error_response(500, str(exc), "TOOL_ERROR")
+
+
+@app.post("/api/shorts/crop-preview")
+def api_shorts_crop_preview(req: ShortsCropPreviewRequest):
+    """Generate crop keyframes without rendering (for UI visualization)."""
+    p = Path(req.video_path)
+    if not p.exists():
+        error_response(400, f"file not found: {req.video_path}", "FILE_NOT_FOUND")
+    try:
+        from shorts.person_tracker import track_persons
+        from shorts.smart_crop import generate_crop_keyframes
+        tracking = track_persons(req.video_path)
+        crop_kf = generate_crop_keyframes(tracking, target_aspect=req.target_aspect)
+        return crop_kf
+    except Exception as exc:
+        error_response(500, str(exc), "TOOL_ERROR")
+
+
+@app.post("/api/shorts/captions")
+def api_shorts_captions(req: ShortsCaptionsRequest):
+    """Generate animated captions from transcript."""
+    transcript_path = req.transcript_path
+    if not transcript_path and req.video_path:
+        # Try to find transcript from video stem
+        vp = Path(req.video_path)
+        candidates = [
+            Path("temp") / f"{vp.stem}_transcript.json",
+            Path("output") / "transcript.json",
+        ]
+        for c in candidates:
+            if c.exists():
+                transcript_path = str(c)
+                break
+    if not transcript_path or not Path(transcript_path).exists():
+        error_response(400, "no transcript found — provide transcript_path or run transcribe first", "NO_TRANSCRIPT")
+    try:
+        from shorts.animated_captions import generate_animated_captions
+        result = generate_animated_captions(
+            transcript_path, style=req.style,
+        )
+        return result
+    except Exception as exc:
+        error_response(500, str(exc), "TOOL_ERROR")
+
+
 @app.get("/api/analytics_inbox")
 async def api_analytics_inbox():
     """Return unread FEEDBACK messages from anabot-to-edbot bus."""

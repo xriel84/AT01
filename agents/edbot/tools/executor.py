@@ -50,6 +50,8 @@ PLATFORM_PRESETS: dict[str, dict[str, Any]] = {
 SUPPORTED_ACTIONS: set[str] = {
     "silence_remove", "trim", "crop", "caption_burn",
     "platform_export", "transcribe", "resolve_export",
+    "assemble_short", "smart_crop", "person_track",
+    "animated_captions", "batch_shorts",
 }
 
 
@@ -330,6 +332,21 @@ def execute_action(
     if action_type == "resolve_export":
         return _execute_resolve_export(in_path, out_dir, params, t0)
 
+    if action_type == "assemble_short":
+        return _execute_assemble_short(in_path, out_dir, params, t0)
+
+    if action_type == "smart_crop":
+        return _execute_smart_crop(in_path, out_dir, params, t0)
+
+    if action_type == "person_track":
+        return _execute_person_track(in_path, out_dir, params, t0)
+
+    if action_type == "animated_captions":
+        return _execute_animated_captions(in_path, out_dir, params, t0)
+
+    if action_type == "batch_shorts":
+        return _execute_batch_shorts(in_path, out_dir, params, t0)
+
     # --- Get input duration ---
     duration_in = _get_duration(in_path)
 
@@ -605,4 +622,211 @@ def _execute_resolve_export(
         ffmpeg_cmd=None,
         elapsed_seconds=elapsed,
         error=result.get("error", "resolve render failed"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Shorts pipeline handlers
+# ---------------------------------------------------------------------------
+
+def _execute_assemble_short(
+    in_path: Path, out_dir: Path, params: dict[str, Any], t0: float,
+) -> dict[str, Any]:
+    """Run shorts assembler pipeline."""
+    try:
+        from shorts.shorts_assembler import assemble_short
+    except ImportError:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="assemble_short", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="shorts.shorts_assembler not available",
+        )
+
+    target_aspect = params.get("target_aspect", "9:16")
+    max_duration = params.get("max_duration", 60.0)
+    caption_style = params.get("caption_style", "highlight_word")
+
+    try:
+        result = assemble_short(
+            str(in_path), output_dir=str(out_dir),
+            target_aspect=target_aspect, max_duration=max_duration,
+            caption_style=caption_style,
+        )
+    except Exception as exc:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="assemble_short", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed, error=str(exc),
+        )
+
+    elapsed = time.perf_counter() - t0
+    output = result.get("output")
+    return _result_dict(
+        status="success", action="assemble_short", input_path=str(in_path),
+        output_path=output, duration_in=None, duration_out=None,
+        ffmpeg_cmd=None, elapsed_seconds=elapsed, error=None,
+    )
+
+
+def _execute_smart_crop(
+    in_path: Path, out_dir: Path, params: dict[str, Any], t0: float,
+) -> dict[str, Any]:
+    """Run person tracking + smart crop keyframe generation."""
+    try:
+        from shorts.person_tracker import track_persons
+        from shorts.smart_crop import generate_crop_keyframes
+    except ImportError:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="smart_crop", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="shorts tools not available",
+        )
+
+    try:
+        tracking = track_persons(str(in_path), output_dir=str(out_dir))
+        crop_kf = generate_crop_keyframes(
+            tracking, target_aspect=params.get("target_aspect", "9:16"),
+        )
+    except Exception as exc:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="smart_crop", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed, error=str(exc),
+        )
+
+    elapsed = time.perf_counter() - t0
+    return _result_dict(
+        status="success", action="smart_crop", input_path=str(in_path),
+        output_path=None, duration_in=None, duration_out=None,
+        ffmpeg_cmd=None, elapsed_seconds=elapsed, error=None,
+    )
+
+
+def _execute_person_track(
+    in_path: Path, out_dir: Path, params: dict[str, Any], t0: float,
+) -> dict[str, Any]:
+    """Run person tracking only."""
+    try:
+        from shorts.person_tracker import track_persons
+    except ImportError:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="person_track", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="shorts.person_tracker not available",
+        )
+
+    try:
+        track_persons(str(in_path), output_dir=str(out_dir))
+    except Exception as exc:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="person_track", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed, error=str(exc),
+        )
+
+    elapsed = time.perf_counter() - t0
+    return _result_dict(
+        status="success", action="person_track", input_path=str(in_path),
+        output_path=None, duration_in=None, duration_out=None,
+        ffmpeg_cmd=None, elapsed_seconds=elapsed, error=None,
+    )
+
+
+def _execute_animated_captions(
+    in_path: Path, out_dir: Path, params: dict[str, Any], t0: float,
+) -> dict[str, Any]:
+    """Generate animated captions from transcript."""
+    try:
+        from shorts.animated_captions import generate_animated_captions
+    except ImportError:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="animated_captions", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="shorts.animated_captions not available",
+        )
+
+    # Look for transcript JSON
+    transcript_path = out_dir / f"{in_path.stem}_transcript.json"
+    if not transcript_path.exists():
+        transcript_path = Path("output") / "transcript.json"
+
+    if not transcript_path.exists():
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="animated_captions", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="no transcript found — run transcribe first",
+        )
+
+    style = params.get("caption_style", "highlight_word")
+    ass_path = str(out_dir / f"{in_path.stem}_captions.ass")
+
+    try:
+        result = generate_animated_captions(
+            str(transcript_path), output_path=ass_path, style=style,
+        )
+    except Exception as exc:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="animated_captions", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed, error=str(exc),
+        )
+
+    elapsed = time.perf_counter() - t0
+    return _result_dict(
+        status="success", action="animated_captions", input_path=str(in_path),
+        output_path=ass_path, duration_in=None, duration_out=None,
+        ffmpeg_cmd=None, elapsed_seconds=elapsed, error=None,
+    )
+
+
+def _execute_batch_shorts(
+    in_path: Path, out_dir: Path, params: dict[str, Any], t0: float,
+) -> dict[str, Any]:
+    """Run batch shorts assembly on a directory."""
+    try:
+        from shorts.shorts_assembler import batch_assemble_shorts
+    except ImportError:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="batch_shorts", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="shorts.shorts_assembler not available",
+        )
+
+    input_dir = str(in_path.parent) if in_path.is_file() else str(in_path)
+
+    try:
+        result = batch_assemble_shorts(
+            input_dir, output_dir=str(out_dir),
+            target_aspect=params.get("target_aspect", "9:16"),
+            max_duration=params.get("max_duration", 60.0),
+        )
+    except Exception as exc:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="batch_shorts", input_path=input_dir,
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed, error=str(exc),
+        )
+
+    elapsed = time.perf_counter() - t0
+    return _result_dict(
+        status="success", action="batch_shorts", input_path=input_dir,
+        output_path=str(out_dir), duration_in=None, duration_out=None,
+        ffmpeg_cmd=None, elapsed_seconds=elapsed, error=None,
     )
