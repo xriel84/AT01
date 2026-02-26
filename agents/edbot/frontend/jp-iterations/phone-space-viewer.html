@@ -1,0 +1,3869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JP01 · Phone Space Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: #080a0f;
+  font-family: 'IBM Plex Mono', monospace;
+  color: #8892a8;
+}
+
+#jp_container {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: #080a0f;
+}
+#jp_container canvas { display: block; }
+
+/* ─── HUD — top bar ─── */
+#jp_hud {
+  position: fixed; top: 0; left: 0; right: 0; height: 38px; z-index: 100;
+  display: flex; align-items: center; padding: 0 16px; gap: 12px;
+  background: rgba(8, 10, 15, 0.85);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+}
+.jp_sep { color: #2a3040; }
+.jp_title { color: #4a5570; font-weight: 500; }
+.jp_val { color: #6a7590; }
+.jp_spacer { flex: 1; }
+
+.jp_dot {
+  width: 6px; height: 6px; border-radius: 50%; display: inline-block;
+  flex-shrink: 0;
+}
+.jp_dot--muted  { background: #2a3040; }
+.jp_dot--live   { background: #22c55e; box-shadow: 0 0 6px #22c55e80; }
+.jp_dot--stale  { background: #eab308; box-shadow: 0 0 6px #eab30880; }
+.jp_dot--error  { background: #ef4444; box-shadow: 0 0 6px #ef444480; }
+
+.jp_variant-btn {
+  padding: 2px 8px; border: 1px solid #1a2030; border-radius: 3px;
+  background: transparent; color: #4a5570; font-family: inherit; font-size: 10px;
+  cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em;
+  transition: all 0.15s;
+}
+.jp_variant-btn:hover { border-color: #06b6d4; color: #06b6d4; }
+.jp_variant-btn.active {
+  border-color: #06b6d4; color: #06b6d4;
+  box-shadow: 0 0 8px #06b6d440; background: rgba(6, 182, 212, 0.08);
+}
+
+.jp_tab-btn {
+  padding: 2px 8px; border: 1px solid #1a2030; border-radius: 3px;
+  background: transparent; color: #4a5570; font-family: inherit; font-size: 10px;
+  cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em;
+  transition: all 0.15s;
+}
+.jp_tab-btn:hover { border-color: #eab308; color: #eab308; }
+.jp_tab-btn.active {
+  border-color: #eab308; color: #eab308;
+  box-shadow: 0 0 8px #eab30840; background: rgba(234, 179, 8, 0.08);
+}
+
+#jp_portrait-empty {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50;
+  display: none; align-items: center; justify-content: center;
+  flex-direction: column; gap: 8px;
+  pointer-events: none;
+  font-family: 'IBM Plex Mono', monospace;
+}
+#jp_portrait-empty.visible { display: flex; }
+#jp_portrait-empty .jp_pe-title {
+  color: #2a3040; font-size: 12px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+#jp_portrait-empty .jp_pe-sub {
+  color: #1e2330; font-size: 10px; font-weight: 300;
+  letter-spacing: 0.05em;
+}
+
+.jp_queue-btn {
+  background: transparent;
+  border: 1px solid #1e2330;
+  color: #4a5570;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  cursor: pointer;
+  margin-top: 6px;
+  width: 100%;
+  text-align: center;
+  transition: all 0.2s;
+}
+.jp_queue-btn:hover { border-color: #eab308; color: #eab308; }
+.jp_queue-btn.jp_queued {
+  border-color: #eab308; color: #eab308;
+  background: rgba(234, 179, 8, 0.08);
+}
+
+.jp_source-link-btn {
+  color: #eab308; cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: none; border: none; padding: 0;
+  transition: opacity 0.2s;
+}
+.jp_source-link-btn:hover { opacity: 0.7; text-decoration: underline; }
+
+.jp-zp-derivatives {
+  font-size: 9px; color: #eab308; text-transform: uppercase;
+  letter-spacing: 0.06em; margin-top: 2px;
+}
+
+/* ─── Controls — bottom bar ─── */
+#jp_controls {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 52px; z-index: 100;
+  display: flex; align-items: center; padding: 0 16px; gap: 8px;
+  background: rgba(8, 10, 15, 0.85);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  font-size: 10px;
+}
+.jp_label { color: #4a5570; text-transform: uppercase; letter-spacing: 0.08em; margin-right: 4px; white-space: nowrap; }
+
+#jp_tag-container { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+
+.jp_tag-btn {
+  padding: 4px 10px; border: 1px solid #1a2030; border-radius: 3px;
+  background: transparent; color: #6a7590; font-family: inherit; font-size: 10px;
+  cursor: pointer; transition: all 0.15s;
+}
+.jp_tag-btn:hover { border-color: #06b6d4; color: #06b6d4; }
+.jp_tag-btn.active {
+  border-color: #06b6d4; color: #06b6d4;
+  box-shadow: 0 0 10px #06b6d440; background: rgba(6, 182, 212, 0.08);
+}
+
+.jp_reset-btn {
+  padding: 4px 10px; border: 1px solid #2a1520; border-radius: 3px;
+  background: transparent; color: #a05060; font-family: inherit; font-size: 10px;
+  cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em;
+  transition: all 0.15s; margin-left: auto; flex-shrink: 0;
+}
+.jp_reset-btn:hover { border-color: #ef4444; color: #ef4444; }
+
+/* ─── Phone label layers ─── */
+.jp-label-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; color: #4a5570; text-transform: uppercase;
+  letter-spacing: 0.1em; white-space: nowrap;
+  pointer-events: none; user-select: none;
+  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  transition: color 0.2s;
+}
+.jp-label-summary {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; color: #6a7590; line-height: 1.4;
+  max-width: 180px; text-align: center;
+  pointer-events: none; user-select: none;
+  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  opacity: 0; max-height: 0; overflow: hidden;
+  transition: opacity 0.4s, max-height 0.4s;
+}
+.jp-summary-visible .jp-label-summary {
+  opacity: 1; max-height: 200px;
+}
+
+/* ─── Zoom panel — compact right sidebar ─── */
+#jp-zoom-panel {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: 220px; z-index: 300;
+  background: rgba(8, 10, 16, 0.88);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-left: 1px solid rgba(255,255,255,0.06);
+  transform: translateX(100%);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow-y: auto; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+  scrollbar-width: thin; scrollbar-color: #1a2840 transparent;
+}
+#jp-zoom-panel.open { transform: translateX(0); }
+#jp-zoom-panel::-webkit-scrollbar { width: 4px; }
+#jp-zoom-panel::-webkit-scrollbar-thumb { background: #1a2840; border-radius: 2px; }
+
+.jp-zp-close {
+  position: absolute; top: 6px; right: 6px;
+  width: 22px; height: 22px; border: 1px solid #1a2030; border-radius: 3px;
+  background: rgba(8, 10, 16, 0.8); color: #6a7590; font-size: 14px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; font-family: inherit;
+}
+.jp-zp-close:hover { border-color: #ef4444; color: #ef4444; }
+
+.jp-zp-name {
+  font-size: 13px; font-weight: 600; color: #c8d0e0;
+  letter-spacing: 0.02em; margin-top: 4px; line-height: 1.3;
+}
+.jp-zp-platform {
+  display: inline-block; padding: 1px 5px; border-radius: 2px;
+  font-size: 8px; font-weight: 600; letter-spacing: 0.05em;
+  margin-left: 4px; vertical-align: middle;
+}
+.jp-zp-meta {
+  font-size: 8px; color: #4a5570; text-transform: uppercase; letter-spacing: 0.06em;
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.jp-zp-meta span { white-space: nowrap; }
+.jp-zp-tags {
+  display: flex; gap: 4px; flex-wrap: wrap;
+}
+.jp-zp-tag {
+  padding: 2px 6px; border: 1px solid #1a2840; border-radius: 2px;
+  font-size: 8px; color: #06b6d4;
+}
+.jp-zp-topic {
+  font-size: 9px; color: #06b6d4; text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.jp-zp-source-link {
+  font-size: 9px; color: #eab308; text-transform: uppercase;
+  letter-spacing: 0.06em; margin-top: 2px;
+}
+.jp-zp-divider {
+  border: none; border-top: 1px solid rgba(255,255,255,0.04);
+  margin: 2px 0;
+}
+.jp-zp-section-head {
+  font-size: 8px; color: #4a5570; text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.jp-zp-summary {
+  font-size: 9px; color: #8892a8; line-height: 1.5;
+  border-left: 2px solid #1a2840; padding-left: 8px;
+}
+.jp-zp-transcript {
+  font-size: 9px; color: #6a7590; line-height: 1.4; font-style: italic;
+}
+.jp-zp-segments-toggle {
+  font-size: 8px; color: #4a5570; text-transform: uppercase; letter-spacing: 0.08em;
+  cursor: pointer; display: flex; align-items: center; gap: 4px;
+  transition: color 0.15s; user-select: none;
+}
+.jp-zp-segments-toggle:hover { color: #06b6d4; }
+.jp-zp-segments-toggle::before {
+  content: '\25B6'; font-size: 6px; transition: transform 0.2s;
+}
+.jp-zp-segments-toggle.open::before { transform: rotate(90deg); }
+.jp-zp-segments-list {
+  max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
+}
+.jp-zp-segments-list.open { max-height: 600px; overflow-y: auto; }
+.jp-zp-seg {
+  font-size: 8px; color: #5a6580; line-height: 1.5; padding: 1px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+}
+.jp-zp-seg-time { color: #06b6d4; font-weight: 500; margin-right: 4px; }
+.jp-zp-detail { font-size: 8px; color: #3a4560; display: flex; flex-wrap: wrap; gap: 4px; }
+.jp-zp-detail span { white-space: nowrap; }
+.jp-zp-artbot-header {
+  font-size: 9px; font-weight: 600; color: #06b6d4; letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding-top: 4px; border-top: 1px solid rgba(6, 182, 212, 0.15);
+  margin-top: auto;
+}
+.jp-zp-artbot-status {
+  font-size: 8px; color: #3a4560; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 6px; border: 1px dashed #1a2840; border-radius: 3px; text-align: center;
+  line-height: 1.4;
+}
+.jp-zp-artbot-btn {
+  padding: 5px 8px; border: 1px solid #1a2840; border-radius: 2px;
+  background: transparent; color: #3a4560; font-family: inherit; font-size: 8px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  cursor: not-allowed; transition: all 0.15s;
+}
+.jp-zp-artbot-btn:hover { border-color: #06b6d430; color: #4a5570; }
+.jp-zp-nav {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06);
+  margin-top: 4px;
+}
+.jp-zp-nav button {
+  padding: 3px 10px; border: 1px solid #1a2030; border-radius: 2px;
+  background: transparent; color: #6a7590; font-family: inherit; font-size: 9px;
+  cursor: pointer; transition: all 0.15s;
+}
+.jp-zp-nav button:hover { border-color: #06b6d4; color: #06b6d4; }
+.jp-zp-counter { font-size: 9px; color: #4a5570; letter-spacing: 0.05em; }
+
+/* ─── Triage bar ─── */
+#jp-triage-bar {
+  position: fixed; top: 44px; right: 12px; z-index: 200;
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 10px; border-radius: 3px;
+  background: rgba(8, 10, 15, 0.88);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.06);
+  font-size: 8px; font-family: 'IBM Plex Mono', monospace;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+#jp-triage-bar.jp-zoom-hidden { opacity: 0; pointer-events: none; }
+.jp-triage-count { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+.jp-triage-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.jp-triage-dot--red { background: #ef4444; }
+.jp-triage-dot--yellow { background: #eab308; }
+.jp-triage-dot--green { background: #22c55e; }
+.jp-triage-count--red { color: #ef4444; }
+.jp-triage-count--yellow { color: #eab308; }
+.jp-triage-count--green { color: #22c55e; }
+.jp-triage-action {
+  padding: 2px 6px; border: 1px solid #1a2030; border-radius: 2px;
+  background: transparent; color: #4a5570; font-family: inherit; font-size: 7px;
+  cursor: pointer; text-transform: uppercase; letter-spacing: 0.04em;
+  transition: all 0.15s; white-space: nowrap;
+}
+.jp-triage-action:hover { border-color: #06b6d4; color: #06b6d4; }
+.jp-triage-action.active { border-color: #06b6d4; color: #06b6d4; background: rgba(6,182,212,0.08); }
+
+/* ─── Triage in zoom panel ─── */
+.jp-zp-triage { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.jp-zp-triage-grade {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 9px; font-weight: 500; letter-spacing: 0.04em;
+}
+.jp-zp-triage-reason { font-size: 8px; color: #4a5570; }
+.jp-zp-triage-actions { display: flex; gap: 4px; }
+.jp-zp-triage-btn {
+  padding: 2px 8px; border: 1px solid #1a2030; border-radius: 2px;
+  background: transparent; font-family: inherit; font-size: 8px;
+  cursor: pointer; transition: all 0.15s; text-transform: uppercase;
+}
+.jp-zp-triage-btn--keep { color: #22c55e; }
+.jp-zp-triage-btn--keep:hover, .jp-zp-triage-btn--keep.active { border-color: #22c55e; background: rgba(34,197,94,0.1); }
+.jp-zp-triage-btn--flag { color: #eab308; }
+.jp-zp-triage-btn--flag:hover, .jp-zp-triage-btn--flag.active { border-color: #eab308; background: rgba(234,179,8,0.1); }
+.jp-zp-triage-btn--delete { color: #ef4444; }
+.jp-zp-triage-btn--delete:hover, .jp-zp-triage-btn--delete.active { border-color: #ef4444; background: rgba(239,68,68,0.1); }
+
+/* ─── Figure detection in zoom panel (Part D) ─── */
+.jp-zp-figure-stats {
+  font-size: 9px; color: #6a7590; line-height: 1.6;
+}
+.jp-zp-figure-stats--empty {
+  font-size: 8px; color: #3a4560;
+}
+.jp-zp-figure-stat-label { color: #4a5570; }
+.jp-zp-figure-stat-value { color: #22c55e; font-weight: 500; }
+.jp-zp-figure-timeline-wrap { position: relative; }
+.jp-zp-figure-minibar {
+  width: 100%; height: 8px; border-radius: 2px;
+  cursor: crosshair;
+}
+.jp-zp-figure-tooltip {
+  position: absolute; top: -22px; left: 0;
+  padding: 2px 6px; border-radius: 2px;
+  background: rgba(8, 10, 15, 0.95); border: 1px solid #1e2330;
+  font-size: 7px; color: #8892a8; white-space: nowrap;
+  pointer-events: none; display: none;
+}
+
+/* ─── Cluster nav buttons ─── */
+.jp_cluster-btn {
+  padding: 3px 8px; border: 1px solid #1a2030; border-radius: 3px;
+  background: transparent; color: #4a5570; font-family: inherit; font-size: 9px;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  display: flex; align-items: center; gap: 4px;
+}
+.jp_cluster-btn:hover { border-color: #06b6d4; color: #06b6d4; }
+.jp_cluster-btn.active {
+  border-color: #06b6d4; color: #06b6d4;
+  box-shadow: 0 0 8px #06b6d440; background: rgba(6, 182, 212, 0.08);
+}
+.jp_cluster-count {
+  font-size: 8px; color: #2a3040; font-weight: 600;
+}
+.jp_cluster-btn.active .jp_cluster-count { color: #06b6d480; }
+
+/* ─── HUD/controls zoom-hide ─── */
+#jp_hud.jp-zoom-hidden,
+#jp_controls.jp-zoom-hidden {
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+#jp_hud, #jp_controls {
+  transition: opacity 0.3s;
+}
+
+/* ─── CSS2D phone label hover ─── */
+.jp-label-tag--hover { color: #06b6d4 !important; }
+
+/* ─── Quadrant labels ─── */
+.jp_quadrant-label {
+  font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #06b6d4;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  white-space: nowrap; pointer-events: none; user-select: none;
+  opacity: 0; transition: opacity 0.4s;
+}
+.jp_quadrant-label.visible { opacity: 1; }
+.jp_quadrant-label--v3 {
+  font-size: 16px;
+  text-shadow: 0 0 12px rgba(6, 182, 212, 0.6), 0 0 24px rgba(6, 182, 212, 0.3);
+}
+</style>
+</head>
+<body>
+
+<!-- HUD — top bar -->
+<div id="jp_hud">
+  <span class="jp_title">JP01 · PHONE SPACE VIEWER</span>
+  <span class="jp_sep">&middot;</span>
+  <span class="jp_dot jp_dot--muted" id="jp_status-dot"></span>
+  <span class="jp_sep">&middot;</span>
+  <span class="jp_val" id="jp_clip-count">0 clips</span>
+  <span class="jp_sep">&middot;</span>
+  <span class="jp_val" id="jp_mode">PLACEHOLDER</span>
+  <span class="jp_sep">&middot;</span>
+  <button class="jp_tab-btn active" data-tab="source">SOURCE (<span id="jp_tab-source-count">0</span>)</button>
+  <button class="jp_tab-btn" data-tab="portrait">PORTRAIT (<span id="jp_tab-portrait-count">0</span>)</button>
+  <span class="jp_spacer"></span>
+  <button class="jp_variant-btn" data-variant="V1">V1</button>
+  <button class="jp_variant-btn active" data-variant="V2">V2</button>
+  <button class="jp_variant-btn" data-variant="V3">V3</button>
+</div>
+
+<!-- Triage bar — top right -->
+<div id="jp-triage-bar">
+  <span class="jp-triage-count jp-triage-count--red"><span class="jp-triage-dot jp-triage-dot--red"></span> RED: <span id="jp-red-count">0</span></span>
+  <span class="jp-triage-count jp-triage-count--yellow"><span class="jp-triage-dot jp-triage-dot--yellow"></span> YEL: <span id="jp-yellow-count">0</span></span>
+  <span class="jp-triage-count jp-triage-count--green"><span class="jp-triage-dot jp-triage-dot--green"></span> GRN: <span id="jp-green-count">0</span></span>
+  <button class="jp-triage-action" id="jp-hide-red">HIDE RED</button>
+  <button class="jp-triage-action" id="jp-show-only-green">GREEN ONLY</button>
+  <button class="jp-triage-action" id="jp-show-all">SHOW ALL</button>
+  <button class="jp-triage-action" id="jp-export-triage">EXPORT</button>
+</div>
+
+<!-- Controls — cluster nav bar -->
+<div id="jp_controls">
+  <span class="jp_label">Zones:</span>
+  <div id="jp_tag-container"></div>
+  <button class="jp_reset-btn" id="jp_reset-btn">Reset</button>
+</div>
+
+<!-- Zoom panel — right side slide-in -->
+<div id="jp-zoom-panel">
+  <button class="jp-zp-close" id="jp-zp-close">&times;</button>
+  <div class="jp-zp-name" id="jp-zp-name"></div>
+  <div class="jp-zp-meta" id="jp-zp-meta"></div>
+  <div class="jp-zp-tags" id="jp-zp-tags"></div>
+  <div class="jp-zp-topic" id="jp-zp-topic"></div>
+  <div class="jp-zp-source-link" id="jp-zp-source-link" style="display:none"></div>
+  <hr class="jp-zp-divider">
+  <div class="jp-zp-section-head">TRIAGE</div>
+  <div class="jp-zp-triage" id="jp-zp-triage">
+    <div class="jp-zp-triage-grade" id="jp-zp-triage-grade"></div>
+    <div class="jp-zp-triage-reason" id="jp-zp-triage-reason"></div>
+  </div>
+  <div class="jp-zp-triage-actions" id="jp-zp-triage-actions">
+    <button class="jp-zp-triage-btn jp-zp-triage-btn--keep" id="jp-zp-keep">KEEP</button>
+    <button class="jp-zp-triage-btn jp-zp-triage-btn--flag" id="jp-zp-flag">FLAG</button>
+    <button class="jp-zp-triage-btn jp-zp-triage-btn--delete" id="jp-zp-delete">DELETE</button>
+  </div>
+  <hr class="jp-zp-divider">
+  <div class="jp-zp-section-head">FIGURE DETECTION</div>
+  <div id="jp-zp-figure-stats" class="jp-zp-figure-stats jp-zp-figure-stats--empty">[NO FIGURE DATA]</div>
+  <div id="jp-zp-figure-timeline-wrap" class="jp-zp-figure-timeline-wrap" style="display:none">
+    <div class="jp-zp-section-head">FIGURE TIMELINE</div>
+    <canvas id="jp-zp-figure-minibar" width="200" height="8" class="jp-zp-figure-minibar"></canvas>
+    <div id="jp-zp-figure-tooltip" class="jp-zp-figure-tooltip"></div>
+  </div>
+  <hr class="jp-zp-divider">
+  <div class="jp-zp-section-head">SUMMARY</div>
+  <div class="jp-zp-summary" id="jp-zp-summary"></div>
+  <div class="jp-zp-detail" id="jp-zp-detail"></div>
+  <div class="jp-zp-section-head">TRANSCRIPT</div>
+  <div class="jp-zp-transcript" id="jp-zp-transcript"></div>
+  <div class="jp-zp-segments-toggle" id="jp-zp-seg-toggle">SEGMENTS (<span id="jp-zp-seg-count">0</span>)</div>
+  <div class="jp-zp-segments-list" id="jp-zp-seg-list"></div>
+  <hr class="jp-zp-divider">
+  <div id="jp-zoom-audio" style="display:none">
+    <div class="jp-zp-section-head">AUDIO</div>
+    <button id="jp-audio-toggle" class="jp-triage-action">[UNMUTE]</button>
+  </div>
+  <hr class="jp-zp-divider">
+  <div class="jp-zp-artbot-header">ARTBOT</div>
+  <div class="jp-zp-artbot-status">[AWAITING CONNECTION]<br>Pipeline not yet linked</div>
+  <button class="jp-zp-artbot-btn" disabled>REQUEST CAPTIONS</button>
+  <button class="jp-zp-artbot-btn" disabled>GENERATE ART</button>
+  <button class="jp-zp-artbot-btn" disabled>STYLE REFERENCE</button>
+  <div class="jp-zp-nav">
+    <button id="jp-zp-prev">&larr; PREV</button>
+    <span class="jp-zp-counter" id="jp-zp-counter">1 / 10</span>
+    <button id="jp-zp-next">NEXT &rarr;</button>
+  </div>
+</div>
+
+<!-- Portrait empty state overlay -->
+<div id="jp_portrait-empty">
+  <div class="jp_pe-title">[AWAITING ASSEMBLY_MANIFEST.JSON]</div>
+  <div class="jp_pe-sub">drop file or connect AT01 pipeline</div>
+</div>
+
+<!-- 3D container -->
+<div id="jp_container"></div>
+
+<!-- CDN scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// CSS2DRenderer — inline from Three.js r128 examples (reliable)
+// ═══════════════════════════════════════════════════════════════════
+
+class CSS2DObject extends THREE.Object3D {
+  constructor(element) {
+    super();
+    this.element = element;
+    this.element.style.position = 'absolute';
+    this.element.style.userSelect = 'none';
+    this.element.style.pointerEvents = 'none';
+    this.addEventListener('removed', function () {
+      if (this.element.parentNode) this.element.parentNode.removeChild(this.element);
+    });
+  }
+}
+CSS2DObject.prototype.isCSS2DObject = true;
+
+class CSS2DRenderer {
+  constructor() {
+    this.domElement = document.createElement('div');
+    this.domElement.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;overflow:hidden;';
+    this._width = 0;
+    this._height = 0;
+    this._vec = new THREE.Vector3();
+    this._vecView = new THREE.Vector3();
+  }
+  setSize(w, h) {
+    this._width = w;
+    this._height = h;
+    this.domElement.style.width = w + 'px';
+    this.domElement.style.height = h + 'px';
+  }
+  render(scene, camera) {
+    const v = this._vec;
+    const halfW = this._width / 2;
+    const halfH = this._height / 2;
+    scene.traverseVisible(function (obj) {
+      if (!obj.isCSS2DObject) return;
+      v.setFromMatrixPosition(obj.matrixWorld);
+      // Behind camera check
+      const vv = v.clone().applyMatrix4(camera.matrixWorldInverse);
+      if (vv.z > 0) {
+        obj.element.style.display = 'none';
+        return;
+      }
+      obj.element.style.display = '';
+      v.project(camera);
+      const x = v.x * halfW + halfW;
+      const y = -(v.y * halfH) + halfH;
+      obj.element.style.transform = 'translate(-50%,-50%) translate(' + x + 'px,' + y + 'px)';
+      if (!obj.element.parentNode) {
+        this.domElement.appendChild(obj.element);
+      }
+    }.bind(this));
+  }
+}
+
+console.log('[jp] CSS2DRenderer inline — OK');
+
+// ═══════════════════════════════════════════════════════════════════
+// CONSTANTS & CONFIG
+// ═══════════════════════════════════════════════════════════════════
+
+const PLATFORM_COLORS = {
+  tiktok:         '#69c9d0',
+  youtube_shorts: '#ff4444',
+  ig_reels:       '#c13584',
+  x_video:        '#1d9bf0',
+  youtube_long:   '#ff0000'
+};
+
+const PLATFORM_DARK = {
+  tiktok:         '#0d1f20',
+  youtube_shorts: '#1a0808',
+  ig_reels:       '#1a0812',
+  x_video:        '#081520',
+  youtube_long:   '#1a0000'
+};
+
+const PLATFORM_ABBR = {
+  tiktok:         'TK',
+  youtube_shorts: 'YS',
+  ig_reels:       'IG',
+  x_video:        'XV',
+  youtube_long:   'YL'
+};
+
+const QUADRANT_POSITIONS = [
+  { x: -7, y:  0, z:  0 },  // slot 0: LEFT
+  { x:  7, y:  0, z:  0 },  // slot 1: RIGHT
+  { x:  0, y:  6, z:  0 },  // slot 2: UP
+  { x:  0, y: -6, z:  0 },  // slot 3: DOWN
+  { x:  0, y:  0, z:  7 },  // slot 4: FRONT
+  { x:  0, y:  0, z: -7 }   // slot 5: BACK
+];
+
+// ─── Cluster zones (Part B) ───
+const CLUSTER_ZONES = {
+  'xr':            { x: -8,  y: 0, z:  0, label: '#xr' },
+  'vr':            { x: -4,  y: 0, z:  0, label: '#vr' },
+  'mr':            { x:  0,  y: 0, z:  0, label: '#mr' },
+  'theater':       { x:  4,  y: 0, z:  0, label: '#theater' },
+  'set-design':    { x:  8,  y: 0, z:  0, label: '#set-design' },
+  'education':     { x: -6,  y: 0, z: -6, label: '#education' },
+  'mental-health': { x: -2,  y: 0, z: -6, label: '#mental-health' },
+  'mfa-show':      { x:  2,  y: 0, z: -6, label: '#mfa-show' },
+  'uncategorized': { x:  6,  y: 0, z: -6, label: '#uncategorized' }
+};
+
+const CLUSTER_TAGS = Object.keys(CLUSTER_ZONES);
+
+const SUBDIR_HASHTAG_MAP = {
+  'Adlab':      ['xr'],
+  'FLIPSIDE':   ['theater'],
+  'OFFRAIL':    ['education'],
+  'NYU':        ['mfa-show'],
+  'TCG':        ['theater', 'set-design'],
+  'QESTR':      ['xr', 'vr'],
+  'RAKTOR':     ['theater', 'xr'],
+  'SORT':       ['uncategorized'],
+  'VAPORWORLD': ['vr', 'xr'],
+  'whenere':    ['uncategorized'],
+  'VMC':        ['theater', 'vr'],
+  '[root]':     ['uncategorized'],
+};
+
+// ─── Subdir color map (pseudo-platform colors for raptor-library clips) ───
+const SUBDIR_COLORS = {
+  'Adlab':      '#06b6d4',
+  'FLIPSIDE':   '#a855f7',
+  'OFFRAIL':    '#22c55e',
+  'NYU':        '#f97316',
+  'TCG':        '#ef4444',
+  'QESTR':      '#eab308',
+  'RAKTOR':     '#ec4899',
+  'SORT':       '#6b7280',
+  'VAPORWORLD': '#8b5cf6',
+  'whenere':    '#14b8a6',
+  'VMC':        '#f43f5e',
+  '[root]':     '#4a5570',
+};
+
+// ─── Aspect-ratio mesh dimensions (Part A) ───
+var ASPECT_MESHES = {
+  landscape: {
+    bodyW: 1.2, bodyH: 0.675, depth: 0.06,
+    screenW: 1.08, screenH: 0.555,
+    canvasW: 480, canvasH: 270,
+    bezelW: 1.12, bezelH: 0.595,
+    glowW: 1.16, glowH: 0.635,
+    backW: 1.08, backH: 0.555, backCanvasW: 480, backCanvasH: 270,
+    labelY: -0.55, badge: '16:9'
+  },
+  portrait: {
+    bodyW: 0.45, bodyH: 0.8, depth: 0.06,
+    screenW: 0.33, screenH: 0.68,
+    canvasW: 270, canvasH: 480,
+    bezelW: 0.37, bezelH: 0.72,
+    glowW: 0.41, glowH: 0.76,
+    backW: 0.33, backH: 0.68, backCanvasW: 270, backCanvasH: 480,
+    labelY: -0.6, badge: '9:16'
+  },
+  square: {
+    bodyW: 0.8, bodyH: 0.8, depth: 0.06,
+    screenW: 0.68, screenH: 0.68,
+    canvasW: 360, canvasH: 360,
+    bezelW: 0.72, bezelH: 0.72,
+    glowW: 0.76, glowH: 0.76,
+    backW: 0.68, backH: 0.68, backCanvasW: 360, backCanvasH: 360,
+    labelY: -0.6, badge: '1:1'
+  }
+};
+
+function getAspectClass(resolution) {
+  if (!resolution || resolution === 'unknown') return 'landscape'; // default
+  var parts = resolution.split('x');
+  if (parts.length !== 2) return 'landscape';
+  var w = parseInt(parts[0], 10);
+  var h = parseInt(parts[1], 10);
+  if (isNaN(w) || isNaN(h) || h === 0) return 'landscape';
+  var ratio = w / h;
+  if (ratio > 1.2) return 'landscape';
+  if (ratio < 0.83) return 'portrait';
+  return 'square';
+}
+
+const MANIFEST_URL = 'http://localhost:8000/output/manifest';
+const TOPICS_URL   = 'http://localhost:8000/output/topics';
+const RAPTOR_LIBRARY_URL = 'raptor-library.json';
+const ASSEMBLY_MANIFEST_URL = 'assembly_manifest.json';
+
+// ─── EdBot adapter constants ───
+// EdBot server on port 8901 (AT's pipeline), separate from JP dev server on 8000
+var EDBOT_BASE_URL   = 'http://localhost:8901';
+var EDBOT_CHUNKS_URL = EDBOT_BASE_URL + '/api/chunks';
+var EDBOT_VIDEO_URL  = EDBOT_BASE_URL + '/video';
+
+// ─── Figure detection constants (Part D) ───
+var FIGURE_MAP_URL = 'http://localhost:8000/figure_map.json';
+
+// ─── Triage constants (Part C) ───
+const TRIAGE = { RED: 'red', YELLOW: 'yellow', GREEN: 'green' };
+const TRIAGE_COLORS = { red: '#ef4444', yellow: '#eab308', green: '#22c55e' };
+const TRIAGE_STORAGE_KEY = 'jp_raptor_triage';
+
+// ─── Portrait queue constants (Part C) ───
+const PORTRAIT_QUEUE_KEY = 'jp_portrait_queue';
+
+function loadPortraitQueue() {
+  try { return JSON.parse(localStorage.getItem(PORTRAIT_QUEUE_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+
+function savePortraitQueue(queue) {
+  localStorage.setItem(PORTRAIT_QUEUE_KEY, JSON.stringify(queue));
+}
+
+var portraitQueueState = loadPortraitQueue();
+
+const V3_VERTEX = [
+  'varying vec2 vUv;',
+  'void main() {',
+  '  vUv = uv;',
+  '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+  '}'
+].join('\n');
+
+const V3_FRAGMENT = [
+  'uniform float time;',
+  'uniform vec3 platformColor;',
+  'varying vec2 vUv;',
+  'void main() {',
+  '  float scanline = sin(vUv.y * 80.0 + time * 2.0) * 0.04;',
+  '  float vignette = smoothstep(0.5, 0.2, length(vUv - 0.5));',
+  '  vec3 col = platformColor * (0.15 + scanline) * vignette;',
+  '  gl_FragColor = vec4(col, 1.0);',
+  '}'
+].join('\n');
+
+// ═══════════════════════════════════════════════════════════════════
+// PLACEHOLDER MANIFEST
+// ═══════════════════════════════════════════════════════════════════
+
+const PLACEHOLDER_MANIFEST = {
+  generated: '[PLACEHOLDER_TIMESTAMP]',
+  source_clip: 'raptor-history/[CLIP_NAME — FILL]',
+  clips: [
+    { id:'C01_tiktok',   platform:'tiktok',         filename:'C01_tiktok.mp4',   duration_sec:15,  name:'Claw Mechanics', transcript_snippet:'The sickle claw on digit II was not a slashing weapon — it was a hook. CT scans of Deinonychus claws show keratin sheath geometry optimized for grip-and-hold, not cutting. The real damage came from body weight pinning prey while the jaws worked. Think raptor as a grappling predator, not a slasher.', thumbnail:null, silence_pct:4,  hashtags:['#anatomy','#behavior'], topic_branch:'Anatomy & Biomechanics', summary:'Reframes the iconic raptor sickle claw as a grip-and-hold tool rather than a slashing weapon, based on CT analysis of Deinonychus keratin sheath geometry and biomechanical modeling of predatory restraint posture.', status:'placeholder' },
+    { id:'C02_tiktok',   platform:'tiktok',         filename:'C02_tiktok.mp4',   duration_sec:15,  name:'Feather Origin Debate', transcript_snippet:'Feathers did not evolve for flight. The earliest proto-feathers on Sinosauropteryx were simple filaments — basically fuzz for insulation. Display came next, then asymmetric vanes for aerodynamics. Flight was a side effect of structures that already existed for thermoregulation and signaling.', thumbnail:null, silence_pct:6,  hashtags:['#evolution','#anatomy'], topic_branch:'Evolution & Ancestry', summary:'Traces the origin of feathers from simple thermoregulatory filaments on Sinosauropteryx through display plumage to asymmetric flight feathers, arguing that aerial capability was an exaptation, not the original selective pressure.', status:'placeholder' },
+    { id:'C03_ytshorts', platform:'youtube_shorts', filename:'C03_ytshorts.mp4', duration_sec:15,  name:'Pack Hunting Evidence', transcript_snippet:'The Tenontosaurus bone bed with multiple Deinonychus skeletons — everyone calls it pack hunting evidence. But look closer. The Deinonychus specimens show different growth stages and bite marks from each other. This could be mob feeding, not coordination. Crocodiles do the same thing.', thumbnail:null, silence_pct:3,  hashtags:['#behavior','#fossils'], topic_branch:'Hunting & Behavior', summary:'Challenges the iconic pack-hunting narrative by reexamining the Tenontosaurus-Deinonychus bone bed, noting inter-individual bite marks and mixed growth stages that suggest competitive mob feeding rather than coordinated predation.', status:'placeholder' },
+    { id:'C04_ig',       platform:'ig_reels',       filename:'C04_ig.mp4',       duration_sec:15,  name:'Fossil Dig Techniques', transcript_snippet:'Modern excavation uses ground-penetrating radar before anyone picks up a brush. We map the entire bone scatter in 3D with photogrammetry, assign GPS coordinates to every fragment. A single raptor skeleton can take two field seasons to fully extract without damaging associated microfossils.', thumbnail:null, silence_pct:5,  hashtags:['#fossils','#science'], topic_branch:'Fossil Discovery', summary:'Details modern raptor excavation methods from ground-penetrating radar surveys through photogrammetric 3D mapping to GPS-tagged fragment extraction, explaining why a single skeleton can require multiple field seasons of careful work.', status:'placeholder' },
+    { id:'C05_tiktok',   platform:'tiktok',         filename:'C05_tiktok.mp4',   duration_sec:15,  name:'Velociraptor Size Myth', transcript_snippet:'Velociraptor was the size of a turkey. Jurassic Park used Deinonychus proportions and called it Velociraptor because the name sounded better. Real Velociraptor mongoliensis weighed maybe fifteen kilograms. Still a serious predator — just not the six-foot monster from the movies.', thumbnail:null, silence_pct:8,  hashtags:['#anatomy','#behavior'], topic_branch:'Anatomy & Biomechanics', summary:'Corrects the cinematic Velociraptor myth by comparing actual V. mongoliensis proportions to the Deinonychus-based movie version, noting the real animal was turkey-sized at fifteen kilograms but remained an effective mesopredator.', status:'placeholder' },
+    { id:'C06_ytshorts', platform:'youtube_shorts', filename:'C06_ytshorts.mp4', duration_sec:15,  name:'Warm Blood Evidence', transcript_snippet:'Bone histology settled the warm-blooded debate. Raptor long bones show fibrolamellar tissue with dense Haversian remodeling — the same fast-growth pattern you see in modern mammals and birds. Cold-blooded animals grow in rings like trees. Raptors did not.', thumbnail:null, silence_pct:2,  hashtags:['#science','#anatomy'], topic_branch:'Anatomy & Biomechanics', summary:'Uses bone histology evidence — fibrolamellar tissue and Haversian remodeling in raptor long bones — to confirm endothermic metabolism, contrasting the fast-growth mammalian pattern with the lamellar-zonal growth of ectotherms.', status:'placeholder' },
+    { id:'C07_x',        platform:'x_video',        filename:'C07_x.mp4',        duration_sec:15,  name:'Dromaeosaurid Taxonomy', transcript_snippet:'Dromaeosauridae is a mess. Every year someone splits or lumps genera. Microraptor, Velociraptor, Deinonychus, Utahraptor — they span sixty million years and four continents. The family tree keeps getting redrawn as new specimens fill gaps between what we thought were distinct lineages.', thumbnail:null, silence_pct:7,  hashtags:['#evolution','#science'], topic_branch:'Evolution & Ancestry', summary:'Surveys the unstable taxonomy of Dromaeosauridae across sixty million years and four continents, explaining how each new specimen discovery reshuffles genus boundaries and forces phylogenetic revision of raptor family relationships.', status:'placeholder' },
+    { id:'C08_ig',       platform:'ig_reels',       filename:'C08_ig.mp4',       duration_sec:15,  name:'Prey Restraint Study', transcript_snippet:'We modeled raptor predation using extant phylogenetic bracketing — comparing with hawks and crocodilians. The emerging picture is a raptor mounting prey, pinning it with body weight and sickle claws, then using repeated bites to the neck and head. Essentially riding prey to death.', thumbnail:null, silence_pct:5,  hashtags:['#behavior','#anatomy'], topic_branch:'Hunting & Behavior', summary:'Reconstructs raptor predation strategy through extant phylogenetic bracketing with hawks and crocodilians, proposing a mount-and-pin model where sickle claws restrained prey while repeated jaw strikes inflicted lethal damage.', status:'placeholder' },
+    { id:'C09_tiktok',   platform:'tiktok',         filename:'C09_tiktok.mp4',   duration_sec:15,  name:'Amber Feather Specimens', transcript_snippet:'Burmese amber specimens preserve actual raptor feathers in three dimensions with visible barb structure and melanosomes. We can reconstruct color patterns — iridescent blacks and browns, similar to modern starlings. These animals were not drab. They had display plumage.', thumbnail:null, silence_pct:3,  hashtags:['#fossils','#evolution'], topic_branch:'Fossil Discovery', summary:'Examines Burmese amber specimens preserving three-dimensional raptor feathers with intact barb structure and melanosomes, enabling color reconstruction that reveals iridescent display plumage comparable to modern starling iridescence.', status:'placeholder' },
+    { id:'C10_ytshorts', platform:'youtube_shorts', filename:'C10_ytshorts.mp4', duration_sec:15,  name:'Brain Cavity Analysis', transcript_snippet:'Endocasts from raptor braincases show expanded optic lobes and cerebellum relative to body size. Their visual processing rivaled modern raptorial birds. The enlarged cerebellum suggests precise motor coordination — exactly what you need for high-speed pursuit and mid-strike adjustments.', thumbnail:null, silence_pct:4,  hashtags:['#science','#behavior'], topic_branch:'Anatomy & Biomechanics', summary:'Analyzes raptor braincase endocasts revealing expanded optic lobes and cerebellum proportional to body size, indicating visual acuity comparable to modern raptorial birds and motor coordination sufficient for high-speed pursuit predation.', status:'placeholder' }
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+
+let phones = [];
+let clips = [];
+let phoneMeshes = [];
+let isPlaceholder = true;
+let dataSourceTag = 'placeholder'; // 'edbot' | 'raptor-library' | 'file-drop' | 'legacy' | 'placeholder'
+var figureMapData = null; // raw figure_map.json — multi-clip or single-clip
+let activeVariant = 'V2';
+let activeTag = null;
+let hoveredPhone = null;
+let inspectedPhone = null;
+let uniqueTags = [];
+let v3Degraded = false;
+// State machine: IDLE → TOPIC_REVEALED → CLUSTERED → ZOOM
+const STATE = { IDLE: 'IDLE', TOPIC_REVEALED: 'TOPIC_REVEALED', CLUSTERED: 'CLUSTERED', ZOOM: 'ZOOM' };
+let currentState = STATE.IDLE;
+let prevState = STATE.IDLE;
+let savedCamera = null;
+let zoomIndex = -1;
+
+// Tab state (Part A + Part B)
+var activeTab = 'source';
+var sourcePhones = [];
+var sourcePhoneMeshes = [];
+var portraitPhones = [];
+var portraitPhoneMeshes = [];
+var portraitClips = [];
+var portraitEmptySprite = null; // 3D text shown when portrait tab is empty
+
+// THREE objects
+let renderer, scene, camera, controls, clock;
+let css2dRenderer;
+let raycaster, mouse;
+let ambientLight, keyLight, fillLight, rimLight;
+let starFieldNear, starFieldFar, nebulaPlane;
+let frameCount = 0;
+let perfSamples = [];
+let lastPerfTime = 0;
+
+// ═══════════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════════
+
+function getPlatformHex(platform) {
+  return PLATFORM_COLORS[platform] || SUBDIR_COLORS[platform] || '#4a5570';
+}
+
+function getPlatformColor(platform) {
+  return new THREE.Color(getPlatformHex(platform));
+}
+
+function getPlatformDark(platform) {
+  return PLATFORM_DARK[platform] || '#0a0d14';
+}
+
+function getClipHashtags(clip) {
+  // Priority 1: explicit hashtags from manifest (strip # prefix for cluster matching)
+  if (clip.hashtags && clip.hashtags.length > 0) {
+    return clip.hashtags.map(function(t) { return t.replace(/^#/, ''); });
+  }
+  // Priority 2: subdir heuristic
+  var subdir = clip.subdir || (clip.context && clip.context.subdir);
+  if (subdir && SUBDIR_HASHTAG_MAP[subdir]) return SUBDIR_HASHTAG_MAP[subdir];
+  // Priority 3: fallback
+  return ['uncategorized'];
+}
+
+function normalizeRaptorEntry(entry) {
+  // Convert raptor-library.json entry to internal clip format
+  var subdir = entry.subdir || '[root]';
+  var hashtags = getClipHashtags(entry);
+  return {
+    id: entry.id || entry.file_hash || entry.filename,
+    platform: subdir,  // use subdir as pseudo-platform for color lookup
+    filename: entry.filename || '',
+    duration_sec: entry.duration_sec || 0,
+    name: entry.two_word_name || entry.filename || '[UNTITLED]',
+    transcript_snippet: entry.transcript_snippet || '',
+    transcript_full: entry.transcript_full || '',
+    thumbnail: null,
+    silence_pct: 0,
+    hashtags: hashtags.map(function(t) { return '#' + t; }),
+    topic_branch: subdir,
+    summary: entry.summary || '[NO SUMMARY]',
+    status: entry.status || 'transcribed',
+    // Raptor-library specific fields
+    subdir: subdir,
+    resolution: entry.resolution || 'unknown',
+    filesize_mb: entry.filesize_mb || 0,
+    content_type: (entry.context && entry.context.content_type) || entry.content_type || '[UNKNOWN]',
+    language: (entry.context && entry.context.language) || entry.language || 'en',
+    speaker_count: (entry.context && entry.context.speaker_count) || 1,
+    whisper_segments: entry.whisper_segments || [],
+    auto_named: entry.auto_named || false,
+    has_audio: entry.has_audio !== false,
+    relative_path: entry.relative_path || entry.filename,
+    absolute_path: entry.absolute_path || '',
+    _source: 'raptor-library'
+  };
+}
+
+function normalizeEdbotChunk(chunk, index) {
+  // Convert EdBot /api/chunks entry to internal clip format
+  // EdBot fields: text, silence_ratio, filename, path, duration_sec, platform, aspect, id
+  var text = chunk.text || chunk.transcript || '';
+  var filename = chunk.filename || chunk.path || ('chunk_' + index);
+  var subdir = chunk.subdir || chunk.platform || '[EDBOT]';
+  var name = chunk.name || chunk.two_word_name ||
+    filename.replace(/\.[^.]+$/, '').replace(/[_\-]/g, ' ').slice(0, 30);
+  var hashtags = getClipHashtags(chunk);
+  var silenceRatio = (chunk.silence_ratio != null) ? chunk.silence_ratio : null;
+
+  return {
+    id: chunk.id || ('EB_' + String(index).padStart(3, '0')),
+    platform: chunk.platform || subdir,
+    filename: filename,
+    duration_sec: chunk.duration_sec || chunk.duration || 0,
+    name: name,
+    transcript_snippet: text.slice(0, 120),
+    transcript_full: text,
+    thumbnail: null,
+    silence_pct: (silenceRatio != null) ? Math.round(silenceRatio * 100) : 0,
+    hashtags: hashtags.map(function(t) { return '#' + t; }),
+    topic_branch: chunk.topic_branch || subdir,
+    summary: text.slice(0, 250).replace(/\s+/g, ' ').trim() || '[NO TRANSCRIPT]',
+    status: chunk.status || 'ready',
+    // Clip detail fields
+    subdir: subdir,
+    resolution: chunk.resolution || 'unknown',
+    filesize_mb: chunk.file_size_mb || 0,
+    content_type: chunk.content_type || 'mixed',
+    language: chunk.language || 'en',
+    speaker_count: 1,
+    whisper_segments: chunk.whisper_segments || chunk.segments || [],
+    auto_named: false,
+    has_audio: chunk.has_audio !== false,
+    relative_path: chunk.path || filename,
+    absolute_path: '',
+    // EdBot-specific
+    _source: 'edbot',
+    video_url: chunk.path ? (EDBOT_VIDEO_URL + '/' + chunk.path) : null,
+    aspect: chunk.aspect || null
+  };
+}
+
+function normalizeAssemblyClip(clip, index) {
+  // Convert assembly_manifest.json clip to internal clip format
+  var filename = clip.filename || '[NO FILE]';
+  var name = clip.id
+    ? clip.id.replace(/_/g, ' ').slice(0, 30)
+    : filename.replace(/\.[^.]+$/, '').replace(/[_\-]/g, ' ').slice(0, 30);
+  var platform = clip.platform || '[EDBOT]';
+
+  // Resolve resolution from explicit field or aspect hint
+  var resolution = clip.resolution || 'unknown';
+  if (resolution === 'unknown' && clip.aspect) {
+    if (clip.aspect === '9:16') resolution = '1080x1920';
+    else if (clip.aspect === '1:1') resolution = '1080x1080';
+    else if (clip.aspect === '16:9') resolution = '1920x1080';
+  }
+
+  return {
+    id: clip.id || ('AM_' + String(index).padStart(3, '0')),
+    platform: platform,
+    filename: filename,
+    duration_sec: clip.duration_sec || 0,
+    name: name,
+    transcript_snippet: clip.transcript_snippet || '',
+    transcript_full: clip.transcript_snippet || '',
+    thumbnail: clip.thumbnail || null,
+    silence_pct: clip.silence_pct || 0,
+    hashtags: [],
+    topic_branch: platform,
+    summary: clip.transcript_snippet || '[NO TRANSCRIPT]',
+    status: clip.status || 'ready',
+    subdir: platform,
+    resolution: resolution,
+    filesize_mb: 0,
+    content_type: 'shortform',
+    language: 'en',
+    speaker_count: 1,
+    whisper_segments: [],
+    auto_named: false,
+    has_audio: true,
+    relative_path: clip.path || filename,
+    absolute_path: clip.path || '',
+    _source: 'assembly',
+    _source_id: clip.source_id || null,
+    _platform: platform,
+    _assembly_source: true,
+    video_url: clip.path ? ('http://localhost:8000/video/' + clip.path) : null
+  };
+}
+
+function getPlatformAbbr(platform) {
+  return PLATFORM_ABBR[platform] || '??';
+}
+
+function formatDuration(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function twoWordTag(topicBranch) {
+  if (!topicBranch) return 'TOPIC TBD';
+  var words = topicBranch.replace(/[&,\-\/]+/g, ' ').trim().split(/\s+/).filter(function (w) {
+    return w.length > 1 && ['and', 'the', 'of', 'in', 'a', 'an', 'or', 'to', 'for'].indexOf(w.toLowerCase()) < 0;
+  });
+  if (words.length >= 2) return (words[0] + ' ' + words[1]).toUpperCase();
+  if (words.length === 1) return words[0].toUpperCase();
+  // fallback: first two words raw
+  var raw = topicBranch.trim().split(/\s+/);
+  return (raw.slice(0, 2).join(' ')).toUpperCase();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TRIAGE CLASSIFICATION (Part C)
+// ═══════════════════════════════════════════════════════════════════
+
+function triageClip(clip) {
+  // RED: no audio
+  if (clip.has_audio === false) return { grade: TRIAGE.RED, reason: 'no audio' };
+  // RED: under 3s
+  if (clip.duration_sec < 3) return { grade: TRIAGE.RED, reason: 'under 3s' };
+  // RED: empty/near-empty transcript
+  var fullText = (clip.transcript_full || '').trim();
+  if (fullText.length < 10) return { grade: TRIAGE.RED, reason: 'empty transcript' };
+  // RED: non-English with very low word count
+  var segments = clip.whisper_segments || [];
+  var wordCount = fullText.split(/\s+/).length;
+  var lang = clip.language || (clip.context && clip.context.language) || 'en';
+  if (lang !== 'en' && wordCount < 5) return { grade: TRIAGE.RED, reason: 'non-english (' + lang + '), ' + wordCount + ' words' };
+
+  // Compute gap metrics for YELLOW
+  var totalGapSec = 0;
+  var maxGapSec = 0;
+  for (var i = 1; i < segments.length; i++) {
+    var gap = segments[i].start - segments[i - 1].end;
+    if (gap > 0) {
+      totalGapSec += gap;
+      if (gap > maxGapSec) maxGapSec = gap;
+    }
+  }
+  var gapPct = clip.duration_sec > 0 ? (totalGapSec / clip.duration_sec) * 100 : 0;
+
+  // YELLOW: >60% silence gaps
+  if (gapPct > 60) return { grade: TRIAGE.YELLOW, reason: gapPct.toFixed(0) + '% silence gaps' };
+  // YELLOW: single gap >30s
+  if (maxGapSec > 30) return { grade: TRIAGE.YELLOW, reason: maxGapSec.toFixed(0) + 's max gap' };
+  // YELLOW: very few words/min
+  var wordsPerMin = clip.duration_sec > 0 ? (wordCount / (clip.duration_sec / 60)) : 0;
+  if (wordsPerMin < 10) return { grade: TRIAGE.YELLOW, reason: wordsPerMin.toFixed(0) + ' words/min' };
+  // YELLOW: short transcript vs long duration
+  if (wordCount < 15 && clip.duration_sec > 30) return { grade: TRIAGE.YELLOW, reason: wordCount + ' words in ' + Math.round(clip.duration_sec) + 's' };
+  // YELLOW: mostly sub-1s segments (beeps/clicks)
+  if (segments.length > 3) {
+    var shortSegs = segments.filter(function(s) { return (s.end - s.start) < 1.0; });
+    if (shortSegs.length / segments.length > 0.7) {
+      return { grade: TRIAGE.YELLOW, reason: Math.round(shortSegs.length / segments.length * 100) + '% sub-1s segments' };
+    }
+  }
+
+  // GREEN: clear content
+  return { grade: TRIAGE.GREEN, reason: wordCount + ' words, ' + wordsPerMin.toFixed(0) + ' wpm, ' + segments.length + ' segments' };
+}
+
+function loadTriageState() {
+  try { return JSON.parse(localStorage.getItem(TRIAGE_STORAGE_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+
+function saveTriageState(state) {
+  try { localStorage.setItem(TRIAGE_STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { console.warn('[jp] triage save failed:', e.message); }
+}
+
+var triageState = {};
+
+function getClipTriageGrade(clipId) {
+  var entry = triageState[clipId];
+  if (!entry) return null;
+  return entry.override || entry.grade;
+}
+
+function getClipTriageEntry(clipId) {
+  return triageState[clipId] || null;
+}
+
+function setClipTriageOverride(clipId, override) {
+  if (!triageState[clipId]) return;
+  triageState[clipId].override = override;
+  triageState[clipId].deleted = (override === TRIAGE.RED);
+  saveTriageState(triageState);
+}
+
+function runTriageOnClips() {
+  var saved = loadTriageState();
+  clips.forEach(function (clip) {
+    var result = triageClip(clip);
+    var existing = saved[clip.id];
+    triageState[clip.id] = {
+      grade: result.grade,
+      reason: result.reason,
+      override: (existing && existing.override) || null,
+      deleted: (existing && existing.deleted) || false
+    };
+  });
+  saveTriageState(triageState);
+}
+
+function getTriageCounts() {
+  var counts = { red: 0, yellow: 0, green: 0 };
+  Object.keys(triageState).forEach(function (id) {
+    var e = triageState[id];
+    if (e.deleted) return;
+    var grade = e.override || e.grade;
+    if (counts[grade] !== undefined) counts[grade]++;
+  });
+  return counts;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FIGURE DETECTION (Part D)
+// ═══════════════════════════════════════════════════════════════════
+
+async function loadFigureMap() {
+  try {
+    var r = await fetch(FIGURE_MAP_URL, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    figureMapData = await r.json();
+    console.log('[jp] figure_map.json loaded');
+    return true;
+  } catch (e) {
+    console.log('[jp] figure_map.json not available');
+    return false;
+  }
+}
+
+function getFigureDataForClip(clip) {
+  if (!figureMapData) return null;
+  // Format 1: multi-clip — clips object keyed by filename
+  if (figureMapData.clips && typeof figureMapData.clips === 'object' && !Array.isArray(figureMapData.clips)) {
+    var byFilename = figureMapData.clips[clip.filename];
+    if (byFilename) return byFilename;
+    // Try matching by id
+    var byId = figureMapData.clips[clip.id];
+    if (byId) return byId;
+    return null;
+  }
+  // Format 2: single-clip — frames array at top level
+  if (figureMapData.frames && Array.isArray(figureMapData.frames)) {
+    return figureMapData;
+  }
+  return null;
+}
+
+async function loadPerClipFigureMap(clip) {
+  // Try loading per-clip figure map on demand
+  var urls = [
+    'http://localhost:8000/figure_map_' + clip.id + '.json',
+    'http://localhost:8000/figure_map_' + clip.filename.replace(/\.[^.]+$/, '') + '.json'
+  ];
+  for (var i = 0; i < urls.length; i++) {
+    try {
+      var r = await fetch(urls[i], { cache: 'no-store' });
+      if (!r.ok) continue;
+      var data = await r.json();
+      if (data && data.frames) {
+        console.log('[jp] per-clip figure map loaded:', urls[i]);
+        return data;
+      }
+    } catch (e) { /* skip */ }
+  }
+  return null;
+}
+
+function computeFigureStats(figureData) {
+  if (!figureData || !figureData.frames) return null;
+  var totalFrames = figureData.frames.length;
+  if (totalFrames === 0) return null;
+  var framesWithPerson = 0;
+  var totalPersonCount = 0;
+  var allConfidences = [];
+
+  for (var i = 0; i < totalFrames; i++) {
+    var f = figureData.frames[i];
+    if (f.detected) {
+      framesWithPerson++;
+      totalPersonCount += (f.count || 0);
+      var persons = f.persons || [];
+      for (var j = 0; j < persons.length; j++) {
+        if (persons[j].confidence != null) {
+          allConfidences.push(persons[j].confidence);
+        }
+      }
+    }
+  }
+
+  var personPct = (framesWithPerson / totalFrames * 100);
+  var avgPersonCount = framesWithPerson > 0 ? (totalPersonCount / framesWithPerson) : 0;
+  var avgConfidence = allConfidences.length > 0
+    ? allConfidences.reduce(function (a, b) { return a + b; }, 0) / allConfidences.length
+    : 0;
+
+  return {
+    totalFrames: totalFrames,
+    framesWithPerson: framesWithPerson,
+    personPct: Math.round(personPct),
+    avgPersonCount: avgPersonCount.toFixed(1),
+    avgConfidence: (avgConfidence * 100).toFixed(0)
+  };
+}
+
+function drawFigureIcon(ctx, x, y, size) {
+  ctx.beginPath();
+  ctx.arc(x, y - size * 0.3, size * 0.25, 0, Math.PI * 2); // head
+  ctx.moveTo(x - size * 0.4, y + size * 0.3);
+  ctx.quadraticCurveTo(x, y, x + size * 0.4, y + size * 0.3); // shoulders
+  ctx.strokeStyle = '#22c55e';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+function refreshPhoneScreens() {
+  // Re-create screen textures for all phones (called after figure_map loads)
+  phones.forEach(function (phone) {
+    var newTex = createScreenTexture(phone.clip);
+    phone.screenTex = newTex;
+    // Update all variant screen materials that use the texture
+    ['V1', 'V2'].forEach(function (v) {
+      var mat = phone.materials[v].screen;
+      if (mat.map) mat.map = newTex;
+    });
+    // Update current screen material if not in zoom
+    if (!phone._zoomScreenMat && phone.screen.material.map) {
+      phone.screen.material.map = newTex;
+    }
+  });
+  console.log('[jp] phone screens refreshed with figure data');
+}
+
+function fibonacciSphere(count, radius) {
+  const points = [];
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < count; i++) {
+    const y = 1 - (i / Math.max(count - 1, 1)) * 2;
+    const r = Math.sqrt(1 - y * y);
+    const theta = golden * i;
+    points.push({
+      x: Math.cos(theta) * r * radius,
+      y: y * radius,
+      z: Math.sin(theta) * r * radius
+    });
+  }
+  return points;
+}
+
+function getClusterPosition(quadrant, phoneIdx) {
+  const phi = Math.acos(1 - 2 * (phoneIdx + 0.5) / 12);
+  const theta = Math.PI * (1 + Math.sqrt(5)) * phoneIdx;
+  const r = 0.6 + (phoneIdx * 0.31) % 1.4;
+  return {
+    x: quadrant.x + Math.sin(phi) * Math.cos(theta) * r,
+    y: quadrant.y + Math.cos(phi) * r * 0.7,
+    z: quadrant.z + Math.sin(phi) * Math.sin(theta) * r
+  };
+}
+
+function getExilePosition(phoneIdx) {
+  const phi = Math.acos(1 - 2 * (phoneIdx + 0.5) / 20);
+  const theta = Math.PI * (1 + Math.sqrt(5)) * phoneIdx;
+  return {
+    x: Math.sin(phi) * Math.cos(theta) * 18,
+    y: Math.sin(phi) * Math.sin(theta) * 18,
+    z: Math.cos(phi) * 18
+  };
+}
+
+function setPhoneOpacity(phone, opacity) {
+  phone.body.material.opacity = opacity;
+  phone.screen.material.opacity = opacity;
+  phone.camMesh.material.opacity = opacity;
+  phone.notch.material.opacity = opacity;
+  if (phone.edgeLine) phone.edgeLine.material.opacity = opacity;
+  if (phone.bezel) phone.bezel.material.opacity = opacity;
+  if (phone.glow) phone.glow.material.opacity = Math.min(opacity, 0.3);
+  if (phone.backFace) phone.backFace.material.opacity = opacity;
+  phone.label.element.style.opacity = String(opacity);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SCREEN CANVAS TEXTURE
+// ═══════════════════════════════════════════════════════════════════
+
+function createScreenTexture(clip) {
+  var ac = getAspectClass(clip.resolution);
+  var dims = ASPECT_MESHES[ac];
+  var cW = dims.canvasW;
+  var cH = dims.canvasH;
+  var cx = cW / 2;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = cW;
+  canvas.height = cH;
+  const ctx = canvas.getContext('2d');
+  const hex = getPlatformHex(clip.platform);
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, cH);
+  grad.addColorStop(0, '#0a0d14');
+  grad.addColorStop(1, getPlatformDark(clip.platform));
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, cW, cH);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  if (ac === 'landscape') {
+    // ─── LANDSCAPE layout (480x270) — compact horizontal ───
+
+    // Aspect badge (top-center)
+    ctx.fillStyle = '#eab308';
+    ctx.font = '500 10px monospace';
+    ctx.fillText(dims.badge, cx, 14);
+
+    // Triage dot (top-left)
+    var triageEntry = getClipTriageEntry(clip.id);
+    if (triageEntry) {
+      var tGrade = triageEntry.override || triageEntry.grade;
+      var tColor = TRIAGE_COLORS[tGrade] || '#4a5570';
+      ctx.fillStyle = tColor;
+      ctx.beginPath();
+      ctx.arc(18, 14, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = '500 8px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(tGrade.toUpperCase(), 26, 15);
+      ctx.textAlign = 'center';
+    }
+
+    // Figure icon (top-right)
+    var figData = getFigureDataForClip(clip);
+    if (figData) {
+      var figStats = computeFigureStats(figData);
+      if (figStats && figStats.personPct > 0) {
+        drawFigureIcon(ctx, cW - 40, 14, 10);
+        ctx.fillStyle = '#22c55e';
+        ctx.font = '500 8px monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(figStats.personPct + '%', cW - 10, 15);
+        ctx.textAlign = 'center';
+      }
+    }
+
+    // Two-word name
+    var displayName = clip.name || clip.filename || '';
+    ctx.fillStyle = '#c8d0e0';
+    ctx.font = '600 18px monospace';
+    ctx.fillText(displayName.slice(0, 22), cx, 50);
+
+    // Duration
+    ctx.fillStyle = '#6a7590';
+    ctx.font = '500 14px monospace';
+    ctx.fillText(formatDuration(clip.duration_sec), cx, 80);
+
+    // Resolution
+    if (clip.resolution && clip.resolution !== 'unknown') {
+      ctx.fillStyle = '#3a4560';
+      ctx.font = '300 10px monospace';
+      ctx.fillText(clip.resolution, cx, 100);
+    }
+
+    // Divider
+    ctx.strokeStyle = '#1a2030';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(20, 115);
+    ctx.lineTo(cW - 20, 115);
+    ctx.stroke();
+
+    // Summary (compact)
+    var summary = clip.summary || '';
+    if (summary && summary.indexOf('[INSUFFICIENT') < 0 && summary.indexOf('[NO ') < 0) {
+      ctx.fillStyle = '#5a6580';
+      ctx.font = '300 9px monospace';
+      var summaryWords = summary.split(' ').slice(0, 24);
+      var lines = [];
+      var line = '';
+      summaryWords.forEach(function(w) {
+        var test = line ? line + ' ' + w : w;
+        if (test.length > 50) {
+          lines.push(line);
+          line = w;
+        } else {
+          line = test;
+        }
+      });
+      if (line) lines.push(line);
+      lines.slice(0, 5).forEach(function(l, i) {
+        ctx.fillText(l, cx, 130 + i * 12);
+      });
+    } else if (!clip.has_audio) {
+      ctx.fillStyle = '#2a3040';
+      ctx.font = '500 12px monospace';
+      ctx.fillText('[NO AUDIO]', cx, 140);
+    }
+
+    // Hashtag badges (bottom)
+    var tags = clip.hashtags || [];
+    if (tags.length > 0) {
+      ctx.font = '500 9px monospace';
+      ctx.fillStyle = hex;
+      ctx.fillText(tags.slice(0, 3).join('  '), cx, 210);
+    }
+
+    // File size (bottom-right)
+    if (clip.filesize_mb) {
+      ctx.fillStyle = '#2a3040';
+      ctx.font = '300 9px monospace';
+      ctx.fillText((clip.filesize_mb || 0) + ' MB', cx, 255);
+    }
+
+  } else {
+    // ─── PORTRAIT (270x480) or SQUARE (360x360) layout ───
+    var scale = cH / 512;
+    var nameSize = ac === 'square' ? 16 : 18;
+    var maxNameLen = ac === 'square' ? 18 : 14;
+    var maxLineLen = ac === 'square' ? 32 : 28;
+
+    // Aspect badge (top-center)
+    ctx.fillStyle = '#eab308';
+    ctx.font = '500 10px monospace';
+    ctx.fillText(dims.badge, cx, 16);
+
+    // Two-word name
+    var displayName = clip.name || clip.filename || '';
+    ctx.fillStyle = '#c8d0e0';
+    ctx.font = '600 ' + nameSize + 'px monospace';
+    if (displayName.length > maxNameLen) {
+      var words = displayName.split(' ');
+      if (words.length >= 2) {
+        ctx.fillText(words[0], cx, Math.round(62 * scale));
+        ctx.fillText(words.slice(1).join(' ').slice(0, maxNameLen), cx, Math.round(88 * scale));
+      } else {
+        ctx.fillText(displayName.slice(0, maxNameLen), cx, Math.round(74 * scale));
+      }
+    } else {
+      ctx.fillText(displayName, cx, Math.round(74 * scale));
+    }
+
+    // Subdir / filename
+    ctx.fillStyle = '#4a5570';
+    ctx.font = '300 10px monospace';
+    var subLabel = (clip.subdir || clip.platform || '') + ' / ' + (clip.filename || '');
+    ctx.fillText(subLabel.length > maxLineLen ? subLabel.slice(0, maxLineLen - 1) + '\u2026' : subLabel, cx, Math.round(125 * scale));
+
+    // Duration + resolution
+    ctx.fillStyle = '#6a7590';
+    ctx.font = '500 16px monospace';
+    ctx.fillText(formatDuration(clip.duration_sec), cx, Math.round(165 * scale));
+    if (clip.resolution && clip.resolution !== 'unknown') {
+      ctx.fillStyle = '#3a4560';
+      ctx.font = '300 10px monospace';
+      ctx.fillText(clip.resolution, cx, Math.round(188 * scale));
+    }
+
+    // Hashtag badges
+    var tags = clip.hashtags || [];
+    if (tags.length > 0) {
+      ctx.font = '500 10px monospace';
+      var tagStr = tags.slice(0, 3).join('  ');
+      ctx.fillStyle = hex;
+      ctx.fillText(tagStr, cx, Math.round(230 * scale));
+    }
+
+    // Triage dot
+    var triageEntry = getClipTriageEntry(clip.id);
+    if (triageEntry) {
+      var tGrade = triageEntry.override || triageEntry.grade;
+      var tColor = TRIAGE_COLORS[tGrade] || '#4a5570';
+      ctx.fillStyle = tColor;
+      ctx.beginPath();
+      ctx.arc(Math.round(28 * cW / 256), Math.round(30 * scale), 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = tColor;
+      ctx.font = '500 8px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(tGrade.toUpperCase(), Math.round(36 * cW / 256), Math.round(32 * scale));
+      ctx.textAlign = 'center';
+    }
+
+    // Figure icon (top-right)
+    var figData = getFigureDataForClip(clip);
+    if (figData) {
+      var figStats = computeFigureStats(figData);
+      if (figStats && figStats.personPct > 0) {
+        drawFigureIcon(ctx, cW - 36, Math.round(30 * scale), 12);
+        ctx.fillStyle = '#22c55e';
+        ctx.font = '500 8px monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(figStats.personPct + '%', cW - 12, Math.round(32 * scale));
+        ctx.textAlign = 'center';
+      }
+    }
+
+    // Divider
+    ctx.strokeStyle = '#1a2030';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    var divY = Math.round(255 * scale);
+    ctx.moveTo(Math.round(24 * cW / 256), divY);
+    ctx.lineTo(cW - Math.round(24 * cW / 256), divY);
+    ctx.stroke();
+
+    // Summary snippet
+    var summary = clip.summary || '';
+    if (summary && summary.indexOf('[INSUFFICIENT') < 0 && summary.indexOf('[NO ') < 0) {
+      ctx.fillStyle = '#5a6580';
+      ctx.font = '300 9px monospace';
+      var summaryWords = summary.split(' ').slice(0, 30);
+      var lines = [];
+      var line = '';
+      summaryWords.forEach(function(w) {
+        var test = line ? line + ' ' + w : w;
+        if (test.length > maxLineLen) {
+          lines.push(line);
+          line = w;
+        } else {
+          line = test;
+        }
+      });
+      if (line) lines.push(line);
+      var maxLines = ac === 'square' ? 5 : 8;
+      lines.slice(0, maxLines).forEach(function(l, i) {
+        ctx.fillText(l, cx, Math.round(275 * scale) + i * 13);
+      });
+    } else if (!clip.has_audio) {
+      ctx.fillStyle = '#2a3040';
+      ctx.font = '500 12px monospace';
+      ctx.fillText('[NO AUDIO]', cx, Math.round(300 * scale));
+    }
+
+    // File size at bottom
+    if (clip.filesize_mb) {
+      ctx.fillStyle = '#2a3040';
+      ctx.font = '300 9px monospace';
+      ctx.fillText((clip.filesize_mb || 0) + ' MB', cx, cH - 12);
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ZOOM VIDEO SCREEN — replaces static texture when zoomed in
+// ═══════════════════════════════════════════════════════════════════
+
+var activeVideoEl = null;
+var activeVideoTex = null;
+
+function createVideoPlayerCanvas(clip, mode) {
+  // mode: 'loading' (default on zoom) or 'fallback' (video failed)
+  var isLoading = (mode !== 'fallback');
+  var canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 1024;
+  var ctx = canvas.getContext('2d');
+  var hex = getPlatformHex(clip.platform);
+
+  // Dark background
+  ctx.fillStyle = '#0a0d14';
+  ctx.fillRect(0, 0, 512, 1024);
+
+  // Video frame area (letterbox zone)
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(16, 80, 480, 640);
+
+  if (isLoading) {
+    // Loading indicator
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '500 20px "IBM Plex Mono", monospace';
+    ctx.fillText('[LOADING VIDEO...]', 256, 400);
+  } else {
+    // Fallback: play button circle + triangle
+    ctx.beginPath();
+    ctx.arc(256, 400, 48, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(256, 400, 48, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(242, 376);
+    ctx.lineTo(242, 424);
+    ctx.lineTo(278, 400);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fill();
+  }
+
+  // Filename below frame
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#4a5570';
+  ctx.font = '300 18px "IBM Plex Mono", monospace';
+  ctx.fillText(clip.filename, 256, 760);
+
+  // Duration
+  ctx.fillStyle = '#6a7590';
+  ctx.font = '500 22px "IBM Plex Mono", monospace';
+  ctx.fillText(formatDuration(clip.duration_sec), 256, 800);
+
+  // Progress bar background
+  ctx.fillStyle = '#1a2030';
+  ctx.fillRect(32, 740, 448, 3);
+  // Progress bar accent (30% placeholder)
+  ctx.fillStyle = hex;
+  ctx.fillRect(32, 740, 134, 3);
+
+  // Platform badge top-left
+  ctx.fillStyle = hex;
+  ctx.font = '600 20px "IBM Plex Mono", monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(getPlatformAbbr(clip.platform), 24, 56);
+
+  // Clip name top-center
+  ctx.fillStyle = '#8a95b0';
+  ctx.font = '500 18px "IBM Plex Mono", monospace';
+  ctx.textAlign = 'center';
+  var nm = clip.name || clip.filename;
+  ctx.fillText(nm.length > 24 ? nm.slice(0, 23) + '\u2026' : nm, 256, 56);
+
+  // "OUTPUT" label at bottom
+  ctx.fillStyle = '#2a3040';
+  ctx.font = '300 14px "IBM Plex Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('C:\\NB11\\output\\' + clip.filename, 256, 860);
+
+  // Source path hint
+  ctx.fillStyle = '#1a2030';
+  ctx.font = '300 12px "IBM Plex Mono", monospace';
+  ctx.fillText('[DROP .MP4 TO LOAD CLIP]', 256, 900);
+
+  var tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function getVideoUrl(clip) {
+  // Priority 1: EdBot video URL (from adapter)
+  if (clip.video_url) return clip.video_url;
+  // Priority 2: Dev server /video/ route (raptor-history source files)
+  var subdir = clip.subdir || '';
+  var filename = clip.filename || '';
+  if (filename) {
+    var subpath = (subdir && subdir !== '[root]' && subdir !== '[EDBOT]' && subdir !== '[UNKNOWN]')
+      ? subdir + '/' + filename
+      : filename;
+    return 'http://localhost:8000/video/' + encodeURIComponent(subpath).replace(/%2F/g, '/');
+  }
+  return null;
+}
+
+function tryLoadVideo(clip, phone) {
+  var primaryUrl = getVideoUrl(clip);
+  var paths = [];
+  if (primaryUrl) paths.push(primaryUrl);
+  // Fallback: legacy output path + bare filename
+  paths.push('http://localhost:8000/output/' + encodeURIComponent(clip.filename || ''));
+  if (clip.filename) paths.push(clip.filename);
+
+  // Show loading canvas immediately
+  var loadingTex = createVideoPlayerCanvas(clip, 'loading');
+  applyZoomScreenMaterial(phone, loadingTex, null);
+
+  var video = document.createElement('video');
+  video.crossOrigin = 'anonymous';
+  video.muted = true;
+  video.loop = true;
+  video.playsInline = true;
+  video.style.display = 'none';
+  document.body.appendChild(video);
+
+  var tried = 0;
+  function tryNext() {
+    if (tried >= paths.length) {
+      // All paths failed — show fallback canvas with play triangle
+      document.body.removeChild(video);
+      var fallbackTex = createVideoPlayerCanvas(clip, 'fallback');
+      applyZoomScreenMaterial(phone, fallbackTex, null);
+      console.log('[jp] video load failed — using placeholder for', clip.filename);
+      return;
+    }
+    video.src = paths[tried];
+    tried++;
+    video.load();
+  }
+
+  video.addEventListener('canplay', function onCanPlay() {
+    video.removeEventListener('canplay', onCanPlay);
+    var vTex = new THREE.VideoTexture(video);
+    vTex.minFilter = THREE.LinearFilter;
+    vTex.magFilter = THREE.LinearFilter;
+    video.play();
+    applyZoomScreenMaterial(phone, vTex, video);
+    activeVideoEl = video;
+    activeVideoTex = vTex;
+    // Show audio toggle in zoom panel
+    var audioDiv = document.getElementById('jp-zoom-audio');
+    if (audioDiv) audioDiv.style.display = 'block';
+    console.log('[jp] video loaded on phone:', clip.filename);
+  });
+
+  video.addEventListener('error', function () {
+    tryNext();
+  });
+
+  tryNext();
+}
+
+function applyZoomScreenMaterial(phone, tex, videoEl) {
+  // Store original screen material if not already saved
+  if (!phone._origScreenMat) {
+    phone._origScreenMat = phone.screen.material;
+  }
+  // Create a bright emissive material so the video is clearly visible
+  var hex = getPlatformHex(phone.clip.platform);
+  var zoomMat = new THREE.MeshBasicMaterial({
+    map: tex, transparent: true, side: THREE.FrontSide
+  });
+  phone.screen.material = zoomMat;
+  phone._zoomScreenMat = zoomMat;
+  phone._zoomVideoEl = videoEl;
+}
+
+function restoreScreenMaterial(phone) {
+  if (phone._origScreenMat) {
+    phone.screen.material = phone._origScreenMat;
+  }
+  if (phone._zoomScreenMat) {
+    phone._zoomScreenMat.dispose();
+    phone._zoomScreenMat = null;
+  }
+  if (phone._zoomVideoEl) {
+    phone._zoomVideoEl.pause();
+    phone._zoomVideoEl.src = '';
+    if (phone._zoomVideoEl.parentNode) phone._zoomVideoEl.parentNode.removeChild(phone._zoomVideoEl);
+    phone._zoomVideoEl = null;
+  }
+  if (activeVideoEl === phone._zoomVideoEl) {
+    activeVideoEl = null;
+  }
+  if (activeVideoTex) {
+    activeVideoTex.dispose();
+    activeVideoTex = null;
+  }
+  phone._origScreenMat = null;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BACK FACE CANVAS (CHANGE 4 — ArtBot placeholder)
+// ═══════════════════════════════════════════════════════════════════
+
+function buildBackCanvas(clip) {
+  var ac = getAspectClass(clip.resolution);
+  var dims = ASPECT_MESHES[ac];
+  var cW = dims.backCanvasW;
+  var cH = dims.backCanvasH;
+  var cx = cW / 2;
+  var halfH = cH / 2;
+
+  var canvas = document.createElement('canvas');
+  canvas.width = cW;
+  canvas.height = cH;
+  var ctx = canvas.getContext('2d');
+
+  // Full background
+  var grad = ctx.createLinearGradient(0, 0, 0, cH);
+  grad.addColorStop(0, '#0a0d14');
+  grad.addColorStop(1, getPlatformDark(clip.platform));
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, cW, cH);
+
+  // ─── TOP 50%: Hashtag zone ───
+  ctx.fillStyle = '#1a2840';
+  ctx.fillRect(0, 0, cW, halfH);
+  ctx.fillStyle = 'rgba(10, 13, 20, 0.85)';
+  ctx.fillRect(0, 0, cW, halfH);
+
+  // Hashtags centered vertically
+  var tags = clip.hashtags || [];
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  var tagFontSize = ac === 'landscape' ? 16 : (ac === 'square' ? 22 : 20);
+  var tagSpacing = ac === 'landscape' ? 22 : 36;
+  ctx.font = '500 ' + tagFontSize + 'px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#06b6d4';
+  var tagStartY = halfH / 2 - (tags.length - 1) * (tagSpacing / 2);
+  tags.forEach(function (t, i) {
+    ctx.fillText(t, cx, tagStartY + i * tagSpacing);
+  });
+
+  // Divider line
+  ctx.strokeStyle = '#1a2840';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(Math.round(cW * 0.08), halfH);
+  ctx.lineTo(Math.round(cW * 0.92), halfH);
+  ctx.stroke();
+
+  // ─── BOTTOM 50%: ArtBot placeholder ───
+  var artbotFontSize = ac === 'landscape' ? 14 : 18;
+  var subFontSize = ac === 'landscape' ? 10 : 12;
+  ctx.fillStyle = '#3a4560';
+  ctx.font = '600 ' + artbotFontSize + 'px "IBM Plex Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('ARTBOT', cx, halfH + Math.round(cH * 0.07));
+
+  ctx.fillStyle = '#2a3040';
+  ctx.font = '300 ' + subFontSize + 'px "IBM Plex Mono", monospace';
+  ctx.fillText('[AWAITING PIPELINE]', cx, halfH + Math.round(cH * 0.11));
+
+  // Dashed box placeholder
+  var boxMargin = Math.round(cW * 0.12);
+  var boxTop = halfH + Math.round(cH * 0.15);
+  var boxH = Math.round(cH * 0.28);
+  ctx.strokeStyle = '#1a2840';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(boxMargin, boxTop, cW - boxMargin * 2, boxH);
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = '#1a2840';
+  ctx.font = '300 ' + (ac === 'landscape' ? 9 : 11) + 'px "IBM Plex Mono", monospace';
+  ctx.fillText('Generated art + captions', cx, boxTop + Math.round(boxH * 0.4));
+  ctx.fillText('will render here', cx, boxTop + Math.round(boxH * 0.55));
+
+  var tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SCENE INIT (step 1)
+// ═══════════════════════════════════════════════════════════════════
+
+function initScene() {
+  const container = document.getElementById('jp_container');
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  // Renderer
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0);
+  container.appendChild(renderer.domElement);
+
+  // Scene
+  scene = new THREE.Scene();
+
+  // Camera
+  camera = new THREE.PerspectiveCamera(55, w / h, 0.1, 200);
+  camera.position.set(0, 2, 16);
+
+  // OrbitControls
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 4;
+  controls.maxDistance = 35;
+
+  // Clock
+  clock = new THREE.Clock();
+
+  // Raycaster
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2(-999, -999);
+
+  // CSS2D
+  css2dRenderer = new CSS2DRenderer();
+  css2dRenderer.setSize(w, h);
+  container.appendChild(css2dRenderer.domElement);
+
+  console.log('[jp] step 1 — scene init OK');
+  console.log('[jp] step 2 — CSS2D renderer OK');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LIGHTING
+// ═══════════════════════════════════════════════════════════════════
+
+function initLights() {
+  ambientLight = new THREE.AmbientLight(0x1a2035, 1.2);
+  scene.add(ambientLight);
+
+  keyLight = new THREE.DirectionalLight(0x4466aa, 0.8);
+  keyLight.position.set(5, 8, 5);
+  scene.add(keyLight);
+
+  fillLight = new THREE.DirectionalLight(0x221133, 0.4);
+  fillLight.position.set(-5, -3, -5);
+  scene.add(fillLight);
+
+  rimLight = new THREE.PointLight(0x06b6d4, 0.6, 20);
+  rimLight.position.set(0, 8, 0);
+  scene.add(rimLight);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STAR FIELD + NEBULA (V2/V3)
+// ═══════════════════════════════════════════════════════════════════
+
+function createStarField(count, radius, size) {
+  const geo = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const r = radius * (0.4 + Math.random() * 0.6);
+    positions[i * 3]     = Math.sin(phi) * Math.cos(theta) * r;
+    positions[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * r;
+    positions[i * 3 + 2] = Math.cos(phi) * r;
+  }
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({ color: 0xffffff, size: size, sizeAttenuation: false, transparent: true, opacity: 0.6 });
+  return new THREE.Points(geo, mat);
+}
+
+function initEnvironment() {
+  // V2 star field — 300 points, radius 80, size 0.06
+  starFieldNear = createStarField(300, 80, 1.0);
+  starFieldNear.visible = true;
+  scene.add(starFieldNear);
+
+  // V3 far star field — 600 points, larger
+  starFieldFar = createStarField(300, 60, 1.5);
+  starFieldFar.visible = false;
+  scene.add(starFieldFar);
+
+  // V3 nebula plane
+  const nebulaCanvas = document.createElement('canvas');
+  nebulaCanvas.width = 512;
+  nebulaCanvas.height = 512;
+  const nCtx = nebulaCanvas.getContext('2d');
+  const nGrad = nCtx.createRadialGradient(256, 256, 0, 256, 256, 256);
+  nGrad.addColorStop(0, 'rgba(40, 20, 60, 0.6)');
+  nGrad.addColorStop(0.5, 'rgba(15, 10, 35, 0.3)');
+  nGrad.addColorStop(1, 'rgba(6, 8, 16, 0)');
+  nCtx.fillStyle = nGrad;
+  nCtx.fillRect(0, 0, 512, 512);
+  const nebulaTex = new THREE.CanvasTexture(nebulaCanvas);
+
+  const nebulaGeo = new THREE.PlaneGeometry(60, 60);
+  const nebulaMat = new THREE.MeshBasicMaterial({ map: nebulaTex, transparent: true, side: THREE.DoubleSide, depthWrite: false });
+  nebulaPlane = new THREE.Mesh(nebulaGeo, nebulaMat);
+  nebulaPlane.position.set(0, 0, -25);
+  nebulaPlane.visible = false;
+  scene.add(nebulaPlane);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CLUSTER ZONE LABELS
+// ═══════════════════════════════════════════════════════════════════
+
+var clusterLabelObjs = {}; // keyed by zone name
+
+function initClusterLabels() {
+  Object.keys(CLUSTER_ZONES).forEach(function (key) {
+    var zone = CLUSTER_ZONES[key];
+    var div = document.createElement('div');
+    div.className = 'jp_quadrant-label';
+    div.textContent = zone.label;
+    var obj = new CSS2DObject(div);
+    obj.position.set(zone.x, zone.y + 3.0, zone.z);
+    scene.add(obj);
+    clusterLabelObjs[key] = { obj: obj, div: div };
+  });
+}
+
+function showClusterLabel(zoneKey) {
+  var cl = clusterLabelObjs[zoneKey];
+  if (!cl) return;
+  cl.div.textContent = CLUSTER_ZONES[zoneKey].label;
+  cl.div.classList.add('visible');
+  if (activeVariant === 'V3') {
+    cl.div.classList.add('jp_quadrant-label--v3');
+  } else {
+    cl.div.classList.remove('jp_quadrant-label--v3');
+  }
+}
+
+function hideClusterLabels() {
+  Object.keys(clusterLabelObjs).forEach(function (key) {
+    var cl = clusterLabelObjs[key];
+    cl.div.classList.remove('visible');
+    cl.div.classList.remove('jp_quadrant-label--v3');
+  });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// PHONE BUILDER (step 3)
+// ═══════════════════════════════════════════════════════════════════
+
+function buildPhone(clip, index) {
+  var ac = getAspectClass(clip.resolution);
+  var dims = ASPECT_MESHES[ac];
+
+  const group = new THREE.Group();
+  const hex = getPlatformHex(clip.platform);
+  const col = getPlatformColor(clip.platform);
+  const screenTex = createScreenTexture(clip);
+
+  // ─── Body ───
+  const bodyGeo = new THREE.BoxGeometry(dims.bodyW, dims.bodyH, dims.depth);
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: 0x141824, roughness: 0.3, metalness: 0.7, transparent: true
+  });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  group.add(body);
+
+  // ─── Screen ───
+  const screenGeo = new THREE.BoxGeometry(dims.screenW, dims.screenH, 0.001);
+  const screenMat = new THREE.MeshPhongMaterial({
+    map: screenTex, emissive: col, emissiveIntensity: 0.12,
+    shininess: 120, specular: new THREE.Color(0x334466), transparent: true
+  });
+  const screen = new THREE.Mesh(screenGeo, screenMat);
+  screen.position.z = dims.depth / 2 + 0.001;
+  group.add(screen);
+
+  // ─── Camera bump ───
+  const camGeo = new THREE.SphereGeometry(0.04, 8, 8);
+  const camMat = new THREE.MeshStandardMaterial({
+    color: 0x0d0f18, roughness: 0.2, metalness: 0.9, transparent: true
+  });
+  const camMesh = new THREE.Mesh(camGeo, camMat);
+  camMesh.position.set(0, dims.bodyH / 2, -(dims.depth / 2 + 0.001));
+  camMesh.visible = (ac === 'portrait');
+  group.add(camMesh);
+
+  // ─── Notch ───
+  const notchGeo = new THREE.BoxGeometry(0.22, 0.04, 0.002);
+  const notchMat = new THREE.MeshStandardMaterial({ color: 0x0a0d14, transparent: true });
+  const notch = new THREE.Mesh(notchGeo, notchMat);
+  notch.position.set(0, dims.bodyH / 2 - 0.03, dims.depth / 2 + 0.002);
+  notch.visible = (ac === 'portrait');
+  group.add(notch);
+
+  // ─── V2: Edge lines ───
+  const edges = new THREE.EdgesGeometry(bodyGeo);
+  const edgeLine = new THREE.LineSegments(edges,
+    new THREE.LineBasicMaterial({ color: 0x1a2840, opacity: 0.6, transparent: true })
+  );
+  edgeLine.visible = true;
+  group.add(edgeLine);
+
+  // ─── V2: Bezel ───
+  const bezelGeo = new THREE.BoxGeometry(dims.bezelW, dims.bezelH, 0.001);
+  const bezelMat = new THREE.MeshStandardMaterial({
+    color: 0x0d1020, roughness: 0.1, transparent: true
+  });
+  const bezel = new THREE.Mesh(bezelGeo, bezelMat);
+  bezel.position.z = dims.depth / 2 + 0.0005;
+  bezel.visible = true;
+  group.add(bezel);
+
+  // ─── V3: Glow plane ───
+  const glowGeo = new THREE.PlaneGeometry(dims.glowW, dims.glowH);
+  const glowMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(hex), opacity: 0.3, transparent: true,
+    side: THREE.FrontSide, depthWrite: false
+  });
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  glow.position.z = dims.depth / 2 + 0.003;
+  glow.visible = false;
+  group.add(glow);
+
+  // ─── Back face mesh ───
+  const backTex = buildBackCanvas(clip);
+  const backGeo = new THREE.PlaneGeometry(dims.backW, dims.backH);
+  const backMat = new THREE.MeshBasicMaterial({
+    map: backTex, transparent: true, side: THREE.FrontSide
+  });
+  const backFace = new THREE.Mesh(backGeo, backMat);
+  backFace.position.z = -(dims.depth / 2 + 0.001);
+  backFace.rotation.y = Math.PI; // faces backward
+  group.add(backFace);
+
+  // ─── CSS2D two-layer label ───
+  const labelDiv = document.createElement('div');
+  labelDiv.style.textAlign = 'center';
+  // Layer A: two-word tag (always visible in idle)
+  const tagDiv = document.createElement('div');
+  tagDiv.className = 'jp-label-tag';
+  tagDiv.textContent = twoWordTag(clip.topic_branch);
+  labelDiv.appendChild(tagDiv);
+  // Layer B: summary (hidden until cluster/zoom)
+  const summaryDiv = document.createElement('div');
+  summaryDiv.className = 'jp-label-summary';
+  summaryDiv.textContent = clip.summary || '';
+  labelDiv.appendChild(summaryDiv);
+  const label = new CSS2DObject(labelDiv);
+  label.position.set(0, dims.labelY, 0);
+  group.add(label);
+
+  // ─── Pre-build variant materials ───
+  const materials = {
+    V1: {
+      body: new THREE.MeshStandardMaterial({
+        color: 0x141824, roughness: 0.4, metalness: 0.6, transparent: true
+      }),
+      screen: new THREE.MeshStandardMaterial({
+        map: screenTex, emissive: col, emissiveIntensity: 0.1,
+        roughness: 0.05, metalness: 0.1, transparent: true
+      })
+    },
+    V2: {
+      body: bodyMat,
+      screen: screenMat
+    },
+    V3: {
+      body: new THREE.MeshPhysicalMaterial({
+        color: 0x141824, roughness: 0.05, metalness: 0.95,
+        clearcoat: 1.0, clearcoatRoughness: 0.1, transparent: true
+      }),
+      screen: new THREE.ShaderMaterial({
+        uniforms: {
+          time: { value: 0.0 },
+          platformColor: { value: col.clone() }
+        },
+        vertexShader: V3_VERTEX,
+        fragmentShader: V3_FRAGMENT,
+        transparent: true
+      })
+    }
+  };
+
+  // Phone data object
+  const phone = {
+    group: group,
+    body: body,
+    screen: screen,
+    camMesh: camMesh,
+    notch: notch,
+    edgeLine: edgeLine,
+    bezel: bezel,
+    glow: glow,
+    backFace: backFace,
+    backTex: backTex,
+    label: label,
+    labelDiv: labelDiv,
+    tagDiv: tagDiv,
+    summaryDiv: summaryDiv,
+    clip: clip,
+    index: index,
+    screenTex: screenTex,
+    materials: materials,
+    aspectClass: ac,
+    dims: dims,
+    homeX: 0, homeY: 0, homeZ: 0,
+    clusterPos: null,
+    isFloating: true,
+    isInCluster: false,
+    opacity: 1,
+    nextRotTime: 0,
+    floatPhase:  index * 1.37,
+    floatAmpPos: 0.12 + (index % 4) * 0.03,
+    floatAmpRot: 0.004 + (index % 3) * 0.002,
+    floatSpeed:  0.6 + (index % 5) * 0.15
+  };
+
+  // Store phone ref on meshes for raycasting
+  screen.userData.phone = phone;
+  body.userData.phone = phone;
+
+  return phone;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// VARIANT SYSTEM (step 12–14)
+// ═══════════════════════════════════════════════════════════════════
+
+function applyVariant(variant) {
+  const container = document.getElementById('jp_container');
+  activeVariant = variant;
+
+  // Update variant buttons
+  document.querySelectorAll('.jp_variant-btn').forEach(function (btn) {
+    btn.classList.toggle('active', btn.dataset.variant === variant);
+  });
+
+  // ─── Scene environment per variant ───
+  if (variant === 'V1') {
+    scene.background = new THREE.Color('#080a0f');
+    scene.fog = null;
+    container.style.background = '#080a0f';
+    starFieldNear.visible = false;
+    starFieldFar.visible = false;
+    nebulaPlane.visible = false;
+    // Simple lighting
+    ambientLight.intensity = 1.5;
+    keyLight.intensity = 0.8;
+    fillLight.intensity = 0.2;
+    rimLight.intensity = 0.3;
+  } else if (variant === 'V2') {
+    scene.background = null;
+    scene.fog = null;
+    container.style.background = 'radial-gradient(ellipse at 40% 30%, #0d1428 0%, #060810 100%)';
+    starFieldNear.visible = true;
+    starFieldFar.visible = false;
+    nebulaPlane.visible = false;
+    ambientLight.intensity = 1.2;
+    keyLight.intensity = 0.8;
+    fillLight.intensity = 0.4;
+    rimLight.intensity = 0.6;
+  } else { // V3
+    scene.background = new THREE.Color('#060810');
+    scene.fog = new THREE.FogExp2(0x060810, 0.022);
+    container.style.background = '#060810';
+    starFieldNear.visible = true;
+    starFieldFar.visible = true;
+    nebulaPlane.visible = true;
+    ambientLight.intensity = 1.0;
+    keyLight.intensity = 0.6;
+    fillLight.intensity = 0.5;
+    rimLight.intensity = 0.8;
+  }
+
+  // ─── Update phone materials + labels per variant ───
+  phones.forEach(function (phone) {
+    phone.body.material = phone.materials[variant].body;
+    phone.screen.material = phone.materials[variant].screen;
+
+    // Edge lines: V2 only
+    phone.edgeLine.visible = (variant === 'V2');
+    // Bezel: V2 only
+    phone.bezel.visible = (variant === 'V2');
+    // Glow plane: V3 only
+    phone.glow.visible = (variant === 'V3');
+
+    // Label position per variant (use dims.labelY for aspect-aware positioning)
+    var labelY = phone.dims ? phone.dims.labelY : -1.3;
+    if (variant === 'V3') {
+      phone.label.position.set(0, -labelY, 0); // above phone in V3 (flip sign)
+      phone.tagDiv.style.color = '#ffffff';
+      phone.tagDiv.style.textShadow = '0 0 8px rgba(6, 182, 212, 0.5)';
+    } else {
+      phone.label.position.set(0, labelY, 0); // below phone
+      phone.tagDiv.style.color = '#4a5570';
+      phone.tagDiv.style.textShadow = '0 0 4px rgba(0,0,0,0.8)';
+    }
+  });
+
+  // Update cluster label style if cluster is active
+  Object.keys(clusterLabelObjs).forEach(function (key) {
+    var cl = clusterLabelObjs[key];
+    if (variant === 'V3') {
+      cl.div.classList.add('jp_quadrant-label--v3');
+    } else {
+      cl.div.classList.remove('jp_quadrant-label--v3');
+    }
+  });
+
+  console.log('[jp] variant switched to', variant);
+}
+
+function switchVariant(variant) {
+  if (variant === activeVariant) return;
+
+  // Animate out
+  phones.forEach(function (phone) {
+    gsap.to(phone.group.scale, { x: 0, y: 0, z: 0, duration: 0.25, ease: 'power2.in' });
+  });
+
+  // After out animation, apply variant + entry
+  gsap.delayedCall(0.3, function () {
+    applyVariant(variant);
+    playEntryAnimation(variant);
+  });
+}
+
+function playEntryAnimation(variant) {
+  variant = variant || activeVariant;
+
+  if (variant === 'V1') {
+    // Instant spawn
+    phones.forEach(function (phone) {
+      phone.group.position.set(phone.homeX, phone.homeY, phone.homeZ);
+      phone.group.scale.set(1, 1, 1);
+      phone.group.rotation.set(0, 0, 0);
+      phone.isFloating = true;
+    });
+    console.log('[jp] V1 entry — instant spawn');
+
+  } else if (variant === 'V2') {
+    // Staggered from center
+    phones.forEach(function (phone, i) {
+      phone.group.position.set(0, -3, 0);
+      phone.group.scale.set(0, 0, 0);
+      phone.group.rotation.set(0, 0, 0);
+      phone.isFloating = false;
+      gsap.to(phone.group.scale, {
+        x: 1, y: 1, z: 1, duration: 0.5, delay: i * 0.08, ease: 'back.out(1.4)'
+      });
+      gsap.to(phone.group.position, {
+        x: phone.homeX, y: phone.homeY, z: phone.homeZ,
+        duration: 0.5, delay: i * 0.08, ease: 'back.out(1.4)',
+        onComplete: function () { phone.isFloating = true; }
+      });
+    });
+    console.log('[jp] V2 entry — staggered spawn');
+
+  } else { // V3
+    // Fly in from random directions
+    phones.forEach(function (phone) {
+      const dir = new THREE.Vector3(
+        Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5
+      ).normalize().multiplyScalar(30);
+      phone.group.position.set(dir.x, dir.y, dir.z);
+      phone.group.scale.set(1, 1, 1);
+      phone.group.rotation.set(0, 0, 0);
+      phone.isFloating = false;
+      const dur = 1.2 + Math.random() * 0.8;
+      gsap.to(phone.group.position, {
+        x: phone.homeX, y: phone.homeY, z: phone.homeZ,
+        duration: dur, ease: 'power3.out',
+        onComplete: function () { phone.isFloating = true; }
+      });
+    });
+    console.log('[jp] V3 entry — cinematic fly-in');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MANIFEST INGEST
+// ═══════════════════════════════════════════════════════════════════
+
+function clearPhones() {
+  phones.forEach(function (p) {
+    scene.remove(p.group);
+    p.body.geometry.dispose();
+    p.screen.geometry.dispose();
+    p.camMesh.geometry.dispose();
+    p.notch.geometry.dispose();
+    p.edgeLine.geometry.dispose();
+    p.bezel.geometry.dispose();
+    p.glow.geometry.dispose();
+    p.backFace.geometry.dispose();
+    p.backFace.material.dispose();
+    if (p.backTex) p.backTex.dispose();
+    // Dispose variant materials
+    ['V1', 'V2', 'V3'].forEach(function (v) {
+      if (p.materials[v].body.dispose) p.materials[v].body.dispose();
+      if (p.materials[v].screen.dispose) p.materials[v].screen.dispose();
+    });
+    if (p.screenTex) p.screenTex.dispose();
+  });
+  phones = [];
+  phoneMeshes = [];
+  sourcePhones = [];
+  sourcePhoneMeshes = [];
+}
+
+function switchTab(tab) {
+  if (tab === activeTab) return;
+  activeTab = tab;
+  // Update tab button styles
+  document.querySelectorAll('.jp_tab-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  if (tab === 'source') {
+    // Show source phones, restore from saved state
+    sourcePhones.forEach(function(p) { p.group.visible = true; });
+    phones = sourcePhones.slice();
+    phoneMeshes = sourcePhoneMeshes.slice();
+  } else if (tab === 'portrait') {
+    // Hide source phones
+    sourcePhones.forEach(function(p) { p.group.visible = false; });
+    // Show portrait phones (may be empty)
+    portraitPhones.forEach(function(p) { p.group.visible = true; });
+    phones = portraitPhones.slice();
+    phoneMeshes = portraitPhoneMeshes.slice();
+  }
+  updateHUD();
+}
+
+function ingestManifest(data, placeholder) {
+  clearPhones();
+  clips = data.clips || [];
+  isPlaceholder = placeholder;
+
+  // Extract unique hashtags
+  const tagSet = new Set();
+  clips.forEach(function (c) { (c.hashtags || []).forEach(function (t) { tagSet.add(t); }); });
+  uniqueTags = Array.from(tagSet);
+
+  // Compute home positions
+  var spherePoints = fibonacciSphere(clips.length, 7);
+
+  // Build phones
+  clips.forEach(function (clip, i) {
+    // Ensure defaults
+    if (!clip.hashtags) clip.hashtags = [];
+    if (!clip.topic_branch) clip.topic_branch = '[TOPIC PENDING]';
+
+    var phone = buildPhone(clip, i);
+    phone.homeX = spherePoints[i].x;
+    phone.homeY = spherePoints[i].y;
+    phone.homeZ = spherePoints[i].z;
+    scene.add(phone.group);
+    phones.push(phone);
+    phoneMeshes.push(phone.screen, phone.body);
+  });
+
+  // Save source tab references
+  sourcePhones = phones.slice();
+  sourcePhoneMeshes = phoneMeshes.slice();
+  activeTab = 'source';
+  document.querySelectorAll('.jp_tab-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.tab === 'source');
+  });
+
+  console.log('[jp] step 3 — phone mesh OK —', clips.length, 'phones rendered');
+  console.log('[jp] step 4 — fibonacci sphere spawn —', clips.length, 'phones');
+
+  // Apply current variant (sets materials, labels, etc.)
+  applyVariant(activeVariant);
+
+  // Entry animation
+  playEntryAnimation(activeVariant);
+
+  // Build UI
+  buildHashtagButtons();
+  updateHUD();
+
+  // Run triage on all clips and apply visuals
+  runTriageOnClips();
+  phones.forEach(function (phone) { applyTriageVisual(phone); });
+  updateTriageBar();
+
+  // Load figure map (non-blocking — screens refresh when data arrives)
+  if (!figureMapData) {
+    loadFigureMap().then(function (ok) {
+      if (ok) refreshPhoneScreens();
+    });
+  }
+
+  console.log('[jp] step 6 — HUD OK');
+  console.log('[jp] step 7 — hashtag buttons OK —', uniqueTags.length, 'tags');
+  var tc = getTriageCounts();
+  console.log('[jp] triage — RED:', tc.red, 'YELLOW:', tc.yellow, 'GREEN:', tc.green);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ASSEMBLY MANIFEST INGEST (Part B)
+// ═══════════════════════════════════════════════════════════════════
+
+function clearPortraitPhones() {
+  portraitPhones.forEach(function (p) {
+    scene.remove(p.group);
+    p.body.geometry.dispose();
+    p.screen.geometry.dispose();
+    p.camMesh.geometry.dispose();
+    p.notch.geometry.dispose();
+    p.edgeLine.geometry.dispose();
+    p.bezel.geometry.dispose();
+    p.glow.geometry.dispose();
+    p.backFace.geometry.dispose();
+    p.backFace.material.dispose();
+    if (p.backTex) p.backTex.dispose();
+    ['V1', 'V2', 'V3'].forEach(function (v) {
+      if (p.materials[v].body.dispose) p.materials[v].body.dispose();
+      if (p.materials[v].screen.dispose) p.materials[v].screen.dispose();
+    });
+    if (p.screenTex) p.screenTex.dispose();
+  });
+  portraitPhones = [];
+  portraitPhoneMeshes = [];
+  portraitClips = [];
+}
+
+function ingestAssemblyManifest(data) {
+  var rawClips = data.clips || [];
+  if (!rawClips.length) {
+    console.log('[jp] assembly_manifest: no clips');
+    return;
+  }
+
+  console.log('[jp] assembly_manifest:', rawClips.length, 'shortform clips');
+
+  // Clear existing portrait phones
+  clearPortraitPhones();
+
+  // Normalize clips
+  portraitClips = rawClips.map(normalizeAssemblyClip);
+
+  // Platform sort order for grid layout
+  var platformOrder = ['tiktok', 'youtube_shorts', 'ig_reels', 'x_video', 'youtube_long'];
+
+  // Build portrait phones + sort indices
+  var sorted = [];
+  portraitClips.forEach(function (clip, i) {
+    var phone = buildPhone(clip, i);
+    phone._portraitIndex = i;
+    portraitPhones.push(phone);
+    portraitPhoneMeshes.push(phone.screen, phone.body);
+    scene.add(phone.group);
+    sorted.push({ phone: phone, platformIdx: platformOrder.indexOf(clip._platform || clip.platform) });
+  });
+
+  // Sort by platform order
+  sorted.sort(function (a, b) {
+    var ai = a.platformIdx === -1 ? 99 : a.platformIdx;
+    var bi = b.platformIdx === -1 ? 99 : b.platformIdx;
+    return ai - bi;
+  });
+
+  // Layout: simple grid
+  var spacing = 1.2;
+  var perRow = Math.min(sorted.length, 8);
+  if (perRow < 1) perRow = 1;
+  sorted.forEach(function (item, i) {
+    var row = Math.floor(i / perRow);
+    var col = i % perRow;
+    var x = (col - (perRow - 1) / 2) * spacing;
+    var y = 0;
+    var z = -row * 2.0;
+    item.phone.group.position.set(x, y, z);
+    item.phone.homeX = x;
+    item.phone.homeY = y;
+    item.phone.homeZ = z;
+  });
+
+  // Hide portrait phones if source tab is active
+  if (activeTab !== 'portrait') {
+    portraitPhones.forEach(function (p) { p.group.visible = false; });
+  } else {
+    // If portrait tab is active, swap into phones array
+    phones = portraitPhones.slice();
+    phoneMeshes = portraitPhoneMeshes.slice();
+  }
+
+  // Apply current variant to portrait phones
+  portraitPhones.forEach(function (phone) {
+    phone.body.material = phone.materials[activeVariant].body;
+    phone.screen.material = phone.materials[activeVariant].screen;
+    phone.edgeLine.visible = (activeVariant === 'V2');
+    phone.bezel.visible = (activeVariant === 'V2');
+    phone.glow.visible = (activeVariant === 'V3');
+  });
+
+  updateHUD();
+  console.log('[jp] portrait tab:', portraitPhones.length, 'phones built');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// HUD UPDATE
+// ═══════════════════════════════════════════════════════════════════
+
+function updateHUD() {
+  document.getElementById('jp_clip-count').textContent = clips.length + ' clips';
+  document.getElementById('jp_mode').textContent = isPlaceholder ? 'PLACEHOLDER' : 'LIVE';
+
+  var dot = document.getElementById('jp_status-dot');
+  dot.className = 'jp_dot';
+  if (isPlaceholder) {
+    dot.classList.add('jp_dot--muted');
+  } else {
+    dot.classList.add('jp_dot--live');
+  }
+
+  // Update tab counts (Part B)
+  document.getElementById('jp_tab-source-count').textContent = String(sourcePhones.length);
+  document.getElementById('jp_tab-portrait-count').textContent = String(portraitPhones.length);
+
+  // Portrait empty state overlay
+  var emptyEl = document.getElementById('jp_portrait-empty');
+  if (activeTab === 'portrait' && portraitPhones.length === 0) {
+    emptyEl.classList.add('visible');
+  } else {
+    emptyEl.classList.remove('visible');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// HASHTAG BUTTONS (step 7)
+// ═══════════════════════════════════════════════════════════════════
+
+function buildHashtagButtons() {
+  // Legacy — now calls buildClusterNav
+  buildClusterNav();
+}
+
+function buildClusterNav() {
+  var container = document.getElementById('jp_tag-container');
+  container.innerHTML = '';
+
+  // Count clips per cluster zone
+  var zoneCounts = {};
+  CLUSTER_TAGS.forEach(function (key) { zoneCounts[key] = 0; });
+  clips.forEach(function (clip) {
+    var hashtags = getClipHashtags(clip);
+    var primary = hashtags[0] || 'uncategorized';
+    if (zoneCounts[primary] !== undefined) {
+      zoneCounts[primary]++;
+    } else {
+      zoneCounts['uncategorized']++;
+    }
+  });
+
+  CLUSTER_TAGS.forEach(function (key) {
+    var zone = CLUSTER_ZONES[key];
+    var tag = '#' + key;
+    var btn = document.createElement('button');
+    btn.className = 'jp_cluster-btn';
+    btn.dataset.zone = key;
+    btn.innerHTML = zone.label + ' <span class="jp_cluster-count">' + zoneCounts[key] + '</span>';
+    btn.addEventListener('click', function () {
+      if (activeTag === tag) {
+        resetCluster();
+      } else {
+        activateCluster(tag);
+        // Fly camera to zone overview
+        flyToZone(key);
+      }
+    });
+    container.appendChild(btn);
+  });
+}
+
+function flyToZone(zoneKey) {
+  var zone = CLUSTER_ZONES[zoneKey];
+  if (!zone) return;
+  gsap.to(controls.target, {
+    x: zone.x, y: zone.y, z: zone.z,
+    duration: 0.8, ease: 'power2.inOut'
+  });
+  gsap.to(camera.position, {
+    x: zone.x, y: zone.y + 4, z: zone.z + 10,
+    duration: 0.8, ease: 'power2.inOut'
+  });
+}
+
+function updateControlButtons() {
+  document.querySelectorAll('.jp_cluster-btn').forEach(function (btn) {
+    var tag = '#' + btn.dataset.zone;
+    btn.classList.toggle('active', tag === activeTag);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CLUSTERING (step 8)
+// ═══════════════════════════════════════════════════════════════════
+
+function activateCluster(tag) {
+  if (currentState === STATE.ZOOM) exitZoomView();
+  prevState = currentState;
+  currentState = STATE.CLUSTERED;
+  activeTag = tag;
+  updateControlButtons();
+  hideClusterLabels();
+
+  // Determine which zone this tag maps to (strip # prefix)
+  var zoneKey = tag.replace(/^#/, '');
+  var zone = CLUSTER_ZONES[zoneKey];
+  if (!zone) {
+    // Fallback: try matching the raw tag
+    zone = CLUSTER_ZONES['uncategorized'];
+    zoneKey = 'uncategorized';
+  }
+
+  // Separate matching vs non-matching
+  var matching = [];
+  var exiled = [];
+  phones.forEach(function (phone) {
+    var tags = phone.clip.hashtags || [];
+    if (tags.indexOf(tag) >= 0) {
+      matching.push(phone);
+    } else {
+      exiled.push(phone);
+    }
+  });
+
+  // Variant-specific ease + duration
+  var ease, duration, exileDur;
+  if (activeVariant === 'V1') {
+    ease = 'power1.inOut'; duration = 0.6; exileDur = 0.4;
+  } else if (activeVariant === 'V2') {
+    ease = 'elastic.out(1, 0.6)'; duration = 1.1; exileDur = 0.6;
+  } else {
+    ease = 'power4.inOut'; duration = 0.9; exileDur = 0.4;
+  }
+
+  // Animate matching phones to cluster zone
+  matching.forEach(function (phone, i) {
+    phone.isFloating = false;
+    phone.isInCluster = true;
+    var target = getClusterPosition(zone, i);
+    phone.clusterPos = target;
+
+    // V3: slight scale down first
+    if (activeVariant === 'V3') {
+      gsap.to(phone.group.scale, { x: 0.85, y: 0.85, z: 0.85, duration: 0.15 });
+      gsap.to(phone.group.scale, { x: 1, y: 1, z: 1, duration: 0.5, delay: 0.15, ease: 'elastic.out(1, 0.4)' });
+    }
+
+    // FACE FORWARD — stop spinning, rotate to face camera (y=0)
+    gsap.killTweensOf(phone.group.rotation);
+    gsap.to(phone.group.rotation, { y: 0, z: 0, duration: 0.6, ease: 'power2.out' });
+
+    gsap.killTweensOf(phone.group.position);
+    gsap.to(phone.group.position, {
+      x: target.x, y: target.y, z: target.z,
+      duration: duration, ease: ease
+    });
+
+    // Restore full opacity
+    var proxy = { o: phone.opacity };
+    gsap.to(proxy, {
+      o: 1, duration: 0.4,
+      onUpdate: function () { phone.opacity = proxy.o; setPhoneOpacity(phone, proxy.o); }
+    });
+  });
+
+  // Animate exiled phones
+  exiled.forEach(function (phone) {
+    phone.isFloating = false;
+    phone.isInCluster = false;
+    phone.clusterPos = null;
+    var exPos = getExilePosition(phone.index);
+
+    gsap.killTweensOf(phone.group.position);
+
+    if (activeVariant === 'V3') {
+      // V3: vanish — opacity 0, scale down
+      gsap.to(phone.group.position, { x: exPos.x, y: exPos.y, z: exPos.z, duration: exileDur, ease: 'power2.in' });
+      gsap.to(phone.group.scale, { x: 0.4, y: 0.4, z: 0.4, duration: exileDur });
+      var proxy = { o: phone.opacity };
+      gsap.to(proxy, {
+        o: 0, duration: exileDur,
+        onUpdate: function () { phone.opacity = proxy.o; setPhoneOpacity(phone, proxy.o); }
+      });
+    } else {
+      var targetOpacity = (activeVariant === 'V1') ? 0.15 : 0.06;
+      gsap.to(phone.group.position, {
+        x: exPos.x, y: exPos.y, z: exPos.z,
+        duration: exileDur + 0.2, ease: 'power2.out'
+      });
+      if (activeVariant === 'V2') {
+        // V2: push back in Z
+        gsap.to(phone.group.position, { z: exPos.z - 8, duration: exileDur + 0.2, ease: 'power2.out' });
+      }
+      var proxy2 = { o: phone.opacity };
+      gsap.to(proxy2, {
+        o: targetOpacity, duration: exileDur,
+        onUpdate: function () { phone.opacity = proxy2.o; setPhoneOpacity(phone, proxy2.o); }
+      });
+    }
+  });
+
+  // Show cluster zone label
+  showClusterLabel(zoneKey);
+
+  console.log('[jp] cluster — zone', zoneKey, '(' + matching.length + ' match, ' + exiled.length + ' exiled)');
+}
+
+function resetCluster() {
+  if (currentState === STATE.ZOOM) exitZoomView();
+  prevState = currentState;
+  currentState = STATE.IDLE;
+  activeTag = null;
+  updateControlButtons();
+  hideClusterLabels();
+
+  var ease, duration;
+  if (activeVariant === 'V1') {
+    ease = 'power1.inOut'; duration = 0.5;
+  } else {
+    ease = 'power2.inOut'; duration = 0.7;
+  }
+
+  phones.forEach(function (phone) {
+    phone.isInCluster = false;
+    phone.clusterPos = null;
+
+    // Hide summary label
+    phone.labelDiv.classList.remove('jp-summary-visible');
+
+    gsap.killTweensOf(phone.group.position);
+    gsap.killTweensOf(phone.group.scale);
+
+    gsap.to(phone.group.position, {
+      x: phone.homeX, y: phone.homeY, z: phone.homeZ,
+      duration: duration, ease: ease
+    });
+    gsap.to(phone.group.scale, { x: 1, y: 1, z: 1, duration: 0.4, ease: 'power2.out' });
+    gsap.killTweensOf(phone.group.rotation);
+    gsap.to(phone.group.rotation, { z: 0, duration: 0.5, ease: 'power2.out' });
+
+    var proxy = { o: phone.opacity };
+    gsap.to(proxy, {
+      o: 1, duration: duration,
+      onUpdate: function () { phone.opacity = proxy.o; setPhoneOpacity(phone, proxy.o); }
+    });
+  });
+
+  // Re-enable float (idle spin resumes) after animation
+  gsap.delayedCall(duration + 0.1, function () {
+    phones.forEach(function (p) { p.isFloating = true; });
+  });
+
+  console.log('[jp] cluster reset');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RAYCASTING — HOVER + CLICK (step 10, 16)
+// ═══════════════════════════════════════════════════════════════════
+
+function doRaycast() {
+  if (phoneMeshes.length === 0) return;
+  raycaster.setFromCamera(mouse, camera);
+  var hits = raycaster.intersectObjects(phoneMeshes, false);
+
+  if (hits.length > 0) {
+    var phone = hits[0].object.userData.phone;
+    if (phone && phone !== hoveredPhone) {
+      onUnhover();
+      hoveredPhone = phone;
+      onHover(phone);
+    }
+  } else {
+    if (hoveredPhone) {
+      onUnhover();
+      hoveredPhone = null;
+    }
+  }
+}
+
+function onHover(phone) {
+  phone.tagDiv.classList.add('jp-label-tag--hover');
+  document.body.style.cursor = 'pointer';
+}
+
+function onUnhover() {
+  if (hoveredPhone) {
+    hoveredPhone.tagDiv.classList.remove('jp-label-tag--hover');
+  }
+  document.body.style.cursor = 'default';
+}
+
+function onPhoneClick(phone) {
+  if (!phone) return;
+
+  // Pulse feedback on screen
+  gsap.to(phone.screen.scale, {
+    x: 1.08, y: 1.08, z: 1.08, duration: 0.15, yoyo: true, repeat: 1, ease: 'power2.out'
+  });
+
+  if (currentState === STATE.ZOOM && inspectedPhone === phone) {
+    exitZoomView();
+    return;
+  }
+
+  enterZoomView(phone);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ZOOM VIEW (CHANGE 2+3) — STATE 4
+// ═══════════════════════════════════════════════════════════════════
+
+function enterZoomView(phone) {
+  inspectedPhone = phone;
+  prevState = currentState;
+  currentState = STATE.ZOOM;
+  zoomIndex = phones.indexOf(phone);
+
+  // Save camera state
+  savedCamera = {
+    position: camera.position.clone(),
+    target: controls.target.clone(),
+    minDist: controls.minDistance,
+    maxDist: controls.maxDistance
+  };
+
+  // Stop phone floating/spinning, face forward
+  phone.isFloating = false;
+  gsap.killTweensOf(phone.group.rotation);
+  gsap.to(phone.group.rotation, { x: 0, y: 0, z: 0, duration: 0.5, ease: 'power2.out' });
+
+  // Show summary label
+  phone.labelDiv.classList.add('jp-summary-visible');
+
+  // Calculate camera position: in front of phone, offset left so panel doesn't obscure
+  var phonePos = phone.group.position;
+  var camOffsetX = phone.dims ? -(phone.dims.bodyW * 0.5 + 0.1) : -0.6;
+  var camOffsetZ = phone.dims ? (phone.dims.bodyH * 3.5 + 0.4) : 2.8;
+  var targetCam = { x: phonePos.x + camOffsetX, y: phonePos.y, z: phonePos.z + camOffsetZ };
+
+  // Disable orbit controls during fly-in, re-enable with limits after
+  controls.enabled = false;
+
+  // Zoom camera to phone
+  gsap.to(camera.position, {
+    x: targetCam.x, y: targetCam.y, z: targetCam.z,
+    duration: 0.8, ease: 'power2.inOut',
+    onComplete: function () {
+      // Re-enable with tight orbit limits around the phone
+      controls.target.set(phonePos.x, phonePos.y, phonePos.z);
+      controls.minDistance = 1.8;
+      controls.maxDistance = 5;
+      controls.enabled = true;
+    }
+  });
+  gsap.to(controls.target, {
+    x: phonePos.x, y: phonePos.y, z: phonePos.z,
+    duration: 0.8, ease: 'power2.inOut'
+  });
+
+  // Dim all other phones
+  phones.forEach(function (p) {
+    if (p === phone) return;
+    var proxy = { o: p.opacity };
+    gsap.to(proxy, {
+      o: 0.03, duration: 0.5,
+      onUpdate: function () { p.opacity = proxy.o; setPhoneOpacity(p, proxy.o); }
+    });
+  });
+
+  // Swap screen to video player
+  tryLoadVideo(phone.clip, phone);
+
+  // Hide HUD + controls + triage bar
+  document.getElementById('jp_hud').classList.add('jp-zoom-hidden');
+  document.getElementById('jp_controls').classList.add('jp-zoom-hidden');
+  document.getElementById('jp-triage-bar').classList.add('jp-zoom-hidden');
+
+  // Open zoom panel
+  openZoomPanel(phone.clip);
+  document.getElementById('jp-zoom-panel').classList.add('open');
+
+  console.log('[jp] zoom — entered:', phone.clip.name || phone.clip.id);
+}
+
+function exitZoomView() {
+  if (currentState !== STATE.ZOOM) return;
+  currentState = prevState !== STATE.ZOOM ? prevState : STATE.IDLE;
+
+  // Close zoom panel
+  document.getElementById('jp-zoom-panel').classList.remove('open');
+
+  // Hide audio toggle and reset mute state
+  var audioDiv = document.getElementById('jp-zoom-audio');
+  if (audioDiv) audioDiv.style.display = 'none';
+  if (activeVideoEl) activeVideoEl.muted = true;
+  var audioBtn = document.getElementById('jp-audio-toggle');
+  if (audioBtn) audioBtn.textContent = '[UNMUTE]';
+
+  // Restore HUD + controls + triage bar
+  document.getElementById('jp_hud').classList.remove('jp-zoom-hidden');
+  document.getElementById('jp_controls').classList.remove('jp-zoom-hidden');
+  document.getElementById('jp-triage-bar').classList.remove('jp-zoom-hidden');
+
+  // Restore camera
+  controls.enabled = false;
+  if (savedCamera) {
+    gsap.to(camera.position, {
+      x: savedCamera.position.x, y: savedCamera.position.y, z: savedCamera.position.z,
+      duration: 0.7, ease: 'power2.inOut'
+    });
+    gsap.to(controls.target, {
+      x: savedCamera.target.x, y: savedCamera.target.y, z: savedCamera.target.z,
+      duration: 0.7, ease: 'power2.inOut'
+    });
+    gsap.delayedCall(0.75, function () {
+      controls.minDistance = savedCamera.minDist;
+      controls.maxDistance = savedCamera.maxDist;
+      controls.enabled = true;
+    });
+  }
+
+  // Restore screen material + hide summary on inspected phone
+  if (inspectedPhone) {
+    restoreScreenMaterial(inspectedPhone);
+    inspectedPhone.labelDiv.classList.remove('jp-summary-visible');
+  }
+
+  // Restore all phone opacities + resume floating
+  phones.forEach(function (p) {
+    var proxy = { o: p.opacity };
+    gsap.to(proxy, {
+      o: 1, duration: 0.5,
+      onUpdate: function () { p.opacity = proxy.o; setPhoneOpacity(p, proxy.o); }
+    });
+  });
+  gsap.delayedCall(0.6, function () {
+    phones.forEach(function (p) { p.isFloating = true; });
+  });
+
+  inspectedPhone = null;
+  zoomIndex = -1;
+  console.log('[jp] zoom — exited');
+}
+
+function navigateZoom(dir) {
+  if (currentState !== STATE.ZOOM || phones.length === 0) return;
+  zoomIndex = (zoomIndex + dir + phones.length) % phones.length;
+  var nextPhone = phones[zoomIndex];
+
+  // Restore previous phone's screen + hide summary
+  if (inspectedPhone) {
+    restoreScreenMaterial(inspectedPhone);
+    inspectedPhone.labelDiv.classList.remove('jp-summary-visible');
+    inspectedPhone.isFloating = false;
+  }
+
+  // Reset audio toggle for new phone
+  var audioDiv = document.getElementById('jp-zoom-audio');
+  if (audioDiv) audioDiv.style.display = 'none';
+  if (activeVideoEl) activeVideoEl.muted = true;
+  var audioBtn = document.getElementById('jp-audio-toggle');
+  if (audioBtn) audioBtn.textContent = '[UNMUTE]';
+
+  inspectedPhone = nextPhone;
+
+  // Stop next phone, face forward, show summary
+  nextPhone.isFloating = false;
+  nextPhone.labelDiv.classList.add('jp-summary-visible');
+  gsap.killTweensOf(nextPhone.group.rotation);
+  gsap.to(nextPhone.group.rotation, { x: 0, y: 0, z: 0, duration: 0.4, ease: 'power2.out' });
+
+  // Swap screen to video player on next phone
+  tryLoadVideo(nextPhone.clip, nextPhone);
+
+  // Fly camera to next phone, offset left
+  var phonePos = nextPhone.group.position;
+  controls.enabled = false;
+  gsap.to(camera.position, {
+    x: phonePos.x - 0.6, y: phonePos.y, z: phonePos.z + 2.8,
+    duration: 0.6, ease: 'power2.inOut',
+    onComplete: function () {
+      controls.target.set(phonePos.x, phonePos.y, phonePos.z);
+      controls.minDistance = 1.8;
+      controls.maxDistance = 5;
+      controls.enabled = true;
+    }
+  });
+  gsap.to(controls.target, {
+    x: phonePos.x, y: phonePos.y, z: phonePos.z,
+    duration: 0.6, ease: 'power2.inOut'
+  });
+
+  // Dim/show phones
+  phones.forEach(function (p) {
+    var targetO = (p === nextPhone) ? 1 : 0.03;
+    var proxy = { o: p.opacity };
+    gsap.to(proxy, {
+      o: targetO, duration: 0.4,
+      onUpdate: function () { p.opacity = proxy.o; setPhoneOpacity(p, proxy.o); }
+    });
+  });
+
+  openZoomPanel(nextPhone.clip);
+}
+
+function openZoomPanel(clip) {
+  var hex = getPlatformHex(clip.platform);
+  var isRaptor = clip._source === 'raptor-library';
+
+  // Name + platform/subdir badge
+  var badgeLabel = isRaptor ? (clip.subdir || '??') : getPlatformAbbr(clip.platform);
+  document.getElementById('jp-zp-name').innerHTML =
+    (clip.name || clip.id) +
+    '<span class="jp-zp-platform" style="background:' + hex + '22;color:' + hex + '">' +
+    badgeLabel + '</span>';
+
+  // Meta row
+  var metaParts = ['<span>' + clip.filename + '</span>', '<span>' + formatDuration(clip.duration_sec) + '</span>'];
+  if (isRaptor) {
+    if (clip.resolution && clip.resolution !== 'unknown') metaParts.push('<span>' + clip.resolution + '</span>');
+    if (clip.filesize_mb) metaParts.push('<span>' + clip.filesize_mb + ' MB</span>');
+  } else {
+    metaParts.push('<span>silence ' + (clip.silence_pct || 0) + '%</span>');
+  }
+  document.getElementById('jp-zp-meta').innerHTML = metaParts.join('');
+
+  // Detail row (raptor-library specific)
+  var detailEl = document.getElementById('jp-zp-detail');
+  if (isRaptor) {
+    var parts = [];
+    if (clip.content_type && clip.content_type !== '[UNKNOWN]') parts.push('<span>' + clip.content_type + '</span>');
+    if (clip.language) parts.push('<span>lang:' + clip.language + '</span>');
+    if (clip.speaker_count > 1) parts.push('<span>' + clip.speaker_count + ' speakers</span>');
+    if (!clip.has_audio) parts.push('<span>[NO AUDIO]</span>');
+    detailEl.innerHTML = parts.join('');
+    detailEl.style.display = parts.length > 0 ? 'flex' : 'none';
+  } else {
+    detailEl.style.display = 'none';
+  }
+
+  document.getElementById('jp-zp-topic').textContent =
+    clip.topic_branch || '[TOPIC PENDING]';
+
+  // Source link (Part B) — show which source clip produced this shortform output
+  var sourceLinkEl = document.getElementById('jp-zp-source-link');
+  if (clip._source_id) {
+    sourceLinkEl.textContent = 'SOURCE: ' + clip._source_id;
+    sourceLinkEl.style.display = 'block';
+  } else {
+    sourceLinkEl.style.display = 'none';
+  }
+
+  document.getElementById('jp-zp-summary').textContent =
+    clip.summary || '[SUMMARY PENDING -- pipeline will populate]';
+
+  document.getElementById('jp-zp-transcript').textContent =
+    clip.transcript_snippet || '[TRANSCRIPT PENDING]';
+
+  // Tags
+  var tagsEl = document.getElementById('jp-zp-tags');
+  tagsEl.innerHTML = '';
+  (clip.hashtags || []).forEach(function (t) {
+    var span = document.createElement('span');
+    span.className = 'jp-zp-tag';
+    span.textContent = t;
+    tagsEl.appendChild(span);
+  });
+
+  // Whisper segments (collapsible)
+  var segments = clip.whisper_segments || [];
+  var segCount = document.getElementById('jp-zp-seg-count');
+  var segList = document.getElementById('jp-zp-seg-list');
+  var segToggle = document.getElementById('jp-zp-seg-toggle');
+  segCount.textContent = String(segments.length);
+  segList.innerHTML = '';
+  segList.classList.remove('open');
+  segToggle.classList.remove('open');
+
+  if (segments.length > 0) {
+    segToggle.style.display = 'flex';
+    segments.forEach(function (seg) {
+      var div = document.createElement('div');
+      div.className = 'jp-zp-seg';
+      var startMin = Math.floor(seg.start / 60);
+      var startSec = Math.floor(seg.start % 60);
+      var ts = startMin + ':' + String(startSec).padStart(2, '0');
+      div.innerHTML = '<span class="jp-zp-seg-time">' + ts + '</span>' + (seg.text || '');
+      segList.appendChild(div);
+    });
+  } else {
+    segToggle.style.display = 'none';
+  }
+
+  // Triage section
+  updateZoomPanelTriage(clip);
+
+  // Figure detection section
+  updateZoomPanelFigure(clip);
+
+  // Update counter
+  document.getElementById('jp-zp-counter').textContent = (zoomIndex + 1) + ' / ' + phones.length;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MANIFEST LOADING (step 11) — cascade: EdBot → raptor-library → legacy → placeholder
+// ═══════════════════════════════════════════════════════════════════
+
+async function loadFromEdBot() {
+  try {
+    var r = await fetch(EDBOT_CHUNKS_URL, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    // /api/chunks may return { chunks: [...] } or just [...]
+    var chunks = Array.isArray(data) ? data : (data.chunks || data.clips || []);
+    if (chunks.length === 0) throw new Error('empty chunks array');
+    var normalizedClips = chunks.map(normalizeEdbotChunk);
+    console.log('[jp] EdBot loaded —', normalizedClips.length, 'clips from', EDBOT_CHUNKS_URL);
+    dataSourceTag = 'edbot';
+    ingestManifest({ clips: normalizedClips }, false);
+    return true;
+  } catch (e) {
+    console.log('[jp] EdBot not available (' + e.message + '), falling through');
+    return false;
+  }
+}
+
+async function loadRaptorLibrary() {
+  try {
+    var r = await fetch(RAPTOR_LIBRARY_URL, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var raw = await r.json();
+    var entries = raw.entries || [];
+    if (entries.length === 0) throw new Error('no entries in raptor-library.json');
+    var normalizedClips = entries.map(normalizeRaptorEntry);
+    console.log('[jp] raptor-library loaded —', normalizedClips.length, 'clips from', (raw.source_root || 'unknown'));
+    dataSourceTag = 'raptor-library';
+    ingestManifest({ clips: normalizedClips }, false);
+    return true;
+  } catch (e) {
+    console.warn('[jp] raptor-library fetch failed:', e.message);
+    return false;
+  }
+}
+
+async function loadAssemblyManifest() {
+  try {
+    var r = await fetch(ASSEMBLY_MANIFEST_URL, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    ingestAssemblyManifest(data);
+  } catch (e) {
+    console.log('[jp] assembly_manifest.json not available — portrait tab empty until file drop or fetch');
+  }
+}
+
+async function loadManifest() {
+  // Cascade: EdBot → raptor-library → legacy manifest → placeholder
+  var edbotOk = await loadFromEdBot();
+  if (edbotOk) return;
+  var raptorOk = await loadRaptorLibrary();
+  if (raptorOk) return;
+  try {
+    var r = await fetch(MANIFEST_URL, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    console.log('[jp] manifest fetched from server —', (data.clips || []).length, 'clips');
+    dataSourceTag = 'legacy';
+    ingestManifest(data, false);
+  } catch (e) {
+    console.warn('[jp] manifest fetch failed — using placeholder:', e.message);
+    dataSourceTag = 'placeholder';
+    ingestManifest(PLACEHOLDER_MANIFEST, true);
+  }
+}
+
+async function loadTopics() {
+  try {
+    var r = await fetch(TOPICS_URL, { cache: 'no-store' });
+    if (!r.ok) return;
+    var data = await r.json();
+    (data.clips || []).forEach(function (t) {
+      var clip = clips.find(function (c) { return c.id === t.clip_id; });
+      if (clip) {
+        if (t.topic_branch) clip.topic_branch = t.topic_branch;
+        if (t.summary) clip.summary = t.summary;
+        if (t.hashtags) clip.hashtags = t.hashtags;
+      }
+    });
+    console.log('[jp] step 15 — topics loaded');
+  } catch (e) {
+    // Non-blocking — topics optional
+  }
+}
+
+function initFileDrop() {
+  var container = document.getElementById('jp_container');
+  container.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  container.addEventListener('drop', function (e) {
+    e.preventDefault();
+    var file = e.dataTransfer.files[0];
+    if (!file) return;
+
+    // .mp4 drop onto phone in zoom mode — play video on screen
+    if (file.name.endsWith('.mp4') && currentState === STATE.ZOOM && inspectedPhone) {
+      var url = URL.createObjectURL(file);
+      var video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.style.display = 'none';
+      video.src = url;
+      document.body.appendChild(video);
+      video.addEventListener('canplay', function onCan() {
+        video.removeEventListener('canplay', onCan);
+        var vTex = new THREE.VideoTexture(video);
+        vTex.minFilter = THREE.LinearFilter;
+        vTex.magFilter = THREE.LinearFilter;
+        video.play();
+        applyZoomScreenMaterial(inspectedPhone, vTex, video);
+        activeVideoEl = video;
+        activeVideoTex = vTex;
+        console.log('[jp] video dropped on phone:', file.name);
+      });
+      video.load();
+      return;
+    }
+
+    // .json manifest drop
+    if (!file.name.endsWith('.json')) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var data = JSON.parse(reader.result);
+        // Detect figure_map.json (has frames array or clips object with frames)
+        if (file.name.indexOf('figure_map') >= 0 || (data.frames && Array.isArray(data.frames)) ||
+            (data.clips && typeof data.clips === 'object' && !Array.isArray(data.clips) &&
+             Object.keys(data.clips).some(function (k) { return data.clips[k] && data.clips[k].frames; }))) {
+          figureMapData = data;
+          console.log('[jp] figure_map.json dropped — loaded');
+          refreshPhoneScreens();
+          // If zoomed in, refresh the figure panel
+          if (inspectedPhone) updateZoomPanelFigure(inspectedPhone.clip);
+          return;
+        }
+        // Detect assembly_manifest format (clips array with platform + source_id fields, or filename match)
+        if (file.name.indexOf('assembly_manifest') >= 0 ||
+            (data.clips && Array.isArray(data.clips) && data.clips.length > 0 &&
+             data.clips[0].source_id !== undefined)) {
+          console.log('[jp] assembly_manifest drop — ingesting', (data.clips || []).length, 'shortform clips');
+          ingestAssemblyManifest(data);
+        }
+        // Detect raptor-library format (has entries array)
+        else if (data.entries && Array.isArray(data.entries)) {
+          var normalizedClips = data.entries.map(normalizeRaptorEntry);
+          console.log('[jp] raptor-library drop — ingesting', normalizedClips.length, 'clips');
+          dataSourceTag = 'file-drop';
+          ingestManifest({ clips: normalizedClips }, false);
+        } else {
+          console.log('[jp] file drop — ingesting', (data.clips || []).length, 'clips');
+          dataSourceTag = 'file-drop';
+          ingestManifest(data, false);
+        }
+      } catch (err) {
+        console.warn('[jp] invalid JSON dropped:', err.message);
+      }
+    };
+    reader.readAsText(file);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PERFORMANCE MONITOR (step 17)
+// ═══════════════════════════════════════════════════════════════════
+
+function checkPerformance() {
+  var now = performance.now();
+  if (lastPerfTime > 0) {
+    perfSamples.push(now - lastPerfTime);
+  }
+  lastPerfTime = now;
+  if (perfSamples.length >= 60) {
+    var avg = perfSamples.reduce(function (a, b) { return a + b; }, 0) / perfSamples.length;
+    var fps = 1000 / avg;
+    if (fps < 45 && activeVariant === 'V3' && !v3Degraded) {
+      console.warn('[jp] V3 shader degraded — too many clips (avg FPS:', fps.toFixed(1) + ')');
+      degradeV3();
+    }
+    perfSamples = [];
+  }
+}
+
+function degradeV3() {
+  if (v3Degraded) return;
+  v3Degraded = true;
+  phones.forEach(function (phone) {
+    if (phone.materials.V3.screen.isShaderMaterial) {
+      var hex = getPlatformHex(phone.clip.platform);
+      phone.materials.V3.screen = new THREE.MeshPhongMaterial({
+        map: phone.screenTex,
+        emissive: new THREE.Color(hex),
+        emissiveIntensity: 0.15,
+        shininess: 80,
+        transparent: true
+      });
+      if (activeVariant === 'V3') {
+        phone.screen.material = phone.materials.V3.screen;
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER LOOP (step 5)
+// ═══════════════════════════════════════════════════════════════════
+
+function animate() {
+  requestAnimationFrame(animate);
+  var t = clock.getElapsedTime();
+  frameCount++;
+
+  // ─── Float animation ───
+  phones.forEach(function (phone) {
+    if (!phone.isFloating) {
+      // V3 cluster orbit
+      if (phone.isInCluster && activeVariant === 'V3' && phone.clusterPos) {
+        var orbit = t * 0.3 + phone.floatPhase;
+        phone.group.position.x = phone.clusterPos.x + Math.cos(orbit) * 0.3;
+        phone.group.position.z = phone.clusterPos.z + Math.sin(orbit) * 0.3;
+      }
+      return;
+    }
+
+    var phase = phone.floatPhase;
+    var amp = phone.floatAmpPos;
+    var spd = phone.floatSpeed;
+
+    phone.group.position.x = phone.homeX + Math.sin(t * spd + phase) * amp;
+    phone.group.position.y = phone.homeY + Math.cos(t * spd * 0.7 + phase) * amp;
+    phone.group.position.z = phone.homeZ + Math.sin(t * spd * 0.5 + phase * 2) * amp * 0.5;
+    // Idle Y-axis spin — visible in ALL variants
+    phone.group.rotation.y += 0.008 + phone.floatAmpRot;
+    phone.group.rotation.z = Math.sin(t * 0.3 + phase) * 0.04;
+  });
+
+  // ─── V2: emissive pulse ───
+  if (activeVariant === 'V2') {
+    phones.forEach(function (phone) {
+      if (phone.screen.material.emissiveIntensity !== undefined) {
+        phone.screen.material.emissiveIntensity = 0.08 + Math.sin(t * 0.8 + phone.floatPhase) * 0.05;
+      }
+    });
+  }
+
+  // ─── V2/V3: rim light orbit ───
+  if (activeVariant !== 'V1') {
+    rimLight.position.x = Math.sin(t * 0.2) * 12;
+    rimLight.position.z = Math.cos(t * 0.2) * 12;
+  }
+
+  // ─── V3: shader time + lazy spin + random full rotation ───
+  if (activeVariant === 'V3') {
+    phones.forEach(function (phone) {
+      // Update shader time uniform
+      if (phone.screen.material.uniforms && phone.screen.material.uniforms.time) {
+        phone.screen.material.uniforms.time.value = t;
+      }
+      // Lazy Y spin
+      if (phone.isFloating) {
+        phone.group.rotation.y += 0.003 * phone.floatSpeed;
+      }
+      // Random full rotation (every 8–20s)
+      if (phone.isFloating && t > phone.nextRotTime) {
+        gsap.to(phone.group.rotation, { y: phone.group.rotation.y + Math.PI * 2, duration: 3, ease: 'power1.inOut' });
+        phone.nextRotTime = t + 8 + Math.random() * 12;
+      }
+    });
+  }
+
+  // ─── V3: point lights drift ───
+  if (activeVariant === 'V3') {
+    // Reuse rimLight + keyLight drift
+    keyLight.position.x = 5 + Math.sin(t * 0.15) * 3;
+    keyLight.position.z = 5 + Math.cos(t * 0.12) * 3;
+    fillLight.position.y = -3 + Math.sin(t * 0.1) * 2;
+  }
+
+  // ─── Raycasting (throttle to every 3 frames) ───
+  if (frameCount % 3 === 0) {
+    doRaycast();
+  }
+
+  // ─── Performance check ───
+  checkPerformance();
+
+  // ─── Render ───
+  controls.update();
+  renderer.render(scene, camera);
+  css2dRenderer.render(scene, camera);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════════════════════════════
+
+function initEventListeners() {
+  // Mouse move for raycasting
+  window.addEventListener('mousemove', function (e) {
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  });
+
+  // Click for zoom view
+  window.addEventListener('click', function (e) {
+    // Ignore clicks on UI elements
+    if (e.target.closest('#jp_hud') || e.target.closest('#jp_controls') || e.target.closest('#jp-zoom-panel') || e.target.closest('#jp-triage-bar')) return;
+
+    if (hoveredPhone) {
+      onPhoneClick(hoveredPhone);
+    } else if (currentState === STATE.ZOOM) {
+      exitZoomView();
+    }
+  });
+
+  // Escape to close, arrow keys to navigate
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && currentState === STATE.ZOOM) {
+      exitZoomView();
+    } else if (currentState === STATE.ZOOM && e.key === 'ArrowLeft') {
+      navigateZoom(-1);
+    } else if (currentState === STATE.ZOOM && e.key === 'ArrowRight') {
+      navigateZoom(1);
+    }
+  });
+
+  // Zoom panel controls
+  document.getElementById('jp-zp-close').addEventListener('click', function () {
+    exitZoomView();
+  });
+  document.getElementById('jp-zp-prev').addEventListener('click', function () {
+    navigateZoom(-1);
+  });
+  document.getElementById('jp-zp-next').addEventListener('click', function () {
+    navigateZoom(1);
+  });
+
+  // Segments toggle
+  document.getElementById('jp-zp-seg-toggle').addEventListener('click', function () {
+    this.classList.toggle('open');
+    document.getElementById('jp-zp-seg-list').classList.toggle('open');
+  });
+
+  // Tab buttons (Part A)
+  document.querySelectorAll('.jp_tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      switchTab(btn.dataset.tab);
+    });
+  });
+
+  // Variant buttons
+  document.querySelectorAll('.jp_variant-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      switchVariant(btn.dataset.variant);
+    });
+  });
+
+  // Reset button
+  document.getElementById('jp_reset-btn').addEventListener('click', function () {
+    resetCluster();
+  });
+
+  // Window resize
+  window.addEventListener('resize', function () {
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    css2dRenderer.setSize(w, h);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TRIAGE UI (Part C)
+// ═══════════════════════════════════════════════════════════════════
+
+var triageFilter = 'all'; // 'all' | 'hide-red' | 'green-only'
+
+function updateTriageBar() {
+  var counts = getTriageCounts();
+  document.getElementById('jp-red-count').textContent = String(counts.red);
+  document.getElementById('jp-yellow-count').textContent = String(counts.yellow);
+  document.getElementById('jp-green-count').textContent = String(counts.green);
+  // Update active button
+  document.querySelectorAll('#jp-triage-bar .jp-triage-action').forEach(function (btn) { btn.classList.remove('active'); });
+  if (triageFilter === 'hide-red') document.getElementById('jp-hide-red').classList.add('active');
+  else if (triageFilter === 'green-only') document.getElementById('jp-show-only-green').classList.add('active');
+  else document.getElementById('jp-show-all').classList.add('active');
+}
+
+function applyTriageVisual(phone) {
+  var grade = getClipTriageGrade(phone.clip.id);
+  if (!grade) return;
+  var color = TRIAGE_COLORS[grade];
+  var intensity = (grade === 'green') ? 0.05 : 0.15;
+  // Apply emissive glow to phone body across all variant materials
+  ['V1', 'V2', 'V3'].forEach(function (v) {
+    var mat = phone.materials[v].body;
+    if (mat.emissive) {
+      mat.emissive.set(color);
+      mat.emissiveIntensity = intensity;
+    }
+  });
+  // Also apply to current body material
+  if (phone.body.material.emissive) {
+    phone.body.material.emissive.set(color);
+    phone.body.material.emissiveIntensity = intensity;
+  }
+}
+
+function applyTriageFilter() {
+  phones.forEach(function (phone) {
+    var entry = getClipTriageEntry(phone.clip.id);
+    var grade = entry ? (entry.override || entry.grade) : 'green';
+    var shouldHide = false;
+    if (entry && entry.deleted) shouldHide = true;
+    if (triageFilter === 'hide-red' && grade === 'red') shouldHide = true;
+    if (triageFilter === 'green-only' && grade !== 'green') shouldHide = true;
+
+    if (shouldHide) {
+      gsap.to(phone.group.scale, { x: 0, y: 0, z: 0, duration: 0.3, ease: 'power2.in' });
+      phone.label.element.style.opacity = '0';
+    } else {
+      gsap.to(phone.group.scale, { x: 1, y: 1, z: 1, duration: 0.3, ease: 'power2.out' });
+      phone.label.element.style.opacity = String(phone.opacity);
+    }
+  });
+  updateTriageBar();
+}
+
+function exportTriageJson() {
+  var triageClips = [];
+  var summary = { red: 0, yellow: 0, green: 0 };
+  clips.forEach(function (clip) {
+    var entry = triageState[clip.id];
+    if (!entry) return;
+    var finalGrade = entry.override || entry.grade;
+    if (summary[finalGrade] !== undefined) summary[finalGrade]++;
+    triageClips.push({
+      id: clip.id,
+      filename: clip.filename,
+      subdir: clip.subdir || '',
+      auto_grade: entry.grade,
+      override: entry.override,
+      final_grade: finalGrade,
+      reason: entry.reason,
+      deleted: entry.deleted || false
+    });
+  });
+  var out = {
+    generated: new Date().toISOString(),
+    source: 'raptor-library.json',
+    total_clips: triageClips.length,
+    summary: summary,
+    clips: triageClips
+  };
+  var blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'raptor-triage.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  console.log('[jp] triage exported —', triageClips.length, 'clips');
+}
+
+function updateZoomPanelTriage(clip) {
+  var entry = getClipTriageEntry(clip.id);
+  var gradeEl = document.getElementById('jp-zp-triage-grade');
+  var reasonEl = document.getElementById('jp-zp-triage-reason');
+  if (!entry) {
+    gradeEl.innerHTML = '<span style="color:#4a5570">[NO TRIAGE DATA]</span>';
+    reasonEl.textContent = '';
+    document.querySelectorAll('.jp-zp-triage-btn').forEach(function (b) { b.classList.remove('active'); });
+    return;
+  }
+  var grade = entry.override || entry.grade;
+  var color = TRIAGE_COLORS[grade] || '#4a5570';
+  gradeEl.innerHTML = '<span class="jp-triage-dot" style="background:' + color + ';width:6px;height:6px;border-radius:50%;display:inline-block"></span> <span style="color:' + color + '">' + grade.toUpperCase() + '</span>';
+  reasonEl.textContent = entry.reason || '';
+  // Highlight active override button
+  document.getElementById('jp-zp-keep').classList.toggle('active', entry.override === TRIAGE.GREEN);
+  document.getElementById('jp-zp-flag').classList.toggle('active', entry.override === TRIAGE.YELLOW);
+  document.getElementById('jp-zp-delete').classList.toggle('active', entry.override === TRIAGE.RED);
+}
+
+// ─── Figure detection zoom panel (Part D) ───
+
+var _figureTooltipCleanup = null;
+
+function updateZoomPanelFigure(clip) {
+  var statsEl = document.getElementById('jp-zp-figure-stats');
+  var timelineWrap = document.getElementById('jp-zp-figure-timeline-wrap');
+  var minibar = document.getElementById('jp-zp-figure-minibar');
+  var tooltip = document.getElementById('jp-zp-figure-tooltip');
+
+  // Clean up previous tooltip listener
+  if (_figureTooltipCleanup) {
+    minibar.removeEventListener('mousemove', _figureTooltipCleanup);
+    minibar.removeEventListener('mouseleave', _figureTooltipCleanup._leave);
+    _figureTooltipCleanup = null;
+  }
+
+  var figData = getFigureDataForClip(clip);
+
+  // If no multi-clip data, try per-clip (async, will update when ready)
+  if (!figData) {
+    loadPerClipFigureMap(clip).then(function (perClipData) {
+      if (!perClipData) return;
+      // Store in a temporary cache so we don't re-fetch
+      if (!figureMapData) figureMapData = { clips: {} };
+      if (!figureMapData.clips) figureMapData.clips = {};
+      figureMapData.clips[clip.filename] = perClipData;
+      // Only update if still looking at same clip
+      if (inspectedPhone && inspectedPhone.clip.id === clip.id) {
+        updateZoomPanelFigure(clip);
+      }
+    });
+  }
+
+  if (!figData) {
+    statsEl.className = 'jp-zp-figure-stats jp-zp-figure-stats--empty';
+    statsEl.textContent = '[NO FIGURE DATA]';
+    timelineWrap.style.display = 'none';
+    tooltip.style.display = 'none';
+    return;
+  }
+
+  var stats = computeFigureStats(figData);
+  if (!stats) {
+    statsEl.className = 'jp-zp-figure-stats jp-zp-figure-stats--empty';
+    statsEl.textContent = '[NO FIGURE DATA]';
+    timelineWrap.style.display = 'none';
+    tooltip.style.display = 'none';
+    return;
+  }
+
+  // Render stats
+  statsEl.className = 'jp-zp-figure-stats';
+  statsEl.innerHTML =
+    '<span class="jp-zp-figure-stat-label">Person in frame: </span>' +
+    '<span class="jp-zp-figure-stat-value">' + stats.personPct + '%</span>' +
+    ' (' + stats.framesWithPerson + '/' + stats.totalFrames + ' frames)<br>' +
+    '<span class="jp-zp-figure-stat-label">Avg persons: </span>' +
+    '<span class="jp-zp-figure-stat-value">' + stats.avgPersonCount + '</span><br>' +
+    '<span class="jp-zp-figure-stat-label">Avg confidence: </span>' +
+    '<span class="jp-zp-figure-stat-value">' + stats.avgConfidence + '%</span>';
+
+  // Render minibar
+  timelineWrap.style.display = 'block';
+  var frames = figData.frames;
+  var barWidth = minibar.parentElement.offsetWidth || 196;
+  minibar.width = barWidth;
+  minibar.height = 8;
+  var ctx = minibar.getContext('2d');
+  ctx.clearRect(0, 0, barWidth, 8);
+
+  var colWidth = Math.max(1, barWidth / frames.length);
+  for (var i = 0; i < frames.length; i++) {
+    var x = Math.floor(i * barWidth / frames.length);
+    var w = Math.max(1, Math.ceil(barWidth / frames.length));
+    if (frames[i].detected) {
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.6)'; // green
+    } else {
+      ctx.fillStyle = '#1e2330'; // dim
+    }
+    ctx.fillRect(x, 0, w, 8);
+  }
+
+  // Tooltip on hover
+  tooltip.style.display = 'none';
+  var sampleFps = figData.sample_fps || 5;
+
+  function onMinibarMove(e) {
+    var rect = minibar.getBoundingClientRect();
+    var mx = e.clientX - rect.left;
+    var frameIdx = Math.floor(mx / rect.width * frames.length);
+    if (frameIdx < 0) frameIdx = 0;
+    if (frameIdx >= frames.length) frameIdx = frames.length - 1;
+    var frame = frames[frameIdx];
+    var timeSec = frame.time != null ? frame.time : (frameIdx / sampleFps);
+    var min = Math.floor(timeSec / 60);
+    var sec = Math.floor(timeSec % 60);
+    var ts = min + ':' + String(sec).padStart(2, '0');
+    var conf = '';
+    if (frame.detected && frame.persons && frame.persons.length > 0) {
+      var maxConf = 0;
+      for (var j = 0; j < frame.persons.length; j++) {
+        if (frame.persons[j].confidence > maxConf) maxConf = frame.persons[j].confidence;
+      }
+      conf = ' | conf: ' + (maxConf * 100).toFixed(0) + '%';
+    }
+    tooltip.textContent = ts + (frame.detected ? ' | ' + frame.count + ' person(s)' + conf : ' | no detection');
+    tooltip.style.display = 'block';
+    tooltip.style.left = Math.min(mx, rect.width - 80) + 'px';
+  }
+  function onMinibarLeave() {
+    tooltip.style.display = 'none';
+  }
+  minibar.addEventListener('mousemove', onMinibarMove);
+  minibar.addEventListener('mouseleave', onMinibarLeave);
+  _figureTooltipCleanup = onMinibarMove;
+  _figureTooltipCleanup._leave = onMinibarLeave;
+}
+
+function initTriageListeners() {
+  document.getElementById('jp-hide-red').addEventListener('click', function () {
+    triageFilter = (triageFilter === 'hide-red') ? 'all' : 'hide-red';
+    applyTriageFilter();
+  });
+  document.getElementById('jp-show-only-green').addEventListener('click', function () {
+    triageFilter = (triageFilter === 'green-only') ? 'all' : 'green-only';
+    applyTriageFilter();
+  });
+  document.getElementById('jp-show-all').addEventListener('click', function () {
+    triageFilter = 'all';
+    applyTriageFilter();
+  });
+  document.getElementById('jp-export-triage').addEventListener('click', exportTriageJson);
+
+  // Zoom panel triage override buttons
+  document.getElementById('jp-zp-keep').addEventListener('click', function () {
+    if (!inspectedPhone) return;
+    var clip = inspectedPhone.clip;
+    var entry = triageState[clip.id];
+    if (!entry) return;
+    setClipTriageOverride(clip.id, entry.override === TRIAGE.GREEN ? null : TRIAGE.GREEN);
+    applyTriageVisual(inspectedPhone);
+    updateZoomPanelTriage(clip);
+    updateTriageBar();
+    applyTriageFilter();
+  });
+  document.getElementById('jp-zp-flag').addEventListener('click', function () {
+    if (!inspectedPhone) return;
+    var clip = inspectedPhone.clip;
+    var entry = triageState[clip.id];
+    if (!entry) return;
+    setClipTriageOverride(clip.id, entry.override === TRIAGE.YELLOW ? null : TRIAGE.YELLOW);
+    applyTriageVisual(inspectedPhone);
+    updateZoomPanelTriage(clip);
+    updateTriageBar();
+    applyTriageFilter();
+  });
+  document.getElementById('jp-zp-delete').addEventListener('click', function () {
+    if (!inspectedPhone) return;
+    var clip = inspectedPhone.clip;
+    var entry = triageState[clip.id];
+    if (!entry) return;
+    setClipTriageOverride(clip.id, entry.override === TRIAGE.RED ? null : TRIAGE.RED);
+    applyTriageVisual(inspectedPhone);
+    updateZoomPanelTriage(clip);
+    updateTriageBar();
+    applyTriageFilter();
+  });
+
+  // Audio toggle (Part D4 — mute/unmute)
+  document.getElementById('jp-audio-toggle').addEventListener('click', function () {
+    if (!activeVideoEl) return;
+    activeVideoEl.muted = !activeVideoEl.muted;
+    document.getElementById('jp-audio-toggle').textContent =
+      activeVideoEl.muted ? '[UNMUTE]' : '[MUTE]';
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
+
+async function init() {
+  // Wait for fonts
+  await document.fonts.ready;
+
+  initScene();
+  initLights();
+  initEnvironment();
+  initClusterLabels();
+  initEventListeners();
+  initFileDrop();
+  initTriageListeners();
+
+  // Load manifest (server or placeholder)
+  await loadManifest();
+
+  // Non-blocking topics load
+  loadTopics();
+
+  // Non-blocking assembly manifest load (Part B)
+  loadAssemblyManifest();
+
+  // Start render loop
+  animate();
+
+  console.log('[jp] ────────────────────────────────────────');
+  console.log('[jp] phone-space-viewer v8b | source: ' + dataSourceTag + ' | clips: ' + clips.length);
+  console.log('[jp] variants: V1 V2 V3 | tabs: SOURCE/PORTRAIT | cascade: edbot -> raptor-library -> legacy -> placeholder');
+  console.log('[jp] assembly_manifest: ' + (portraitPhones.length > 0 ? portraitPhones.length + ' clips' : 'not available'));
+  console.log('[jp] figure_map: ' + (figureMapData ? 'loaded' : 'not available'));
+  console.log('[jp] ────────────────────────────────────────');
+}
+
+init();
+
+</script>
+</body>
+</html>

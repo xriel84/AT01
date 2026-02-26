@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EdBot Office — Experiment B: Kanban Board</title>
+<style>
+  /* PLACEHOLDER: Replace with A9 Office design tokens when available */
+  :root {
+    --bg-primary: #0f1117;
+    --bg-secondary: #1a1d27;
+    --bg-tertiary: #242836;
+    --border: #2e3348;
+    --text-primary: #e4e6ef;
+    --text-secondary: #8b8fa7;
+    --text-muted: #5c6078;
+    --accent: #6c8aff;
+    --success: #3dd68c;
+    --warning: #f0b232;
+    --danger: #f05252;
+    --info: #58a6ff;
+    --radius: 8px;
+    --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+  }
+
+  .header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+  .header-meta { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); }
+
+  .blocker-banner {
+    background: rgba(240, 82, 82, 0.1);
+    border-bottom: 1px solid rgba(240, 82, 82, 0.3);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .blocker-banner .label { color: var(--danger); font-weight: 600; }
+  .blocker-banner .message { color: var(--text-secondary); }
+
+  .kanban {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 24px;
+    max-width: 1600px;
+    margin: 0 auto;
+    align-items: start;
+  }
+
+  .column {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    min-height: 300px;
+  }
+
+  .column-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .column-title {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .column-count {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    background: var(--bg-tertiary);
+    padding: 2px 8px;
+    border-radius: 10px;
+    color: var(--text-muted);
+  }
+
+  .col-proven .column-header { border-top: 3px solid var(--success); }
+  .col-progress .column-header { border-top: 3px solid var(--info); }
+  .col-blocked .column-header { border-top: 3px solid var(--danger); }
+  .col-designed .column-header { border-top: 3px solid var(--warning); }
+
+  .column-body { padding: 12px; }
+
+  .card {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+    border-left: 3px solid transparent;
+  }
+
+  .card:last-child { margin-bottom: 0; }
+
+  .col-proven .card { border-left-color: var(--success); }
+  .col-progress .card { border-left-color: var(--info); }
+  .col-blocked .card { border-left-color: var(--danger); }
+  .col-designed .card { border-left-color: var(--warning); }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .card-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  .card-tags {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-family: var(--font-mono);
+    background: rgba(108, 138, 255, 0.1);
+    color: var(--accent);
+  }
+
+  .tag-platform {
+    background: rgba(139, 143, 167, 0.15);
+    color: var(--text-secondary);
+  }
+
+  .card-error {
+    margin-top: 8px;
+    font-size: 11px;
+    padding: 6px 10px;
+    background: rgba(240, 82, 82, 0.08);
+    border-radius: 4px;
+    color: var(--danger);
+    font-family: var(--font-mono);
+  }
+
+  /* Platform sub-section inside cards */
+  .platform-list {
+    margin-top: 10px;
+  }
+
+  .platform-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .platform-item + .platform-item {
+    border-top: 1px solid rgba(46, 51, 72, 0.5);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .dot-green { background: var(--success); }
+  .dot-red { background: var(--danger); }
+  .dot-grey { background: var(--text-muted); }
+
+  @media (max-width: 1100px) {
+    .kanban { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 600px) {
+    .kanban { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>EdBot Office</h1>
+  <div class="header-meta">EXPERIMENT B — Kanban Board</div>
+</div>
+
+<div class="blocker-banner">
+  <span>&#9888;</span>
+  <span class="label">BLOCKER</span>
+  <span class="message">Resolve crashed — needs manual relaunch</span>
+</div>
+
+<div class="kanban">
+
+  <!-- PROVEN Column -->
+  <div class="column col-proven">
+    <div class="column-header">
+      <span class="column-title">&#10003; Proven</span>
+      <span class="column-count">4</span>
+    </div>
+    <div class="column-body">
+      <div class="card">
+        <div class="card-title">Stage 1 — Transcription</div>
+        <div class="card-tags"><span class="tag">stage-1</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Stage 2 — Highlight Analysis</div>
+        <div class="card-tags"><span class="tag">stage-2</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Stage 3 — Visual Filtering</div>
+        <div class="card-subtitle">58/71 clips passed</div>
+        <div class="card-tags"><span class="tag">stage-3</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Stage 4 — Clip Extraction</div>
+        <div class="card-tags"><span class="tag">stage-4</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IN PROGRESS Column -->
+  <div class="column col-progress">
+    <div class="column-header">
+      <span class="column-title">&#8635; In Progress</span>
+      <span class="column-count">1</span>
+    </div>
+    <div class="column-body">
+      <div class="card">
+        <div class="card-title">Stage 6 — Resolve Assembly</div>
+        <div class="card-subtitle">3/5 platforms</div>
+        <div class="platform-list">
+          <div class="platform-item">
+            <span>TikTok (3 clips)</span>
+            <span class="status-dot dot-green"></span>
+          </div>
+          <div class="platform-item">
+            <span>Reels (5 clips)</span>
+            <span class="status-dot dot-green"></span>
+          </div>
+          <div class="platform-item">
+            <span>Shorts (3 clips)</span>
+            <span class="status-dot dot-green"></span>
+          </div>
+          <div class="platform-item">
+            <span>YouTube (28 clips)</span>
+            <span class="status-dot dot-red"></span>
+          </div>
+          <div class="platform-item">
+            <span>LinkedIn</span>
+            <span class="status-dot dot-grey"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCKED Column -->
+  <div class="column col-blocked">
+    <div class="column-header">
+      <span class="column-title">&#9888; Blocked</span>
+      <span class="column-count">2</span>
+    </div>
+    <div class="column-body">
+      <div class="card">
+        <div class="card-title">YouTube SmartReframe</div>
+        <div class="card-subtitle">28 clips — CRASHED</div>
+        <div class="card-error">SmartReframe crashed on batch. Resolve needs manual relaunch.</div>
+        <div class="card-tags">
+          <span class="tag tag-platform">youtube</span>
+          <span class="tag">stage-6</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">All Platform Renders</div>
+        <div class="card-subtitle">Render step not reached</div>
+        <div class="card-tags">
+          <span class="tag tag-platform">tiktok</span>
+          <span class="tag tag-platform">reels</span>
+          <span class="tag tag-platform">shorts</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESIGNED Column -->
+  <div class="column col-designed">
+    <div class="column-header">
+      <span class="column-title">&#128203; Designed</span>
+      <span class="column-count">3</span>
+    </div>
+    <div class="column-body">
+      <div class="card">
+        <div class="card-title">Stage 5 — Silence Removal</div>
+        <div class="card-subtitle">Designed, not built</div>
+        <div class="card-tags"><span class="tag">stage-5</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Stage 7 — Subtitle Generation</div>
+        <div class="card-subtitle">Designed, not built</div>
+        <div class="card-tags"><span class="tag">stage-7</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Stage 8 — Subtitle Burn-in</div>
+        <div class="card-subtitle">Designed, not built</div>
+        <div class="card-tags"><span class="tag">stage-8</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

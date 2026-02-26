@@ -1,0 +1,19 @@
+{
+  "source": "IMG_5769.MOV",
+  "duration": 424.80907,
+  "threshold_db": -50.0,
+  "gaps": [],
+  "speech": [
+    {
+      "start": 0.0,
+      "end": 424.80907,
+      "duration": 424.80907
+    }
+  ],
+  "stats": {
+    "total_silence": 0,
+    "total_speech": 424.80907,
+    "silence_percentage": 0.0,
+    "gap_count": 0
+  }
+}

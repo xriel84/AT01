@@ -1,0 +1,393 @@
+{
+  "source": "IMG_5769.MOV",
+  "duration": 424.80907,
+  "chunks": [
+    {
+      "id": 0,
+      "start": 0.0,
+      "end": 10.0,
+      "text": "Hello, how's everyone doing?",
+      "word_count": 4,
+      "silence_ratio": 0.688,
+      "has_speech": true
+    },
+    {
+      "id": 1,
+      "start": 10.0,
+      "end": 20.0,
+      "text": "The last day of C -Graph? OK,",
+      "word_count": 7,
+      "silence_ratio": 0.782,
+      "has_speech": true
+    },
+    {
+      "id": 2,
+      "start": 20.0,
+      "end": 30.0,
+      "text": "so welcome to day four of spatial storytelling.",
+      "word_count": 8,
+      "silence_ratio": 0.216,
+      "has_speech": true
+    },
+    {
+      "id": 3,
+      "start": 30.0,
+      "end": 40.0,
+      "text": "What we have today is a presentation titled seeing yourself on stage, multi avatar performance",
+      "word_count": 15,
+      "silence_ratio": 0.0,
+      "has_speech": true
+    },
+    {
+      "id": 4,
+      "start": 40.0,
+      "end": 50.0,
+      "text": "and the evolution of self monitoring in VR. So today's presenters are going to be talking to you about",
+      "word_count": 19,
+      "silence_ratio": 0.248,
+      "has_speech": true
+    },
+    {
+      "id": 5,
+      "start": 50.0,
+      "end": 60.0,
+      "text": "exploring the revolutionary real -time performer monitoring system in VR. They initially developed this for",
+      "word_count": 15,
+      "silence_ratio": 0.042,
+      "has_speech": true
+    },
+    {
+      "id": 6,
+      "start": 60.0,
+      "end": 70.0,
+      "text": "motion capture, but now what you're going to see today is how they evolved it into theater and performance. So is everyone excited?",
+      "word_count": 23,
+      "silence_ratio": 0.244,
+      "has_speech": true
+    },
+    {
+      "id": 7,
+      "start": 70.0,
+      "end": 80.0,
+      "text": "Yay! So presenting today is Alex Kulon and Ari Tarr.",
+      "word_count": 10,
+      "silence_ratio": 0.27,
+      "has_speech": true
+    },
+    {
+      "id": 8,
+      "start": 80.0,
+      "end": 90.0,
+      "text": "Their team also has Kevin Liebsen, David Godchfield, and you, John Ye.",
+      "word_count": 12,
+      "silence_ratio": 0.552,
+      "has_speech": true
+    },
+    {
+      "id": 9,
+      "start": 90.0,
+      "end": 100.0,
+      "text": "Take it away, guys. Hello, C -Graph 2025. Hi, I'll feel it out there. Yes, you, you,",
+      "word_count": 17,
+      "silence_ratio": 0.48,
+      "has_speech": true
+    },
+    {
+      "id": 10,
+      "start": 100.0,
+      "end": 110.0,
+      "text": "yes, feeling good? Welcome. This is our app stage presence. This represents five years of work optimizing. Medi",
+      "word_count": 18,
+      "silence_ratio": 0.202,
+      "has_speech": true
+    },
+    {
+      "id": 11,
+      "start": 110.0,
+      "end": 120.0,
+      "text": "-Ox, you got your hand in my face there. You weird, gray man, excuse me. Optimizing unreal engine for real -time, if I don't pick my notes, please. Real -time face tracking and",
+      "word_count": 33,
+      "silence_ratio": 0.176,
+      "has_speech": true
+    },
+    {
+      "id": 12,
+      "start": 120.0,
+      "end": 130.0,
+      "text": "using the meta -esticated for real -time body tracking. We're going to show you all of the steps along the way and all of the solutions we tried that didn't quite",
+      "word_count": 31,
+      "silence_ratio": 0.022,
+      "has_speech": true
+    },
+    {
+      "id": 13,
+      "start": 130.0,
+      "end": 140.0,
+      "text": "can out. This is absolutely revolutionary, and we are very proud of it. And we are very excited to tell you exactly why. Isn't that right, my friend?",
+      "word_count": 28,
+      "silence_ratio": 0.078,
+      "has_speech": true
+    },
+    {
+      "id": 14,
+      "start": 140.0,
+      "end": 150.0,
+      "text": "Well, yes, in fact, it is. That's right. Yes. And you, why do we have the same voice? Oh, that's right. I should be doing it in different voices, since I do have two different bodies.",
+      "word_count": 36,
+      "silence_ratio": 0.232,
+      "has_speech": true
+    },
+    {
+      "id": 15,
+      "start": 150.0,
+      "end": 160.0,
+      "text": "What do you think about that room, yes? I didn't want to say, can we see the face tracking up real close so we can really get in there? OK. Ah, yeah. Can you check out my",
+      "word_count": 37,
+      "silence_ratio": 0.176,
+      "has_speech": true
+    },
+    {
+      "id": 16,
+      "start": 160.0,
+      "end": 170.0,
+      "text": "dental work? Mm -hmm. Yes. You want to wait for me? Ah, that's too big. Hold on. Yeah, there you go. Ah, there we go. Oh, that's my favorite.",
+      "word_count": 29,
+      "silence_ratio": 0.322,
+      "has_speech": true
+    },
+    {
+      "id": 17,
+      "start": 170.0,
+      "end": 180.0,
+      "text": "You want to? Mm, go. Thank you. All right, I'm still here. Hi, everyone. So you're getting a little preview of what we're talking",
+      "word_count": 24,
+      "silence_ratio": 0.51,
+      "has_speech": true
+    },
+    {
+      "id": 18,
+      "start": 180.0,
+      "end": 190.0,
+      "text": "about today. As you can see, Ari here is switching between multiple characters. This is kind of a combination of a lot of different tools that we've been building over the years. And",
+      "word_count": 33,
+      "silence_ratio": 0.195,
+      "has_speech": true
+    },
+    {
+      "id": 19,
+      "start": 190.0,
+      "end": 200.0,
+      "text": "we actually have this ability to have quite a few characters in one experience. It is co -located. So you can have a lot of people in here multiplayer. And we can all see the same digital content in",
+      "word_count": 39,
+      "silence_ratio": 0.116,
+      "has_speech": true
+    },
+    {
+      "id": 20,
+      "start": 200.0,
+      "end": 210.0,
+      "text": "the same place. So if I were to say, here, Ari, have a seat. Then he would see the seats in the same place I do. And he could grab it or try to sit down on it, depending on how challenge",
+      "word_count": 42,
+      "silence_ratio": 0.102,
+      "has_speech": true
+    },
+    {
+      "id": 21,
+      "start": 210.0,
+      "end": 220.0,
+      "text": "he feels. So what he could do is he can try to sit in the digital seat and then actually do that one more time for me, Ari. For sure. So he can try to sit in the fake seat. And then I can try to come over here and",
+      "word_count": 50,
+      "silence_ratio": 0.192,
+      "has_speech": true
+    },
+    {
+      "id": 22,
+      "start": 220.0,
+      "end": 230.0,
+      "text": "try to match that. I'm so relaxed. Something like that. Looks great. Yeah, that's exactly how people sit in chairs. Cool. So with that,",
+      "word_count": 24,
+      "silence_ratio": 0.45,
+      "has_speech": true
+    },
+    {
+      "id": 23,
+      "start": 230.0,
+      "end": 240.0,
+      "text": "let's hop into the presentation a little bit without a little teaser. I'll just show you very briefly some of the other menu items we have here as well. My menu comes back. So",
+      "word_count": 34,
+      "silence_ratio": 0.134,
+      "has_speech": true
+    },
+    {
+      "id": 24,
+      "start": 240.0,
+      "end": 250.0,
+      "text": "we can spawn various items. We can turn on things like gravity and start to play with physics more. We can save in a load different states. So we could start to set up a set design, for example.",
+      "word_count": 39,
+      "silence_ratio": 0.112,
+      "has_speech": true
+    },
+    {
+      "id": 25,
+      "start": 250.0,
+      "end": 260.0,
+      "text": "These could be rehearsal cubes, props, et cetera. And once we had a set that we liked, then we could save it loaded into our production of waiting for Godot or whatever the",
+      "word_count": 33,
+      "silence_ratio": 0.216,
+      "has_speech": true
+    },
+    {
+      "id": 26,
+      "start": 260.0,
+      "end": 270.0,
+      "text": "case may be. Nice, nice shot up there. Yeah, the explode object features will be like volleyball, right? You can try to keep these things up in the air, if you like. Very playful. All right, so",
+      "word_count": 37,
+      "silence_ratio": 0.3,
+      "has_speech": true
+    },
+    {
+      "id": 27,
+      "start": 270.0,
+      "end": 280.0,
+      "text": "with that out of the way, let's take a look at a few slides. We'll just leave that pointing at you all.",
+      "word_count": 22,
+      "silence_ratio": 0.482,
+      "has_speech": true
+    },
+    {
+      "id": 28,
+      "start": 280.0,
+      "end": 290.0,
+      "text": "All right. Thanks, yeah, all right.",
+      "word_count": 6,
+      "silence_ratio": 0.85,
+      "has_speech": true
+    },
+    {
+      "id": 29,
+      "start": 290.0,
+      "end": 300.0,
+      "text": "I just realized I don't know this is on yet. On, yeah, there we go. All right, so",
+      "word_count": 18,
+      "silence_ratio": 0.62,
+      "has_speech": true
+    },
+    {
+      "id": 30,
+      "start": 300.0,
+      "end": 310.0,
+      "text": "to get started, why are you doing this? I like the immediate tone that comes to mind from my own slide. I want to start by mentioning 2008. I was studying abroad in London,",
+      "word_count": 34,
+      "silence_ratio": 0.184,
+      "has_speech": true
+    },
+    {
+      "id": 31,
+      "start": 310.0,
+      "end": 320.0,
+      "text": "having a fantastic time, architecture in theater, and I had the fortunate opportunity to see a lot of incredible live performance across dance, opera, theater, musicals, et cetera, often",
+      "word_count": 29,
+      "silence_ratio": 0.21,
+      "has_speech": true
+    },
+    {
+      "id": 32,
+      "start": 320.0,
+      "end": 330.0,
+      "text": "very close to the reformers. And I came away from that semester, feeling like there had to be some kind of ways, some kind of technology might be able to democratize that experience and",
+      "word_count": 34,
+      "silence_ratio": 0.072,
+      "has_speech": true
+    },
+    {
+      "id": 33,
+      "start": 330.0,
+      "end": 340.0,
+      "text": "bring that to more people. So fortunately, by 2010, I was a practicing architect. By 2012, I was working at Fisher Dax Associates designing theaters, and I was covering",
+      "word_count": 29,
+      "silence_ratio": 0.17,
+      "has_speech": true
+    },
+    {
+      "id": 34,
+      "start": 340.0,
+      "end": 350.0,
+      "text": "a lot of my interests already. Then in 2013, the Oculus 50k1 came out, and now I felt like I had my hands on a technology that could start to bring us to this point, a feeling like",
+      "word_count": 38,
+      "silence_ratio": 0.106,
+      "has_speech": true
+    },
+    {
+      "id": 35,
+      "start": 350.0,
+      "end": 360.0,
+      "text": "we're very close to very talented performers, even if we are not able to physically be in the same space as them. So, I can go to the next slide.",
+      "word_count": 30,
+      "silence_ratio": 0.242,
+      "has_speech": true
+    },
+    {
+      "id": 36,
+      "start": 360.0,
+      "end": 370.0,
+      "text": "Oh my gosh. There we go. So, we don't have time to talk about the history of everything we've been doing over the years, but suffice to say, this has been a passion of me and my company,",
+      "word_count": 38,
+      "silence_ratio": 0.202,
+      "has_speech": true
+    },
+    {
+      "id": 37,
+      "start": 370.0,
+      "end": 380.0,
+      "text": "and Ari as well, and it's led to a lot of really exciting studies across the spectrum of live -ness and pre -recorded elements. We're using AI and different capacities. We've done things with virtual production. We've done things",
+      "word_count": 39,
+      "silence_ratio": 0.09,
+      "has_speech": true
+    },
+    {
+      "id": 38,
+      "start": 380.0,
+      "end": 390.0,
+      "text": "with WebXR. We've done things in Unreal Engine. We kind of explored every possible way you could imagine of putting on a compelling live show, as well as pre -visualizing virtual shows",
+      "word_count": 32,
+      "silence_ratio": 0.038,
+      "has_speech": true
+    },
+    {
+      "id": 39,
+      "start": 390.0,
+      "end": 400.0,
+      "text": "as well. Think it away, Ari. Also, similar to Alex, when I was a young lad,",
+      "word_count": 16,
+      "silence_ratio": 0.424,
+      "has_speech": true
+    },
+    {
+      "id": 40,
+      "start": 400.0,
+      "end": 410.0,
+      "text": "I had the privilege of watching Sir Patrick Stewart on the stage in London doing a one -man show, performance of a Christmas Carol, and the incredible",
+      "word_count": 27,
+      "silence_ratio": 0.022,
+      "has_speech": true
+    },
+    {
+      "id": 41,
+      "start": 410.0,
+      "end": 420.0,
+      "text": "skill of watching inhabit all the characters and all the dialects and voices, but also his engagement with the audience and how it felt there was just",
+      "word_count": 27,
+      "silence_ratio": 0.068,
+      "has_speech": true
+    },
+    {
+      "id": 42,
+      "start": 420.0,
+      "end": 424.80907,
+      "text": "you and him. He was talking directly to you. It was absolutely magical.",
+      "word_count": 13,
+      "silence_ratio": 0.367861,
+      "has_speech": true
+    }
+  ]
+}

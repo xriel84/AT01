@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JP01 · Raptor Library</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: #0a0d14;
+  font-family: 'IBM Plex Mono', monospace;
+  color: #8892a8;
+}
+
+/* ─── Top bar ─── */
+#jp_topbar {
+  position: fixed; top: 0; left: 0; right: 0; height: 42px; z-index: 100;
+  display: flex; align-items: center; padding: 0 16px; gap: 10px;
+  background: rgba(8, 10, 15, 0.92);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 10px;
+}
+.jp_topbar-title {
+  color: #4a5570; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.08em; white-space: nowrap;
+}
+.jp_topbar-count {
+  color: #6a7590; white-space: nowrap;
+}
+.jp_topbar-spacer { flex: 1; }
+.jp_topbar-sep { color: #1a2030; }
+
+#jp_search {
+  width: 200px; padding: 4px 10px;
+  border: 1px solid #1a2030; border-radius: 3px;
+  background: rgba(0,0,0,0.3); color: #8892a8;
+  font-family: inherit; font-size: 10px;
+  outline: none; transition: border-color 0.15s;
+}
+#jp_search:focus { border-color: #06b6d4; }
+#jp_search::placeholder { color: #2a3040; }
+
+.jp_sort-btn, .jp_filter-select {
+  padding: 3px 8px; border: 1px solid #1a2030; border-radius: 3px;
+  background: transparent; color: #4a5570;
+  font-family: inherit; font-size: 9px; cursor: pointer;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  transition: all 0.15s;
+}
+.jp_sort-btn:hover, .jp_filter-select:hover { border-color: #06b6d4; color: #06b6d4; }
+.jp_sort-btn.active { border-color: #06b6d4; color: #06b6d4; background: rgba(6,182,212,0.08); }
+.jp_filter-select {
+  -webkit-appearance: none; appearance: none;
+  padding-right: 18px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%234a5570'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+}
+.jp_filter-select option { background: #0a0d14; color: #8892a8; }
+
+/* ─── Scroll container ─── */
+#jp_scroll {
+  position: fixed; top: 42px; left: 0; right: 0; bottom: 0;
+  overflow-y: auto; padding: 16px;
+  scrollbar-width: thin; scrollbar-color: #1a2840 transparent;
+}
+#jp_scroll::-webkit-scrollbar { width: 6px; }
+#jp_scroll::-webkit-scrollbar-thumb { background: #1a2840; border-radius: 3px; }
+
+/* ─── Card grid ─── */
+#jp_cards {
+  display: flex; flex-direction: column; gap: 8px;
+  max-width: 900px; margin: 0 auto;
+}
+
+/* ─── Card ─── */
+.jp_card {
+  background: rgba(14, 18, 28, 0.8);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 4px; padding: 12px 16px;
+  cursor: pointer; transition: border-color 0.15s, background 0.15s;
+}
+.jp_card:hover {
+  border-color: rgba(6, 182, 212, 0.2);
+  background: rgba(14, 18, 28, 1);
+}
+
+.jp_card-header {
+  display: flex; align-items: baseline; gap: 10px;
+  margin-bottom: 4px;
+}
+.jp_card-name {
+  font-size: 14px; font-weight: 600; color: #c8d0e0;
+  letter-spacing: 0.02em;
+}
+.jp_card-subdir {
+  font-size: 9px; color: #06b6d4; text-transform: uppercase;
+  letter-spacing: 0.08em; margin-left: auto;
+  padding: 1px 6px; border: 1px solid rgba(6,182,212,0.2); border-radius: 2px;
+}
+.jp_card-meta {
+  font-size: 9px; color: #4a5570; text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;
+}
+.jp_card-meta span { white-space: nowrap; }
+.jp_card-meta-sep { color: #1a2030; }
+
+/* Summary toggle */
+.jp_card-summary-toggle {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9px; color: #4a5570; text-transform: uppercase;
+  letter-spacing: 0.06em; cursor: pointer;
+  border: none; background: none; font-family: inherit;
+  padding: 2px 0; transition: color 0.15s;
+}
+.jp_card-summary-toggle:hover { color: #06b6d4; }
+.jp_card-summary-toggle .jp_arrow { transition: transform 0.2s; display: inline-block; }
+.jp_card-summary-toggle.open .jp_arrow { transform: rotate(90deg); }
+
+.jp_card-summary {
+  overflow: hidden; height: 0;
+  font-size: 10px; color: #6a7590; line-height: 1.5;
+  border-left: 2px solid #1a2840; padding-left: 10px;
+  margin-top: 0;
+}
+.jp_card-summary.insufficient { color: #2a3040; font-style: italic; }
+
+/* Context badges */
+.jp_card-badges {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;
+}
+.jp_card-badge {
+  padding: 2px 6px; border-radius: 2px;
+  font-size: 8px; text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.jp_badge-type { background: rgba(6,182,212,0.1); color: #06b6d4; }
+.jp_badge-lang { background: rgba(34,197,94,0.1); color: #22c55e; }
+.jp_badge-speakers { background: rgba(168,85,247,0.1); color: #a855f7; }
+.jp_badge-auto { background: rgba(234,179,8,0.1); color: #eab308; }
+
+/* ─── Transcript panel ─── */
+#jp_panel {
+  position: fixed; top: 42px; left: 0; right: 0; bottom: 0; z-index: 200;
+  background: rgba(8, 10, 15, 0.96);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  overflow-y: auto; padding: 32px;
+  display: none;
+}
+#jp_panel.open { display: block; }
+
+.jp_panel-close {
+  position: fixed; top: 52px; right: 20px; z-index: 210;
+  width: 28px; height: 28px; border: 1px solid #1a2030; border-radius: 4px;
+  background: rgba(8, 10, 16, 0.9); color: #6a7590; font-size: 16px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; font-family: inherit;
+}
+.jp_panel-close:hover { border-color: #ef4444; color: #ef4444; }
+
+.jp_panel-inner { max-width: 800px; margin: 0 auto; }
+.jp_panel-name {
+  font-size: 20px; font-weight: 600; color: #c8d0e0;
+  letter-spacing: 0.02em; margin-bottom: 8px;
+}
+.jp_panel-meta {
+  font-size: 10px; color: #4a5570; text-transform: uppercase;
+  letter-spacing: 0.06em; margin-bottom: 16px;
+  display: flex; gap: 12px; flex-wrap: wrap;
+}
+.jp_panel-section {
+  font-size: 9px; color: #4a5570; text-transform: uppercase;
+  letter-spacing: 0.1em; margin: 16px 0 6px;
+}
+.jp_panel-summary {
+  font-size: 12px; color: #8892a8; line-height: 1.6;
+  border-left: 2px solid #1a2840; padding-left: 12px;
+  margin-bottom: 12px;
+}
+.jp_panel-transcript {
+  font-size: 11px; color: #6a7590; line-height: 1.7;
+  white-space: pre-wrap; word-break: break-word;
+}
+.jp_panel-segments {
+  margin-top: 16px;
+}
+.jp_panel-seg {
+  display: flex; gap: 12px; padding: 3px 0;
+  font-size: 10px; line-height: 1.4;
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+}
+.jp_panel-seg-time {
+  color: #06b6d4; white-space: nowrap; min-width: 80px;
+  font-variant-numeric: tabular-nums;
+}
+.jp_panel-seg-text { color: #6a7590; }
+
+/* ─── Drop zone ─── */
+#jp_dropzone {
+  position: fixed; top: 42px; left: 0; right: 0; bottom: 0;
+  display: none; align-items: center; justify-content: center;
+  flex-direction: column; gap: 16px;
+}
+#jp_dropzone.visible { display: flex; }
+.jp_dropzone-box {
+  width: 400px; height: 200px;
+  border: 2px dashed #1a2840; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 8px;
+  color: #3a4560; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.06em; transition: border-color 0.2s;
+}
+.jp_dropzone-box.dragover { border-color: #06b6d4; color: #06b6d4; }
+.jp_dropzone-hint { font-size: 9px; color: #2a3040; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div id="jp_topbar">
+  <span class="jp_topbar-title">RAPTOR LIBRARY</span>
+  <span class="jp_topbar-sep">&middot;</span>
+  <span class="jp_topbar-count" id="jp_count">0 of 0 clips</span>
+  <span class="jp_topbar-spacer"></span>
+  <input type="text" id="jp_search" placeholder="Search name / transcript...">
+  <span class="jp_topbar-sep">&middot;</span>
+  <button class="jp_sort-btn active" data-sort="name">NAME</button>
+  <button class="jp_sort-btn" data-sort="duration">DUR</button>
+  <button class="jp_sort-btn" data-sort="subdir">DIR</button>
+  <button class="jp_sort-btn" data-sort="size">SIZE</button>
+  <span class="jp_topbar-sep">&middot;</span>
+  <select class="jp_filter-select" id="jp_filter-subdir"><option value="">ALL DIRS</option></select>
+  <select class="jp_filter-select" id="jp_filter-type"><option value="">ALL TYPES</option></select>
+</div>
+
+<!-- Scroll area -->
+<div id="jp_scroll">
+  <div id="jp_cards"></div>
+</div>
+
+<!-- Transcript detail panel -->
+<div id="jp_panel">
+  <button class="jp_panel-close" id="jp_panel-close">&times;</button>
+  <div class="jp_panel-inner" id="jp_panel-inner"></div>
+</div>
+
+<!-- Drop zone (shown when fetch fails) -->
+<div id="jp_dropzone">
+  <div class="jp_dropzone-box" id="jp_dropzone-box">
+    <div>DROP raptor-library.json</div>
+    <div class="jp_dropzone-hint">or serve via localhost:8000</div>
+  </div>
+</div>
+
+<!-- GSAP CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════════
+
+const LIBRARY_URL = 'raptor-library.json';
+
+// ═══════════════════════════════════════════════════════════════════
+// PLACEHOLDER LIBRARY (5 fake entries for dev)
+// ═══════════════════════════════════════════════════════════════════
+
+const PLACEHOLDER_LIBRARY = {
+  generated: '[PLACEHOLDER]',
+  source_root: 'C:/NB11/raptor-history',
+  total_files: 5,
+  processed: 5,
+  skipped: 0,
+  entries: [
+    {
+      id: 'RH_001', two_word_name: 'Lab Demo', auto_named: true,
+      filename: 'AdLab_final cut_032920 (1).mp4',
+      relative_path: 'Adlab/AdLab_final cut_032920 (1).mp4',
+      absolute_path: 'C:/NB11/raptor-history/Adlab/AdLab_final cut_032920 (1).mp4',
+      subdir: 'Adlab', duration_sec: 142.5, resolution: '1920x1080',
+      has_audio: true, has_video: true, is_vfr: false,
+      codec_video: 'h264', codec_audio: 'aac', filesize_mb: 245.3,
+      transcript_full: 'Welcome to the Adventure Lab, this is where we prototype immersive experiences for mixed reality platforms. Today we are testing a new volumetric capture pipeline that takes real-time motion data and maps it onto avatar rigs in Unity.',
+      transcript_snippet: 'Welcome to the Adventure Lab, this is where we prototype immersive experiences for mixed reality platforms.',
+      summary: 'Welcome to the Adventure Lab, this is where we prototype immersive experiences for mixed reality platforms. Today we are testing a new volumetric capture pipeline that takes real-time motion data and maps it onto avatar rigs...',
+      context: { subdir: 'Adlab', speaker_count: 1, has_dialogue: false, has_narration: true, language: 'en', content_type: 'narration' },
+      whisper_segments: [
+        { start: 0.0, end: 4.2, text: 'Welcome to the Adventure Lab, this is where we prototype immersive experiences for mixed reality platforms.' },
+        { start: 4.5, end: 9.1, text: 'Today we are testing a new volumetric capture pipeline that takes real-time motion data and maps it onto avatar rigs in Unity.' }
+      ],
+      status: 'transcribed', error: null, file_hash: 'abc123placeholder'
+    },
+    {
+      id: 'RH_002', two_word_name: 'Panel Talk', auto_named: true,
+      filename: '2022-03-05 ONBOARD BTS.mp4',
+      relative_path: '2022-03-05 ONBOARD BTS.mp4',
+      absolute_path: 'C:/NB11/raptor-history/2022-03-05 ONBOARD BTS.mp4',
+      subdir: '[root]', duration_sec: 387.2, resolution: '1280x720',
+      has_audio: true, has_video: true, is_vfr: false,
+      codec_video: 'h264', codec_audio: 'aac', filesize_mb: 512.1,
+      transcript_full: 'So the question is how do we make immersive theater accessible to people who have never used a VR headset before. The onboarding process is everything. If someone puts on a headset and feels lost in the first thirty seconds, you have already lost them.',
+      transcript_snippet: 'So the question is how do we make immersive theater accessible to people who have never used a VR headset',
+      summary: 'The question is how do we make immersive theater accessible to people who have never used a VR headset before. The onboarding process is everything. If someone puts on a headset and feels lost in the first thirty...',
+      context: { subdir: '[root]', speaker_count: 2, has_dialogue: true, has_narration: false, language: 'en', content_type: 'talk' },
+      whisper_segments: [
+        { start: 0.0, end: 6.8, text: 'So the question is how do we make immersive theater accessible to people who have never used a VR headset before.' },
+        { start: 7.2, end: 12.5, text: 'The onboarding process is everything. If someone puts on a headset and feels lost in the first thirty seconds, you have already lost them.' }
+      ],
+      status: 'transcribed', error: null, file_hash: 'def456placeholder'
+    },
+    {
+      id: 'RH_003', two_word_name: 'Circus Stage', auto_named: true,
+      filename: 'Earth Circus.mp4',
+      relative_path: 'QESTR/Earth Circus.mp4',
+      absolute_path: 'C:/NB11/raptor-history/QESTR/Earth Circus.mp4',
+      subdir: 'QESTR', duration_sec: 210.0, resolution: '1920x1080',
+      has_audio: true, has_video: true, is_vfr: false,
+      codec_video: 'h264', codec_audio: 'aac', filesize_mb: 180.7,
+      transcript_full: 'Earth Circus is a mixed reality circus experience where performers interact with volumetric holograms in real-time. The audience sees the performer on stage but through the headset they see a completely different world layered on top.',
+      transcript_snippet: 'Earth Circus is a mixed reality circus experience where performers interact with volumetric holograms in real-time.',
+      summary: 'Earth Circus is a mixed reality circus experience where performers interact with volumetric holograms in real-time. The audience sees the performer on stage but through the headset they see a completely different world layered...',
+      context: { subdir: 'QESTR', speaker_count: 1, has_dialogue: false, has_narration: true, language: 'en', content_type: 'narration' },
+      whisper_segments: [
+        { start: 0.0, end: 5.5, text: 'Earth Circus is a mixed reality circus experience where performers interact with volumetric holograms in real-time.' }
+      ],
+      status: 'transcribed', error: null, file_hash: 'ghi789placeholder'
+    },
+    {
+      id: 'RH_004', two_word_name: 'NYU Class', auto_named: true,
+      filename: '2022-01-23 21-42-05.mp4',
+      relative_path: 'NYU/2022-01-23 21-42-05.mp4',
+      absolute_path: 'C:/NB11/raptor-history/NYU/2022-01-23 21-42-05.mp4',
+      subdir: 'NYU', duration_sec: 2845.0, resolution: '1920x1080',
+      has_audio: true, has_video: true, is_vfr: true,
+      codec_video: 'h264', codec_audio: 'aac', filesize_mb: 1024.5,
+      transcript_full: '',
+      transcript_snippet: '',
+      summary: '[INSUFFICIENT TRANSCRIPT]',
+      context: { subdir: 'NYU', speaker_count: 1, has_dialogue: false, has_narration: false, language: 'en', content_type: 'ambient' },
+      whisper_segments: [],
+      status: 'transcribed', error: null, file_hash: 'jkl012placeholder'
+    },
+    {
+      id: 'RH_005', two_word_name: 'Trailer Broadcast', auto_named: true,
+      filename: 'Broadcast One.mp4',
+      relative_path: 'RAKTOR/Broadcast One.mp4',
+      absolute_path: 'C:/NB11/raptor-history/RAKTOR/Broadcast One.mp4',
+      subdir: 'RAKTOR', duration_sec: 95.0, resolution: '1920x1080',
+      has_audio: true, has_video: true, is_vfr: false,
+      codec_video: 'h264', codec_audio: 'aac', filesize_mb: 88.2,
+      transcript_full: 'Raktor is a live performance platform that combines virtual production with real-time motion capture. Tonight we broadcast our first show to three hundred people simultaneously across five different virtual venues.',
+      transcript_snippet: 'Raktor is a live performance platform that combines virtual production with real-time motion capture.',
+      summary: 'Raktor is a live performance platform that combines virtual production with real-time motion capture. Tonight we broadcast our first show to three hundred people simultaneously across five different virtual venues...',
+      context: { subdir: 'RAKTOR', speaker_count: 1, has_dialogue: false, has_narration: true, language: 'en', content_type: 'narration' },
+      whisper_segments: [
+        { start: 0.0, end: 5.0, text: 'Raktor is a live performance platform that combines virtual production with real-time motion capture.' },
+        { start: 5.3, end: 11.2, text: 'Tonight we broadcast our first show to three hundred people simultaneously across five different virtual venues.' }
+      ],
+      status: 'transcribed', error: null, file_hash: 'mno345placeholder'
+    }
+  ],
+  errors: []
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+
+let jp_entries = [];
+let jp_filtered = [];
+let jp_sortField = 'name';
+let jp_sortAsc = true;
+let jp_filterSubdir = '';
+let jp_filterType = '';
+let jp_searchQuery = '';
+let jp_isPlaceholder = true;
+let jp_debounceTimer = null;
+
+// ═══════════════════════════════════════════════════════════════════
+// UTILITY
+// ═══════════════════════════════════════════════════════════════════
+
+function jp_formatDuration(sec) {
+  if (!sec || sec <= 0) return '0:00';
+  var h = Math.floor(sec / 3600);
+  var m = Math.floor((sec % 3600) / 60);
+  var s = Math.floor(sec % 60);
+  if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function jp_formatTimestamp(sec) {
+  var m = Math.floor(sec / 60);
+  var s = Math.floor(sec % 60);
+  var ms = Math.floor((sec % 1) * 100);
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + '.' + String(ms).padStart(2, '0');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DATA INGEST
+// ═══════════════════════════════════════════════════════════════════
+
+function jp_ingest(data, placeholder) {
+  jp_entries = data.entries || [];
+  jp_isPlaceholder = placeholder;
+
+  // Build filter dropdowns
+  var subdirs = new Set();
+  var types = new Set();
+  jp_entries.forEach(function(e) {
+    subdirs.add(e.subdir || '[root]');
+    if (e.context && e.context.content_type) types.add(e.context.content_type);
+  });
+
+  var subdirSelect = document.getElementById('jp_filter-subdir');
+  subdirSelect.innerHTML = '<option value="">ALL DIRS</option>';
+  Array.from(subdirs).sort().forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    subdirSelect.appendChild(opt);
+  });
+
+  var typeSelect = document.getElementById('jp_filter-type');
+  typeSelect.innerHTML = '<option value="">ALL TYPES</option>';
+  Array.from(types).sort().forEach(function(t) {
+    var opt = document.createElement('option');
+    opt.value = t; opt.textContent = t;
+    typeSelect.appendChild(opt);
+  });
+
+  jp_applyFilters();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FILTER + SORT
+// ═══════════════════════════════════════════════════════════════════
+
+function jp_applyFilters() {
+  var q = jp_searchQuery.toLowerCase();
+
+  jp_filtered = jp_entries.filter(function(e) {
+    if (jp_filterSubdir && e.subdir !== jp_filterSubdir) return false;
+    if (jp_filterType && e.context && e.context.content_type !== jp_filterType) return false;
+    if (q) {
+      var haystack = (
+        (e.two_word_name || '') + ' ' +
+        (e.transcript_snippet || '') + ' ' +
+        (e.filename || '') + ' ' +
+        (e.subdir || '')
+      ).toLowerCase();
+      if (haystack.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  jp_filtered.sort(function(a, b) {
+    var va, vb;
+    if (jp_sortField === 'name') {
+      va = (a.two_word_name || '').toLowerCase();
+      vb = (b.two_word_name || '').toLowerCase();
+    } else if (jp_sortField === 'duration') {
+      va = a.duration_sec || 0;
+      vb = b.duration_sec || 0;
+    } else if (jp_sortField === 'subdir') {
+      va = (a.subdir || '').toLowerCase();
+      vb = (b.subdir || '').toLowerCase();
+    } else if (jp_sortField === 'size') {
+      va = a.filesize_mb || 0;
+      vb = b.filesize_mb || 0;
+    } else {
+      va = a.id; vb = b.id;
+    }
+    if (va < vb) return jp_sortAsc ? -1 : 1;
+    if (va > vb) return jp_sortAsc ? 1 : -1;
+    return 0;
+  });
+
+  jp_renderCards();
+  document.getElementById('jp_count').textContent =
+    jp_filtered.length + ' of ' + jp_entries.length + ' clips' +
+    (jp_isPlaceholder ? ' [PLACEHOLDER]' : '');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER CARDS
+// ═══════════════════════════════════════════════════════════════════
+
+function jp_renderCards() {
+  var container = document.getElementById('jp_cards');
+  container.innerHTML = '';
+
+  jp_filtered.forEach(function(entry, idx) {
+    var card = document.createElement('div');
+    card.className = 'jp_card';
+    card.dataset.idx = String(idx);
+
+    var ctx = entry.context || {};
+    var isInsufficient = (entry.summary || '').indexOf('[INSUFFICIENT') >= 0;
+
+    card.innerHTML =
+      '<div class="jp_card-header">' +
+        '<span class="jp_card-name">' + jp_esc(entry.two_word_name || entry.id) + '</span>' +
+        '<span class="jp_card-subdir">' + jp_esc(entry.subdir || '') + '</span>' +
+      '</div>' +
+      '<div class="jp_card-meta">' +
+        '<span>' + jp_esc(entry.filename) + '</span>' +
+        '<span class="jp_card-meta-sep">&middot;</span>' +
+        '<span>' + jp_formatDuration(entry.duration_sec) + '</span>' +
+        '<span class="jp_card-meta-sep">&middot;</span>' +
+        '<span>' + jp_esc(entry.resolution || '?') + '</span>' +
+        '<span class="jp_card-meta-sep">&middot;</span>' +
+        '<span>' + (entry.filesize_mb || 0) + ' MB</span>' +
+      '</div>' +
+      '<button class="jp_card-summary-toggle" data-card="' + idx + '">' +
+        '<span class="jp_arrow">&#9654;</span> Summary' +
+      '</button>' +
+      '<div class="jp_card-summary' + (isInsufficient ? ' insufficient' : '') + '" id="jp_summary-' + idx + '">' +
+        jp_esc(entry.summary || '[NO SUMMARY]') +
+      '</div>' +
+      '<div class="jp_card-badges">' +
+        (ctx.content_type ? '<span class="jp_card-badge jp_badge-type">' + ctx.content_type + '</span>' : '') +
+        (ctx.language ? '<span class="jp_card-badge jp_badge-lang">' + ctx.language + '</span>' : '') +
+        '<span class="jp_card-badge jp_badge-speakers">' + (ctx.speaker_count || 1) + ' speaker' + ((ctx.speaker_count || 1) > 1 ? 's' : '') + '</span>' +
+        (entry.auto_named ? '<span class="jp_card-badge jp_badge-auto">auto-named</span>' : '') +
+      '</div>';
+
+    container.appendChild(card);
+
+    // Fade in
+    gsap.fromTo(card, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.25, delay: idx * 0.03 });
+  });
+}
+
+function jp_esc(str) {
+  if (!str) return '';
+  var d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SUMMARY EXPAND/COLLAPSE
+// ═══════════════════════════════════════════════════════════════════
+
+function jp_toggleSummary(idx) {
+  var el = document.getElementById('jp_summary-' + idx);
+  var btn = document.querySelector('[data-card="' + idx + '"]');
+  if (!el || !btn) return;
+
+  var isOpen = btn.classList.contains('open');
+  if (isOpen) {
+    gsap.to(el, { height: 0, marginTop: 0, duration: 0.3, ease: 'power2.inOut' });
+    btn.classList.remove('open');
+  } else {
+    // Measure natural height
+    el.style.height = 'auto';
+    var h = el.scrollHeight;
+    el.style.height = '0px';
+    gsap.to(el, { height: h, marginTop: 6, duration: 0.3, ease: 'power2.out' });
+    btn.classList.add('open');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TRANSCRIPT PANEL
+// ═══════════════════════════════════════════════════════════════════
+
+function jp_openPanel(entry) {
+  var panel = document.getElementById('jp_panel');
+  var inner = document.getElementById('jp_panel-inner');
+  var ctx = entry.context || {};
+
+  var segmentsHtml = '';
+  (entry.whisper_segments || []).forEach(function(seg) {
+    segmentsHtml +=
+      '<div class="jp_panel-seg">' +
+        '<span class="jp_panel-seg-time">' + jp_formatTimestamp(seg.start) + ' → ' + jp_formatTimestamp(seg.end) + '</span>' +
+        '<span class="jp_panel-seg-text">' + jp_esc(seg.text) + '</span>' +
+      '</div>';
+  });
+
+  inner.innerHTML =
+    '<div class="jp_panel-name">' + jp_esc(entry.two_word_name || entry.id) + '</div>' +
+    '<div class="jp_panel-meta">' +
+      '<span>' + jp_esc(entry.filename) + '</span>' +
+      '<span>' + jp_formatDuration(entry.duration_sec) + '</span>' +
+      '<span>' + jp_esc(entry.resolution || '') + '</span>' +
+      '<span>' + (entry.filesize_mb || 0) + ' MB</span>' +
+      '<span>' + jp_esc(entry.subdir || '') + '</span>' +
+      '<span>' + jp_esc(ctx.content_type || '') + '</span>' +
+    '</div>' +
+    '<div class="jp_panel-section">SUMMARY</div>' +
+    '<div class="jp_panel-summary">' + jp_esc(entry.summary || '') + '</div>' +
+    '<div class="jp_panel-section">FULL TRANSCRIPT</div>' +
+    '<div class="jp_panel-transcript">' + jp_esc(entry.transcript_full || '[EMPTY]') + '</div>' +
+    '<div class="jp_panel-section">WHISPER SEGMENTS (' + (entry.whisper_segments || []).length + ')</div>' +
+    '<div class="jp_panel-segments">' + segmentsHtml + '</div>';
+
+  panel.classList.add('open');
+  gsap.fromTo(panel, { opacity: 0 }, { opacity: 1, duration: 0.25 });
+}
+
+function jp_closePanel() {
+  var panel = document.getElementById('jp_panel');
+  gsap.to(panel, {
+    opacity: 0, duration: 0.2,
+    onComplete: function() { panel.classList.remove('open'); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════════════════════════════
+
+function jp_initEvents() {
+  // Card clicks (delegated)
+  document.getElementById('jp_cards').addEventListener('click', function(e) {
+    // Summary toggle
+    var toggleBtn = e.target.closest('.jp_card-summary-toggle');
+    if (toggleBtn) {
+      e.stopPropagation();
+      jp_toggleSummary(parseInt(toggleBtn.dataset.card, 10));
+      return;
+    }
+    // Card click → open panel
+    var card = e.target.closest('.jp_card');
+    if (card) {
+      var idx = parseInt(card.dataset.idx, 10);
+      if (jp_filtered[idx]) jp_openPanel(jp_filtered[idx]);
+    }
+  });
+
+  // Panel close
+  document.getElementById('jp_panel-close').addEventListener('click', jp_closePanel);
+  window.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') jp_closePanel();
+  });
+
+  // Sort buttons
+  document.querySelectorAll('.jp_sort-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var field = btn.dataset.sort;
+      if (jp_sortField === field) {
+        jp_sortAsc = !jp_sortAsc;
+      } else {
+        jp_sortField = field;
+        jp_sortAsc = true;
+      }
+      document.querySelectorAll('.jp_sort-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.sort === jp_sortField);
+      });
+      jp_applyFilters();
+    });
+  });
+
+  // Filter selects
+  document.getElementById('jp_filter-subdir').addEventListener('change', function(e) {
+    jp_filterSubdir = e.target.value;
+    jp_applyFilters();
+  });
+  document.getElementById('jp_filter-type').addEventListener('change', function(e) {
+    jp_filterType = e.target.value;
+    jp_applyFilters();
+  });
+
+  // Search (debounced)
+  document.getElementById('jp_search').addEventListener('input', function(e) {
+    clearTimeout(jp_debounceTimer);
+    jp_debounceTimer = setTimeout(function() {
+      jp_searchQuery = e.target.value;
+      jp_applyFilters();
+    }, 300);
+  });
+
+  // Drop zone
+  var dropBox = document.getElementById('jp_dropzone-box');
+  var dropZone = document.getElementById('jp_dropzone');
+  dropBox.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    dropBox.classList.add('dragover');
+  });
+  dropBox.addEventListener('dragleave', function() {
+    dropBox.classList.remove('dragover');
+  });
+  dropBox.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dropBox.classList.remove('dragover');
+    var file = e.dataTransfer.files[0];
+    if (!file || !file.name.endsWith('.json')) return;
+    var reader = new FileReader();
+    reader.onload = function() {
+      try {
+        var data = JSON.parse(reader.result);
+        dropZone.classList.remove('visible');
+        jp_ingest(data, false);
+        console.log('[jp] raptor-library.json dropped —', (data.entries || []).length, 'entries');
+      } catch (err) {
+        console.warn('[jp] invalid JSON dropped:', err.message);
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  // Also allow drop on main scroll area (for convenience after data loaded)
+  document.getElementById('jp_scroll').addEventListener('dragover', function(e) {
+    e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+  });
+  document.getElementById('jp_scroll').addEventListener('drop', function(e) {
+    e.preventDefault();
+    var file = e.dataTransfer.files[0];
+    if (!file || !file.name.endsWith('.json')) return;
+    var reader = new FileReader();
+    reader.onload = function() {
+      try {
+        var data = JSON.parse(reader.result);
+        jp_ingest(data, false);
+        console.log('[jp] raptor-library.json dropped —', (data.entries || []).length, 'entries');
+      } catch (err) {
+        console.warn('[jp] invalid JSON:', err.message);
+      }
+    };
+    reader.readAsText(file);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
+
+async function jp_init() {
+  await document.fonts.ready;
+  jp_initEvents();
+
+  // Try to load from URL
+  try {
+    var r = await fetch(LIBRARY_URL, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    console.log('[jp] raptor-library.json loaded —', (data.entries || []).length, 'entries');
+    jp_ingest(data, false);
+  } catch (e) {
+    console.warn('[jp] fetch failed — trying placeholder + showing drop zone:', e.message);
+    jp_ingest(PLACEHOLDER_LIBRARY, true);
+    document.getElementById('jp_dropzone').classList.add('visible');
+  }
+}
+
+jp_init();
+</script>
+</body>
+</html>
