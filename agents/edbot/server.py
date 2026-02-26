@@ -62,6 +62,12 @@ from resolve_bridge import (
     add_markers_from_chapters, render_timeline, get_render_status,
 )
 from benchmark import run_benchmark
+from video_prober import probe_video, scan_local_dir
+from video_cataloger import (
+    ingest_local, ingest_drive, ingest_dropbox,
+    enrich_with_frames, get_catalog, search_catalog,
+)
+from frame_scanner import scan_frames
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -69,7 +75,8 @@ from benchmark import run_benchmark
 
 TOOL_NAMES = ["transcribe", "silence_detect", "nlp_action", "executor",
               "chapter_detect", "speaker_detect", "portrait_crop", "tiktok_chunk",
-              "analytics_reader", "resolve_bridge"]
+              "analytics_reader", "resolve_bridge", "video_prober", "drive_scanner",
+              "dropbox_scanner", "frame_scanner", "video_cataloger"]
 
 MEDIA_EXTENSIONS = {".mp4", ".mov", ".mkv", ".avi", ".webm"}
 
@@ -255,6 +262,40 @@ class AnalyticsMarkRequest(BaseModel):
 class BenchmarkRequest(BaseModel):
     video_path: str
     runs: int = 3
+
+
+class ScanLocalRequest(BaseModel):
+    directory: str
+    recursive: bool = True
+
+
+class ScanDriveRequest(BaseModel):
+    folder_id: str | None = None
+    credentials_path: str | None = None
+    token_path: str | None = None
+    max_results: int = 100
+
+
+class ScanDropboxRequest(BaseModel):
+    folder_path: str = ""
+    access_token: str | None = None
+    recursive: bool = True
+    max_results: int = 100
+
+
+class ProbeRequest(BaseModel):
+    video_path: str
+
+
+class ScanFramesRequest(BaseModel):
+    video_path: str
+    labels: list[str] | None = None
+    scene_threshold: float = 27.0
+    top_k: int = 3
+
+
+class CatalogSearchRequest(BaseModel):
+    query: str
 
 
 # ---------------------------------------------------------------------------
@@ -826,6 +867,126 @@ def api_benchmark(req: BenchmarkRequest):
         return result
     except Exception as exc:
         error_response(500, str(exc), "PROCESSING_ERROR")
+
+
+# ---------------------------------------------------------------------------
+# Scanner endpoints
+# ---------------------------------------------------------------------------
+
+@app.post("/api/scan/local")
+def api_scan_local(req: ScanLocalRequest):
+    """Scan a local directory for video files and add to catalog."""
+    p = Path(req.directory)
+    if not p.exists():
+        error_response(400, f"directory not found: {req.directory}", "DIR_NOT_FOUND")
+    if not p.is_dir():
+        error_response(400, f"not a directory: {req.directory}", "INVALID_INPUT")
+    try:
+        result = ingest_local(req.directory, recursive=req.recursive)
+        if result.get("error"):
+            error_response(500, result["error"], result.get("code", "PROCESSING_ERROR"))
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        error_response(500, str(exc), "PROCESSING_ERROR")
+
+
+@app.post("/api/scan/drive")
+def api_scan_drive(req: ScanDriveRequest):
+    """Scan Google Drive for video files and add to catalog."""
+    try:
+        result = ingest_drive(
+            folder_id=req.folder_id,
+            credentials_path=req.credentials_path,
+            token_path=req.token_path,
+            max_results=req.max_results,
+        )
+        if result.get("error"):
+            code = result.get("code", "PROCESSING_ERROR")
+            status = 401 if code == "AUTH_ERROR" else 500
+            error_response(status, result["error"], code)
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        error_response(500, str(exc), "PROCESSING_ERROR")
+
+
+@app.post("/api/scan/dropbox")
+def api_scan_dropbox(req: ScanDropboxRequest):
+    """Scan Dropbox for video files and add to catalog."""
+    try:
+        result = ingest_dropbox(
+            folder_path=req.folder_path,
+            access_token=req.access_token,
+            recursive=req.recursive,
+            max_results=req.max_results,
+        )
+        if result.get("error"):
+            code = result.get("code", "PROCESSING_ERROR")
+            status = 401 if code == "AUTH_ERROR" else 500
+            error_response(status, result["error"], code)
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        error_response(500, str(exc), "PROCESSING_ERROR")
+
+
+@app.post("/api/probe")
+def api_probe(req: ProbeRequest):
+    """Probe a video file for metadata (duration, codec, resolution, etc.)."""
+    p = Path(req.video_path)
+    if not p.exists():
+        error_response(400, f"file not found: {req.video_path}", "FILE_NOT_FOUND")
+    try:
+        result = probe_video(req.video_path)
+        if result.get("error"):
+            error_response(500, result["error"], result.get("code", "PROBE_ERROR"))
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        error_response(500, str(exc), "PROCESSING_ERROR")
+
+
+@app.post("/api/scan/frames")
+def api_scan_frames(req: ScanFramesRequest):
+    """Run scene detection + CLIP frame labeling on a video."""
+    p = Path(req.video_path)
+    if not p.exists():
+        error_response(400, f"file not found: {req.video_path}", "FILE_NOT_FOUND")
+    try:
+        result = scan_frames(
+            req.video_path,
+            labels=req.labels,
+            scene_threshold=req.scene_threshold,
+            top_k=req.top_k,
+        )
+        if result.get("error"):
+            error_response(500, result["error"], result.get("code", "PROCESSING_ERROR"))
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        error_response(500, str(exc), "PROCESSING_ERROR")
+
+
+@app.get("/api/catalog")
+def api_catalog():
+    """Return the full video catalog."""
+    catalog = get_catalog()
+    return catalog
+
+
+@app.post("/api/catalog/search")
+def api_catalog_search(req: CatalogSearchRequest):
+    """Search the video catalog by filename or frame label."""
+    if not req.query.strip():
+        error_response(400, "query must not be empty", "INVALID_INPUT")
+    result = search_catalog(req.query)
+    return result
 
 
 # ---------------------------------------------------------------------------

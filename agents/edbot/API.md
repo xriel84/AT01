@@ -436,3 +436,68 @@ Machine: ENKI64 | RTX A6000 48GB | 128GB RAM | Python 3.12.10 | Resolve Studio 2
 
 ### Resolve live tests
 18/18 passed including 4 render tests (125s total)
+
+---
+
+## Video Archive Scanner
+
+### POST /api/scan/local
+Scan a local directory for video files and add to catalog.
+**Request:** `{"directory": "C:/Videos", "recursive": true}`
+**Response:** `{"added": 3, "skipped": 0, "total": 3, "catalog_path": "temp/video_catalog.json"}`
+**Errors:** `400 DIR_NOT_FOUND` | `400 INVALID_INPUT` | `500 PROCESSING_ERROR`
+```bash
+curl -X POST http://127.0.0.1:8901/api/scan/local -H "Content-Type: application/json" -d "{\"directory\": \"C:/Videos\"}"
+```
+
+### POST /api/scan/drive
+Scan Google Drive for video files and add to catalog. Requires OAuth2 credentials.
+**Request:** `{"folder_id": "abc123", "credentials_path": "temp/gdrive_credentials.json", "token_path": "temp/gdrive_token.json", "max_results": 100}`
+**Response:** `{"added": 5, "skipped": 0, "total": 5, "catalog_path": "temp/video_catalog.json"}`
+**Errors:** `401 AUTH_ERROR` | `500 API_ERROR` | `500 PROCESSING_ERROR`
+```bash
+curl -X POST http://127.0.0.1:8901/api/scan/drive -H "Content-Type: application/json" -d "{\"folder_id\": \"abc123\"}"
+```
+
+### POST /api/scan/dropbox
+Scan Dropbox for video files and add to catalog. Requires access token.
+**Request:** `{"folder_path": "/Videos", "access_token": "...", "recursive": true, "max_results": 100}`
+**Response:** `{"added": 2, "skipped": 0, "total": 2, "catalog_path": "temp/video_catalog.json"}`
+**Errors:** `401 AUTH_ERROR` | `500 API_ERROR` | `500 PROCESSING_ERROR`
+```bash
+curl -X POST http://127.0.0.1:8901/api/scan/dropbox -H "Content-Type: application/json" -d "{\"folder_path\": \"/Videos\"}"
+```
+
+### POST /api/probe
+Probe a video file for metadata (duration, codec, resolution, fps, etc.).
+**Request:** `{"video_path": "C:/Videos/clip.mp4"}`
+**Response:** `{"filename": "clip.mp4", "duration_sec": 60.0, "width": 1920, "height": 1080, "fps": 24.0, "video_codec": "h264", "audio_codec": "aac", "bitrate_kbps": 5000, "audio_channels": 2, "file_size_mb": 50.0, "format_name": "mp4"}`
+**Errors:** `400 FILE_NOT_FOUND` | `500 PROBE_ERROR` | `500 PROCESSING_ERROR`
+```bash
+curl -X POST http://127.0.0.1:8901/api/probe -H "Content-Type: application/json" -d "{\"video_path\": \"C:/Videos/clip.mp4\"}"
+```
+
+### POST /api/scan/frames
+Run scene detection (PySceneDetect) + CLIP frame labeling on a video. All local GPU, zero cloud tokens.
+**Request:** `{"video_path": "C:/Videos/clip.mp4", "labels": ["person talking", "b-roll"], "scene_threshold": 27.0, "top_k": 3}`
+**Response:** `{"video_path": "clip.mp4", "scenes": [{"start_sec": 0.0, "end_sec": 5.0, "duration_sec": 5.0, "frame_labels": [{"label": "person talking", "score": 0.92}]}], "frames": [...], "scene_count": 3}`
+**Errors:** `400 FILE_NOT_FOUND` | `500 SCENE_ERROR` | `500 PROCESSING_ERROR`
+```bash
+curl -X POST http://127.0.0.1:8901/api/scan/frames -H "Content-Type: application/json" -d "{\"video_path\": \"C:/Videos/clip.mp4\"}"
+```
+
+### GET /api/catalog
+Return the full video catalog.
+**Response:** `{"version": 1, "created": "...", "updated": "...", "entries": {"path/to/video.mp4": {...}, ...}}`
+```bash
+curl http://127.0.0.1:8901/api/catalog
+```
+
+### POST /api/catalog/search
+Search the video catalog by filename or CLIP frame label.
+**Request:** `{"query": "interview"}`
+**Response:** `{"query": "interview", "results": [{"key": "...", "match_type": "filename", "filename": "interview.mp4", ...}], "count": 1}`
+**Errors:** `400 INVALID_INPUT` (empty query)
+```bash
+curl -X POST http://127.0.0.1:8901/api/catalog/search -H "Content-Type: application/json" -d "{\"query\": \"interview\"}"
+```

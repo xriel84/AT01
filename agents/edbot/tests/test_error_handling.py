@@ -55,13 +55,22 @@ class TestErrorResponseSchema:
 
     def test_search_missing_index(self, client):
         """POST /api/search-transcripts with no index -> 404 + NO_INDEX."""
-        resp = client.post("/api/search-transcripts", json={
-            "query": "test",
-        })
-        # Should return 404 because no transcript index exists
-        assert resp.status_code in (404, 500)
-        detail = resp.json().get("detail", resp.json())
-        assert "code" in detail
+        index_file = Path("temp") / "transcript_index.json"
+        bak_file = index_file.with_suffix(".json.bak")
+        existed = index_file.exists()
+        if existed:
+            index_file.rename(bak_file)
+        try:
+            resp = client.post("/api/search-transcripts", json={
+                "query": "test",
+            })
+            # Should return 404 because no transcript index exists
+            assert resp.status_code in (404, 500)
+            detail = resp.json().get("detail", resp.json())
+            assert "code" in detail
+        finally:
+            if existed and bak_file.exists():
+                bak_file.rename(index_file)
 
     @patch("agents.edbot.server.resolve_available", return_value={
         "available": False, "version": None, "product": None,
