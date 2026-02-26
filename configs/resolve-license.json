@@ -1,0 +1,25 @@
+{
+  "product": "DaVinci Resolve Studio 19",
+  "license_type": "2-seat",
+  "seats": {
+    "seat_1": {
+      "machine": "/rielt (ENKI64)",
+      "user": "AT (AriBot/EdBot pipeline)",
+      "purpose": "Backend automation, pybmd integration, FFmpeg+Resolve comparison"
+    },
+    "seat_2": {
+      "user": "YD",
+      "purpose": "Production video editing"
+    }
+  },
+  "status": "ACTIVE",
+  "purchased": "2026-02-25",
+  "unlocks": [
+    "Round 5: executor.py Resolve path via pybmd",
+    "Round 5: resolve-paths.json auto-discovery",
+    "Round 5: Speed test Resolve vs FFmpeg",
+    "DaVinci Neural Engine (AI color/face/audio)",
+    "Fusion (motion graphics)",
+    "Fairlight (integrated DAW)"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "workspace": "agile-lens",
+  "team_id": "PLACEHOLDER",
+  "bot_name": "AriBot",
+  "channels": {
+    "PLACEHOLDER_general": {
+      "id": "PLACEHOLDER",
+      "purpose": "General coordination",
+      "agents_can": ["read", "write"],
+      "sam_can": ["read", "write"]
+    },
+    "PLACEHOLDER_agent_updates": {
+      "id": "PLACEHOLDER",
+      "purpose": "AT01 agents post status updates",
+      "agents_can": ["read", "write"],
+      "sam_can": ["read"]
+    }
+  },
+  "rules": {
+    "no_jp01_content": true,
+    "no_private_comms": true,
+    "human_gate_on_posts": true,
+    "agents_never_dm": true,
+    "no_credentials_in_messages": true
+  }
+}
