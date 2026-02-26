@@ -1,5 +1,6 @@
 """Live Resolve integration tests. Skip when Resolve not running."""
 
+import os
 import time
 import pytest
 import sys
@@ -156,3 +157,47 @@ class TestResolveLive:
 
             markers = export_timeline_markers(timeline)
             assert isinstance(markers, list)
+
+    def test_render_timeline_starts(self):
+        """Create timeline from IMG_5769.MOV, start render, verify job_id returned."""
+        from resolve_bridge import create_timeline_from_video, render_timeline
+
+        tl_name = f"render_test_{int(time.time())}"
+        create_timeline_from_video(r"C:\AT01\input\IMG_5769.MOV", tl_name)
+        output = rf"C:\AT01\output\{tl_name}.mp4"
+        result = render_timeline(tl_name, output)
+        assert result is not None
+        assert "id" in result
+        assert result["id"] is not None
+        # Clean up output file if created
+        if os.path.exists(output):
+            os.remove(output)
+
+    def test_get_render_status_valid_job(self):
+        """After starting render, get_render_status returns status dict."""
+        from resolve_bridge import render_timeline, get_render_status
+
+        # Use a known-bad timeline name to get a quick failure (no long render)
+        result = render_timeline("nonexistent_timeline_xyz", r"C:\AT01\output\nope.mp4")
+        job_id = result.get("id")
+        assert job_id is not None
+        status = get_render_status(job_id)
+        assert "status" in status
+        assert status["id"] == job_id
+
+    def test_render_timeline_invalid_timeline(self):
+        """Render with bad timeline name returns error dict, no crash."""
+        from resolve_bridge import render_timeline
+
+        result = render_timeline("does_not_exist_12345", r"C:\AT01\output\fail.mp4")
+        assert result is not None
+        assert result["status"] == "failed"
+        assert result["error"] is not None
+
+    def test_get_render_status_unknown_job(self):
+        """get_render_status with unknown job_id returns error."""
+        from resolve_bridge import get_render_status
+
+        result = get_render_status("nonexistent_job_id")
+        assert result is not None
+        assert result.get("status") == "error"

@@ -61,6 +61,7 @@ from resolve_bridge import (
     resolve_available, list_projects, create_timeline_from_video,
     add_markers_from_chapters, render_timeline, get_render_status,
 )
+from benchmark import run_benchmark
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -105,11 +106,11 @@ _session: dict[str, Any] = {
 # Helpers
 # ---------------------------------------------------------------------------
 
-def error_response(status_code: int, error_msg: str, error_code: str):
+def error_response(status_code: int, error_msg: str, error_code: str, endpoint: str = ""):
     """Raise HTTPException with a consistent JSON error body."""
     raise HTTPException(
         status_code=status_code,
-        detail={"status": "error", "error": error_msg, "code": error_code},
+        detail={"status": "error", "error": error_msg, "code": error_code, "endpoint": endpoint},
     )
 
 
@@ -251,6 +252,11 @@ class AnalyticsMarkRequest(BaseModel):
     new_status: str = "read"
 
 
+class BenchmarkRequest(BaseModel):
+    video_path: str
+    runs: int = 3
+
+
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
@@ -264,6 +270,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch unhandled exceptions and return standardized error JSON."""
+    from fastapi.responses import JSONResponse
+    logger.exception("Unhandled exception on %s", request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": {
+                "status": "error",
+                "error": str(exc),
+                "code": "PROCESSING_ERROR",
+                "endpoint": request.url.path,
+            }
+        },
+    )
+
 
 # ---------------------------------------------------------------------------
 # API endpoints
@@ -780,6 +805,27 @@ def api_resolve_render_status(job_id: str):
     if result.get("status") == "error":
         error_response(404, result.get("error", "job not found"), "NOT_FOUND")
     return result
+
+
+# ---------------------------------------------------------------------------
+# Benchmark endpoint
+# ---------------------------------------------------------------------------
+
+@app.post("/api/benchmark")
+def api_benchmark(req: BenchmarkRequest):
+    """Run timed benchmarks on pipeline stages."""
+    p = Path(req.video_path)
+    if not p.exists():
+        error_response(400, f"file not found: {req.video_path}", "FILE_NOT_FOUND")
+    if req.runs < 1 or req.runs > 10:
+        error_response(400, f"runs must be 1-10, got {req.runs}", "INVALID_INPUT")
+    try:
+        result = run_benchmark(req.video_path, req.runs)
+        if result.get("error"):
+            error_response(500, result["error"], "PROCESSING_ERROR")
+        return result
+    except Exception as exc:
+        error_response(500, str(exc), "PROCESSING_ERROR")
 
 
 # ---------------------------------------------------------------------------

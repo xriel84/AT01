@@ -204,12 +204,12 @@ def test_health_alias(client):
 # ---------------------------------------------------------------------------
 
 def test_error_response_schema(client):
-    """Error responses have exactly keys: status, error, code in detail."""
+    """Error responses have keys: status, error, code, endpoint in detail."""
     # Trigger any error — e.g., GET /api/chapters with no session.
     resp = client.get("/api/chapters")
     assert resp.status_code == 400
     detail = resp.json()["detail"]
-    assert set(detail.keys()) == {"status", "error", "code"}
+    assert set(detail.keys()) == {"status", "error", "code", "endpoint"}
     assert detail["status"] == "error"
     assert isinstance(detail["error"], str)
     assert isinstance(detail["code"], str)

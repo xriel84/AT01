@@ -531,6 +531,18 @@ body {
                     <button class="btn btn-primary" id="btn-export-tiktok">Export TikTok</button>
                     <button class="btn btn-primary" id="btn-batch-tiktok">Batch TikTok</button>
                     <button class="btn" id="btn-portrait-crop">Portrait Crop</button>
+                    <button class="btn" id="btn-benchmark">Run Benchmark</button>
+                </div>
+                <div id="benchmark-results" style="display:none; margin-top:8px;">
+                    <table style="width:100%; font-size:11px; border-collapse:collapse;">
+                        <thead><tr style="color:#8899aa; text-align:left;">
+                            <th style="padding:3px 6px;">Stage</th>
+                            <th style="padding:3px 6px;">Mean (s)</th>
+                            <th style="padding:3px 6px;">Target (s)</th>
+                            <th style="padding:3px 6px;">Status</th>
+                        </tr></thead>
+                        <tbody id="benchmark-tbody"></tbody>
+                    </table>
                 </div>
                 <div class="progress-bar-container" id="progress-bar-container">
                     <div class="progress-bar-fill" id="progress-bar-fill"></div>
@@ -619,6 +631,9 @@ body {
     var elBtnExport     = document.getElementById("btn-export-tiktok");
     var elBtnBatch      = document.getElementById("btn-batch-tiktok");
     var elBtnPortrait   = document.getElementById("btn-portrait-crop");
+    var elBtnBenchmark  = document.getElementById("btn-benchmark");
+    var elBenchResults  = document.getElementById("benchmark-results");
+    var elBenchTbody    = document.getElementById("benchmark-tbody");
     var elProgressBar   = document.getElementById("progress-bar-container");
     var elProgressFill  = document.getElementById("progress-bar-fill");
     var elStatusBar     = document.getElementById("status-bar");
@@ -715,10 +730,21 @@ body {
         try {
             var resp = await fetch(API_BASE + endpoint);
             if (resp.status === 404) return null;
-            if (!resp.ok) throw new Error("HTTP " + resp.status);
+            if (resp.status === 503) {
+                setStatus("Resolve offline", "error");
+                return null;
+            }
+            if (!resp.ok) {
+                var errData = null;
+                try { errData = await resp.json(); } catch (_) {}
+                var msg = (errData && errData.detail && errData.detail.error) || ("HTTP " + resp.status);
+                setStatus(endpoint + ": " + msg, "error");
+                return null;
+            }
             return await resp.json();
         } catch (e) {
             console.error("apiFetch " + endpoint + " error:", e);
+            setStatus(endpoint + ": " + e.message, "error");
             return null;
         }
     }
@@ -732,11 +758,22 @@ body {
             });
             var data = await resp.json();
             if (!resp.ok) {
-                throw new Error(data.detail || "HTTP " + resp.status);
+                var errMsg = (data.detail && typeof data.detail === "object")
+                    ? data.detail.error
+                    : (data.detail || "HTTP " + resp.status);
+                if (resp.status === 503) {
+                    setStatus("Resolve offline", "error");
+                } else if (resp.status === 400) {
+                    setStatus("Invalid request: " + errMsg, "error");
+                } else {
+                    setStatus(endpoint + " error: " + errMsg, "error");
+                }
+                return { status: "error", error: errMsg, code: (data.detail && data.detail.code) || "" };
             }
             return data;
         } catch (e) {
             console.error("apiPost " + endpoint + " error:", e);
+            setStatus(endpoint + ": " + e.message, "error");
             return { status: "error", error: e.message };
         }
     }
@@ -1328,6 +1365,42 @@ body {
             setStatus("Portrait crop failed: " + (result ? (result.error || result.detail) : "unknown error"), "error");
         }
         fetchSession();
+    });
+
+    // -----------------------------------------------------------------------
+    // Event: Benchmark
+    // -----------------------------------------------------------------------
+
+    elBtnBenchmark.addEventListener("click", async function () {
+        if (!currentVideoPath) { setStatus("Load a video first", "error"); return; }
+        elBtnBenchmark.disabled = true;
+        setStatus("Running benchmark (this may take a while)...");
+        var result = await apiPost("/api/benchmark", {
+            video_path: currentVideoPath,
+            runs: 1,
+        });
+        elBtnBenchmark.disabled = false;
+
+        if (result && !result.error && !result.detail) {
+            var stages = ["transcribe", "search", "silence_detect", "chapter_detect", "full_pipeline"];
+            elBenchTbody.innerHTML = "";
+            for (var i = 0; i < stages.length; i++) {
+                var s = result[stages[i]];
+                if (!s) continue;
+                var tr = document.createElement("tr");
+                tr.innerHTML =
+                    '<td style="padding:3px 6px;">' + stages[i] + "</td>" +
+                    '<td style="padding:3px 6px;">' + s.mean_s + "</td>" +
+                    '<td style="padding:3px 6px;">' + s.target_s + "</td>" +
+                    '<td style="padding:3px 6px;color:' + (s.pass ? "#4ade80" : "#f87171") + ';">' +
+                    (s.pass ? "PASS" : "FAIL") + "</td>";
+                elBenchTbody.appendChild(tr);
+            }
+            elBenchResults.style.display = "block";
+            setStatus("Benchmark complete", "success");
+        } else {
+            setStatus("Benchmark failed: " + (result ? (result.error || JSON.stringify(result.detail)) : "unknown error"), "error");
+        }
     });
 
     // -----------------------------------------------------------------------
