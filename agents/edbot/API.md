@@ -401,3 +401,38 @@ Error codes:
 | `TOOL_ERROR` | 500 | Internal tool processing failed |
 | `RESOLVE_OFFLINE` | 503 | Resolve endpoint called but not running |
 | `PROCESSING_ERROR` | 500 | Unhandled internal error |
+
+---
+
+## Benchmark Results (2026-02-27)
+
+Machine: ENKI64 | RTX A6000 48GB | 128GB RAM | Python 3.12.10 | Resolve Studio 20.3.1.6 running
+
+### test_with_silence.mov (60s, 2 silence gaps)
+
+| Stage | Time | Target | Status |
+|-------|------|--------|--------|
+| Transcribe (CUDA float16) | 7.09s | <30s | PASS |
+| Silence detect | 1.34s | <10s | PASS |
+| Chapter detect | <0.001s | <5s | PASS |
+| Search | <0.001s | <0.1s | PASS |
+| **Full pipeline** | **8.44s** | <60s | **PASS** |
+
+### IMG_5769.MOV (424.81s / 7 min, continuous speech)
+
+| Stage | Time | Target | Status |
+|-------|------|--------|--------|
+| Transcribe (CUDA int8) | 62.05s | <30s | FAIL |
+| Silence detect | 9.39s | <10s | PASS |
+| Chapter detect | <0.001s | <5s | PASS |
+| Search | <0.001s | <0.1s | PASS |
+| **Full pipeline** | **71.44s** | <60s | **FAIL** |
+
+### Known issues
+- CUDA float16 (large-v3) crashes on long audio (>60s) when Resolve holds GPU resources
+- Workaround: use int8 compute type or close Resolve before transcription
+- CPU fallback: 580s for 7min audio (10x realtime)
+- Transcription is the bottleneck — all other stages complete in <10s total
+
+### Resolve live tests
+18/18 passed including 4 render tests (125s total)

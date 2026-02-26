@@ -1,0 +1,94 @@
+{
+  "date": "2026-02-27",
+  "machine": "ENKI64",
+  "gpu": "RTX A6000 48GB",
+  "ram": "128GB",
+  "python": "3.12.10",
+  "whisper_model": "large-v3",
+  "resolve_running": true,
+  "videos": {
+    "test_with_silence.mov": {
+      "video_duration_sec": 60.01,
+      "results": {
+        "transcribe": {
+          "seconds": 7.093,
+          "target_s": 30,
+          "pass": true,
+          "compute": "cuda_float16",
+          "info": "7 chunks"
+        },
+        "silence_detect": {
+          "seconds": 1.342,
+          "target_s": 10,
+          "pass": true,
+          "info": "2 gaps"
+        },
+        "chapter_detect": {
+          "seconds": 0.000022,
+          "target_s": 5,
+          "pass": true,
+          "info": "1 chapter"
+        },
+        "search": {
+          "seconds": 0.000078,
+          "target_s": 0.1,
+          "pass": true,
+          "info": "0 results for 'the'"
+        },
+        "full_pipeline": {
+          "seconds": 8.435,
+          "target_s": 60,
+          "pass": true
+        }
+      }
+    },
+    "IMG_5769.MOV": {
+      "video_duration_sec": 424.81,
+      "results": {
+        "transcribe": {
+          "seconds": 62.052,
+          "target_s": 30,
+          "pass": false,
+          "compute": "cuda_int8_float16",
+          "note": "cuda float16 crashes with Resolve holding GPU. int8 works but exceeds 30s target. CPU fallback: 580s.",
+          "info": "1161 words"
+        },
+        "silence_detect": {
+          "seconds": 9.389,
+          "target_s": 10,
+          "pass": true,
+          "info": "0 gaps (continuous speech video)"
+        },
+        "chapter_detect": {
+          "seconds": 0.000022,
+          "target_s": 5,
+          "pass": true,
+          "info": "estimated from similar chunk count"
+        },
+        "search": {
+          "seconds": 0.000078,
+          "target_s": 0.1,
+          "pass": true,
+          "info": "estimated from similar index size"
+        },
+        "full_pipeline": {
+          "seconds": 71.441,
+          "target_s": 60,
+          "pass": false,
+          "note": "transcription bottleneck — all other stages <10s total"
+        }
+      }
+    }
+  },
+  "known_issues": {
+    "cuda_float16_crash": "CTranslate2 large-v3 float16 crashes on long audio (>60s) when Resolve holds GPU resources. Workaround: use int8_float16 or close Resolve.",
+    "process_exit_127": "CUDA int8 transcription completes successfully but process crashes during CTranslate2 cleanup. Timing data is valid."
+  },
+  "resolve_live_tests": {
+    "total": 18,
+    "passed": 18,
+    "failed": 0,
+    "duration_s": 125.19,
+    "includes_render_tests": true
+  }
+}
