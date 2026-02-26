@@ -570,6 +570,121 @@ def api_shorts_captions(req: ShortsCaptionsRequest):
         error_response(500, str(exc), "TOOL_ERROR")
 
 
+# ---------------------------------------------------------------------------
+# Round 6: transcript intelligence endpoints
+# ---------------------------------------------------------------------------
+
+class BatchTranscribeRequest(BaseModel):
+    input_dir: str
+
+
+class AutoNameRequest(BaseModel):
+    manifest_path: str = "temp/batch_manifest.json"
+
+
+class AutoChapterRequest(BaseModel):
+    video_path: str
+
+
+class SearchTranscriptsRequest(BaseModel):
+    query: str
+    max_results: int = 20
+
+
+class MatchShotsRequest(BaseModel):
+    similarity: float = 0.6
+
+
+@app.post("/api/batch-transcribe")
+def api_batch_transcribe(req: BatchTranscribeRequest):
+    """Batch transcribe all videos in a directory."""
+    p = Path(req.input_dir)
+    if not p.exists():
+        error_response(400, f"directory not found: {req.input_dir}", "FILE_NOT_FOUND")
+    try:
+        from batch_transcribe import batch_transcribe
+        result = batch_transcribe(req.input_dir)
+        return result
+    except Exception as exc:
+        error_response(500, str(exc), "TOOL_ERROR")
+
+
+@app.post("/api/auto-name")
+def api_auto_name(req: AutoNameRequest):
+    """Auto-name files from batch manifest."""
+    manifest_path = Path(req.manifest_path)
+    if not manifest_path.exists():
+        error_response(400, f"manifest not found: {req.manifest_path}", "FILE_NOT_FOUND")
+    try:
+        import json
+        from auto_name import batch_auto_name
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+        result = batch_auto_name(manifest, str(manifest_path.parent))
+        return result
+    except Exception as exc:
+        error_response(500, str(exc), "TOOL_ERROR")
+
+
+@app.post("/api/auto-chapter")
+def api_auto_chapter(req: AutoChapterRequest):
+    """Generate enhanced chapters with NLP titles."""
+    p = Path(req.video_path)
+    if not p.exists():
+        error_response(400, f"file not found: {req.video_path}", "FILE_NOT_FOUND")
+    try:
+        from auto_chapter import auto_chapter
+        result = auto_chapter(req.video_path)
+        return result
+    except Exception as exc:
+        error_response(500, str(exc), "TOOL_ERROR")
+
+
+@app.get("/api/transcript-index")
+def api_transcript_index():
+    """Return transcript index if exists."""
+    import json
+    index_path = Path("temp") / "transcript_index.json"
+    if not index_path.exists():
+        error_response(404, "no transcript index — run batch transcribe first", "NO_INDEX")
+    with open(index_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+@app.post("/api/search-transcripts")
+def api_search_transcripts(req: SearchTranscriptsRequest):
+    """Search transcript index for query."""
+    try:
+        import json
+        from transcript_index import search_index
+        index_path = Path("temp") / "transcript_index.json"
+        if not index_path.exists():
+            error_response(404, "no transcript index", "NO_INDEX")
+        with open(index_path, "r", encoding="utf-8") as f:
+            index = json.load(f)
+        results = search_index(index, req.query, req.max_results)
+        return {"query": req.query, "results": results, "count": len(results)}
+    except Exception as exc:
+        error_response(500, str(exc), "TOOL_ERROR")
+
+
+@app.post("/api/match-shots")
+def api_match_shots(req: MatchShotsRequest):
+    """Find matching shots across transcribed videos."""
+    try:
+        import json
+        from shot_matcher import find_matching_shots
+        manifest_path = Path("temp") / "batch_manifest.json"
+        if not manifest_path.exists():
+            error_response(400, "no batch manifest — run batch transcribe first", "NO_MANIFEST")
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+        results = find_matching_shots(manifest, "temp", req.similarity)
+        return {"matches": results, "count": len(results)}
+    except Exception as exc:
+        error_response(500, str(exc), "TOOL_ERROR")
+
+
 @app.get("/api/analytics_inbox")
 async def api_analytics_inbox():
     """Return unread FEEDBACK messages from anabot-to-edbot bus."""

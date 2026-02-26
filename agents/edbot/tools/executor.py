@@ -52,6 +52,8 @@ SUPPORTED_ACTIONS: set[str] = {
     "platform_export", "transcribe", "resolve_export",
     "assemble_short", "smart_crop", "person_track",
     "animated_captions", "batch_shorts",
+    "batch_transcribe", "auto_name", "auto_chapter",
+    "search_transcripts", "match_shots",
 }
 
 
@@ -346,6 +348,21 @@ def execute_action(
 
     if action_type == "batch_shorts":
         return _execute_batch_shorts(in_path, out_dir, params, t0)
+
+    if action_type == "batch_transcribe":
+        return _execute_batch_transcribe(in_path, out_dir, params, t0)
+
+    if action_type == "auto_name":
+        return _execute_auto_name(in_path, out_dir, params, t0)
+
+    if action_type == "auto_chapter":
+        return _execute_auto_chapter(in_path, out_dir, params, t0)
+
+    if action_type == "search_transcripts":
+        return _execute_search_transcripts(in_path, out_dir, params, t0)
+
+    if action_type == "match_shots":
+        return _execute_match_shots(in_path, out_dir, params, t0)
 
     # --- Get input duration ---
     duration_in = _get_duration(in_path)
@@ -827,6 +844,230 @@ def _execute_batch_shorts(
     elapsed = time.perf_counter() - t0
     return _result_dict(
         status="success", action="batch_shorts", input_path=input_dir,
+        output_path=str(out_dir), duration_in=None, duration_out=None,
+        ffmpeg_cmd=None, elapsed_seconds=elapsed, error=None,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Round 6: Transcript intelligence handlers
+# ---------------------------------------------------------------------------
+
+def _execute_batch_transcribe(
+    in_path: Path, out_dir: Path, params: dict[str, Any], t0: float,
+) -> dict[str, Any]:
+    """Run batch transcription on a directory."""
+    try:
+        from batch_transcribe import batch_transcribe
+    except ImportError:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="batch_transcribe", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="batch_transcribe module not available",
+        )
+
+    input_dir = str(in_path) if in_path.is_dir() else str(in_path.parent)
+    try:
+        result = batch_transcribe(input_dir, str(out_dir))
+    except Exception as exc:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="batch_transcribe", input_path=input_dir,
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed, error=str(exc),
+        )
+
+    elapsed = time.perf_counter() - t0
+    return _result_dict(
+        status="success", action="batch_transcribe", input_path=input_dir,
+        output_path=str(out_dir), duration_in=None, duration_out=None,
+        ffmpeg_cmd=None, elapsed_seconds=elapsed, error=None,
+    )
+
+
+def _execute_auto_name(
+    in_path: Path, out_dir: Path, params: dict[str, Any], t0: float,
+) -> dict[str, Any]:
+    """Run auto-naming on batch manifest."""
+    try:
+        from auto_name import batch_auto_name
+    except ImportError:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="auto_name", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="auto_name module not available",
+        )
+
+    manifest_path = in_path if in_path.suffix == ".json" else out_dir / "batch_manifest.json"
+    if not manifest_path.exists():
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="auto_name", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="batch_manifest.json not found — run batch_transcribe first",
+        )
+
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+        result = batch_auto_name(manifest, str(out_dir))
+    except Exception as exc:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="auto_name", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed, error=str(exc),
+        )
+
+    elapsed = time.perf_counter() - t0
+    return _result_dict(
+        status="success", action="auto_name", input_path=str(in_path),
+        output_path=str(out_dir / "batch_manifest.json"), duration_in=None,
+        duration_out=None, ffmpeg_cmd=None, elapsed_seconds=elapsed, error=None,
+    )
+
+
+def _execute_auto_chapter(
+    in_path: Path, out_dir: Path, params: dict[str, Any], t0: float,
+) -> dict[str, Any]:
+    """Run enhanced chapter detection."""
+    try:
+        from auto_chapter import auto_chapter
+    except ImportError:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="auto_chapter", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="auto_chapter module not available",
+        )
+
+    try:
+        result = auto_chapter(str(in_path), str(out_dir))
+    except Exception as exc:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="auto_chapter", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed, error=str(exc),
+        )
+
+    elapsed = time.perf_counter() - t0
+    return _result_dict(
+        status="success", action="auto_chapter", input_path=str(in_path),
+        output_path=str(out_dir), duration_in=None, duration_out=None,
+        ffmpeg_cmd=None, elapsed_seconds=elapsed, error=None,
+    )
+
+
+def _execute_search_transcripts(
+    in_path: Path, out_dir: Path, params: dict[str, Any], t0: float,
+) -> dict[str, Any]:
+    """Search transcript index."""
+    try:
+        from transcript_index import build_index, search_index
+    except ImportError:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="search_transcripts", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="transcript_index module not available",
+        )
+
+    query = params.get("query", "")
+    if not query:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="search_transcripts", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="no query provided",
+        )
+
+    index_path = out_dir / "transcript_index.json"
+    try:
+        if index_path.exists():
+            with open(index_path, "r", encoding="utf-8") as f:
+                index = json.load(f)
+        else:
+            manifest_path = out_dir / "batch_manifest.json"
+            if not manifest_path.exists():
+                elapsed = time.perf_counter() - t0
+                return _result_dict(
+                    status="error", action="search_transcripts",
+                    input_path=str(in_path), output_path=None,
+                    duration_in=None, duration_out=None, ffmpeg_cmd=None,
+                    elapsed_seconds=elapsed,
+                    error="no index or manifest — run batch_transcribe first",
+                )
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+            index = build_index(manifest, str(out_dir))
+
+        results = search_index(index, query)
+    except Exception as exc:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="search_transcripts", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed, error=str(exc),
+        )
+
+    elapsed = time.perf_counter() - t0
+    return _result_dict(
+        status="success", action="search_transcripts", input_path=str(in_path),
+        output_path=str(out_dir), duration_in=None, duration_out=None,
+        ffmpeg_cmd=None, elapsed_seconds=elapsed, error=None,
+    )
+
+
+def _execute_match_shots(
+    in_path: Path, out_dir: Path, params: dict[str, Any], t0: float,
+) -> dict[str, Any]:
+    """Run cross-file shot matching."""
+    try:
+        from shot_matcher import find_matching_shots
+    except ImportError:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="match_shots", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="shot_matcher module not available",
+        )
+
+    manifest_path = in_path if in_path.suffix == ".json" else out_dir / "batch_manifest.json"
+    if not manifest_path.exists():
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="match_shots", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed,
+            error="batch_manifest.json not found",
+        )
+
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+        similarity = params.get("similarity", 0.6)
+        results = find_matching_shots(manifest, str(out_dir), similarity)
+    except Exception as exc:
+        elapsed = time.perf_counter() - t0
+        return _result_dict(
+            status="error", action="match_shots", input_path=str(in_path),
+            output_path=None, duration_in=None, duration_out=None,
+            ffmpeg_cmd=None, elapsed_seconds=elapsed, error=str(exc),
+        )
+
+    elapsed = time.perf_counter() - t0
+    return _result_dict(
+        status="success", action="match_shots", input_path=str(in_path),
         output_path=str(out_dir), duration_in=None, duration_out=None,
         ffmpeg_cmd=None, elapsed_seconds=elapsed, error=None,
     )

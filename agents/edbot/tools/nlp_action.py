@@ -162,6 +162,37 @@ _ACTION_PATTERNS: list[tuple[re.Pattern[str], str, dict[str, Any]]] = [
 
     (re.compile(r"batch\s+shorts"),
      "batch_shorts", {"aspect": "9:16", "max_duration": 60}),
+
+    # --- Round 6: transcript intelligence ---
+    (re.compile(r"batch\s+process"),
+     "batch_transcribe", {}),
+
+    (re.compile(r"(process|ingest)\s+(all|folder|directory|every)"),
+     "batch_transcribe", {}),
+
+    (re.compile(r"auto\s*[-\s]?name"),
+     "auto_name", {}),
+
+    (re.compile(r"name\s+(the\s+)?files"),
+     "auto_name", {}),
+
+    (re.compile(r"auto\s*[-\s]?title"),
+     "auto_chapter", {}),
+
+    (re.compile(r"(enhance|enrich)\s+(section|title)"),
+     "auto_chapter", {}),
+
+    (re.compile(r"search\s+(.+?)\s+(?:in\s+)?transcript"),
+     "search_transcripts", {}),
+
+    (re.compile(r"find\s+(.+?)\s+in\s+transcript"),
+     "search_transcripts", {}),
+
+    (re.compile(r"match\s+shots"),
+     "match_shots", {}),
+
+    (re.compile(r"find\s+similar"),
+     "match_shots", {}),
 ]
 
 # Duration extraction patterns (applied after action match)
@@ -239,6 +270,11 @@ def parse_command(
                         else:
                             extras["platform"] = raw
                             confidence = 0.6
+
+            # search_transcripts: extract query from capture group
+            if act == "search_transcripts" and m.lastindex and m.lastindex >= 1:
+                extras["query"] = m.group(1).strip()
+
             break
     else:
         # No pattern matched — check for partial signals
@@ -273,6 +309,7 @@ def parse_command(
             "aspect": extras.get("aspect"),
             "silence_threshold_db": SILENCE_THRESHOLD_DB,
             "caption_style": CAPTION_STYLE,
+            "query": extras.get("query"),
         },
         "executor": executor,
         "confidence": confidence,
