@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EdBot Viewer v1 — AT01</title>
+<style>
+  /* al_ design tokens — derived from JP experiment-D gauge dashboard */
+  /* PLACEHOLDER: Swap these CSS vars when Ari's color spec arrives */
+  :root {
+    --al-bg-primary: #0f1117;
+    --al-bg-secondary: #1a1d27;
+    --al-bg-tertiary: #242836;
+    --al-border: #2e3348;
+    --al-text-primary: #e4e6ef;
+    --al-text-secondary: #8b8fa7;
+    --al-text-muted: #5c6078;
+    --al-accent: #6c8aff;
+    --al-success: #3dd68c;
+    --al-warning: #f0b232;
+    --al-danger: #f05252;
+    --al-info: #58a6ff;
+    --al-radius: 8px;
+    --al-font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    --al-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--al-bg-primary);
+    color: var(--al-text-primary);
+    font-family: var(--al-font-sans);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .al-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--al-border);
+    background: var(--al-bg-secondary);
+  }
+  .al-header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+  .al-header-meta { font-size: 12px; color: var(--al-text-muted); font-family: var(--al-font-mono); }
+  .al-header-status { font-size: 12px; font-family: var(--al-font-mono); }
+  .al-header-status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+  .al-header-status .dot.on { background: var(--al-success); }
+  .al-header-status .dot.off { background: var(--al-danger); }
+
+  /* Load bar */
+  .al-load-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    background: var(--al-bg-secondary);
+    border-bottom: 1px solid var(--al-border);
+  }
+  .al-load-bar input[type="text"] {
+    flex: 1;
+    background: var(--al-bg-tertiary);
+    border: 1px solid var(--al-border);
+    border-radius: var(--al-radius);
+    color: var(--al-text-primary);
+    font-family: var(--al-font-mono);
+    font-size: 13px;
+    padding: 6px 12px;
+    outline: none;
+  }
+  .al-load-bar input:focus { border-color: var(--al-accent); }
+  .al-btn {
+    background: var(--al-accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--al-radius);
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .al-btn:hover { opacity: 0.85; }
+  .al-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .al-btn-secondary {
+    background: var(--al-bg-tertiary);
+    border: 1px solid var(--al-border);
+    color: var(--al-text-primary);
+  }
+  .al-btn-danger { background: var(--al-danger); }
+
+  /* Gauge row */
+  .al-gauge-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 16px 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .al-gauge-card {
+    background: var(--al-bg-secondary);
+    border: 1px solid var(--al-border);
+    border-radius: var(--al-radius);
+    padding: 16px;
+    text-align: center;
+  }
+  .al-gauge-value {
+    font-size: 28px;
+    font-weight: 700;
+    font-family: var(--al-font-mono);
+  }
+  .al-gauge-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--al-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 4px;
+  }
+  .al-gauge-sub {
+    font-size: 11px;
+    color: var(--al-text-muted);
+    font-family: var(--al-font-mono);
+  }
+
+  /* Main content grid */
+  .al-main {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 16px;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px 24px;
+  }
+
+  /* Section panels */
+  .al-section {
+    background: var(--al-bg-secondary);
+    border: 1px solid var(--al-border);
+    border-radius: var(--al-radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .al-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--al-border);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--al-text-secondary);
+  }
+  .al-section-body { padding: 12px 16px; }
+  .al-section-count {
+    font-family: var(--al-font-mono);
+    font-size: 12px;
+    color: var(--al-text-muted);
+    font-weight: 400;
+  }
+
+  /* Search */
+  .al-search-row {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+  .al-search-row input {
+    flex: 1;
+    background: var(--al-bg-primary);
+    border: 1px solid var(--al-border);
+    border-radius: var(--al-radius);
+    color: var(--al-text-primary);
+    font-family: var(--al-font-mono);
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+  }
+  .al-search-row input:focus { border-color: var(--al-accent); }
+
+  /* Transcript chunks */
+  .al-chunk-list { max-height: 400px; overflow-y: auto; }
+  .al-chunk-row {
+    display: flex;
+    gap: 10px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--al-bg-tertiary);
+    cursor: pointer;
+    transition: background 0.15s;
+    align-items: flex-start;
+  }
+  .al-chunk-row:hover { background: var(--al-bg-tertiary); }
+  .al-chunk-row.active { background: rgba(108, 138, 255, 0.1); border-left: 3px solid var(--al-accent); }
+  .al-chunk-row.silence { opacity: 0.4; }
+  .al-chunk-time {
+    font-family: var(--al-font-mono);
+    font-size: 11px;
+    color: var(--al-accent);
+    white-space: nowrap;
+    min-width: 50px;
+    padding-top: 1px;
+  }
+  .al-chunk-text { font-size: 13px; color: var(--al-text-primary); }
+  .al-chunk-text.empty { color: var(--al-text-muted); font-style: italic; }
+
+  /* Search results */
+  .al-result-row {
+    display: flex;
+    gap: 10px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--al-bg-tertiary);
+    cursor: pointer;
+    transition: background 0.15s;
+    align-items: flex-start;
+  }
+  .al-result-row:hover { background: var(--al-bg-tertiary); }
+  .al-result-meta {
+    font-family: var(--al-font-mono);
+    font-size: 11px;
+    color: var(--al-warning);
+    white-space: nowrap;
+    min-width: 60px;
+  }
+  .al-result-text { font-size: 13px; }
+  .al-result-text mark {
+    background: rgba(108, 138, 255, 0.3);
+    color: var(--al-text-primary);
+    border-radius: 2px;
+    padding: 0 2px;
+  }
+
+  /* Timeline bar */
+  .al-timeline {
+    position: relative;
+    height: 24px;
+    background: var(--al-bg-tertiary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 8px 0;
+    cursor: pointer;
+  }
+  .al-timeline-seg {
+    position: absolute;
+    top: 0;
+    height: 100%;
+  }
+  .al-timeline-seg.speech { background: var(--al-success); opacity: 0.6; }
+  .al-timeline-seg.silence { background: var(--al-danger); opacity: 0.3; }
+  .al-timeline-marker {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 2px;
+    background: var(--al-warning);
+    opacity: 0.7;
+  }
+  .al-playhead {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 2px;
+    background: #fff;
+    z-index: 10;
+    transition: left 0.1s linear;
+  }
+
+  /* Chapter list */
+  .al-chapter-row {
+    display: flex;
+    gap: 10px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--al-bg-tertiary);
+    cursor: pointer;
+    transition: background 0.15s;
+    align-items: flex-start;
+  }
+  .al-chapter-row:hover { background: var(--al-bg-tertiary); }
+  .al-chapter-row.active { background: rgba(61, 214, 140, 0.1); border-left: 3px solid var(--al-success); }
+  .al-chapter-time {
+    font-family: var(--al-font-mono);
+    font-size: 11px;
+    color: var(--al-success);
+    white-space: nowrap;
+    min-width: 50px;
+  }
+  .al-chapter-title { font-size: 13px; font-weight: 500; }
+
+  /* Silence stats */
+  .al-silence-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    text-align: center;
+    font-family: var(--al-font-mono);
+    font-size: 12px;
+  }
+  .al-stat-value { font-size: 18px; font-weight: 700; }
+  .al-stat-label { font-size: 10px; color: var(--al-text-muted); text-transform: uppercase; }
+
+  /* Status message */
+  .al-status {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-family: var(--al-font-mono);
+    color: var(--al-text-muted);
+    border-top: 1px solid var(--al-border);
+  }
+  .al-status.error { color: var(--al-danger); }
+  .al-status.success { color: var(--al-success); }
+
+  /* Video */
+  .al-video-container { position: relative; background: #000; border-radius: var(--al-radius); overflow: hidden; margin-bottom: 16px; }
+  .al-video-container video { width: 100%; display: block; max-height: 360px; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .al-main { grid-template-columns: 1fr; }
+    .al-gauge-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="al-header">
+  <h1>EdBot Viewer</h1>
+  <div id="al-session-status" class="al-header-status">
+    <span class="dot off"></span> disconnected
+  </div>
+  <div class="al-header-meta">AT01 — al_edbot_viewer_v1</div>
+</div>
+
+<!-- Load bar -->
+<div class="al-load-bar">
+  <input type="text" id="al-video-path" placeholder="Video path (e.g. C:\AT01\input\IMG_5769.MOV)">
+  <button class="al-btn" id="al-btn-load">Load</button>
+  <button class="al-btn al-btn-secondary" id="al-btn-transcribe">Transcribe</button>
+  <button class="al-btn al-btn-secondary" id="al-btn-silence">Detect Silence</button>
+  <button class="al-btn al-btn-secondary" id="al-btn-chapters">Chapters</button>
+</div>
+
+<!-- Gauges -->
+<div class="al-gauge-row">
+  <div class="al-gauge-card">
+    <div class="al-gauge-value" id="al-g-chunks" style="color: var(--al-accent);">—</div>
+    <div class="al-gauge-label">Chunks</div>
+    <div class="al-gauge-sub" id="al-g-duration">—</div>
+  </div>
+  <div class="al-gauge-card">
+    <div class="al-gauge-value" id="al-g-words" style="color: var(--al-success);">—</div>
+    <div class="al-gauge-label">Words</div>
+    <div class="al-gauge-sub" id="al-g-source">—</div>
+  </div>
+  <div class="al-gauge-card">
+    <div class="al-gauge-value" id="al-g-gaps" style="color: var(--al-warning);">—</div>
+    <div class="al-gauge-label">Silence Gaps</div>
+    <div class="al-gauge-sub" id="al-g-silence-pct">—</div>
+  </div>
+  <div class="al-gauge-card">
+    <div class="al-gauge-value" id="al-g-chapters" style="color: var(--al-info);">—</div>
+    <div class="al-gauge-label">Chapters</div>
+    <div class="al-gauge-sub" id="al-g-chapter-status">—</div>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="al-main">
+
+  <!-- Left column: video + search + chunks -->
+  <div class="al-left">
+
+    <!-- Video player -->
+    <div class="al-video-container">
+      <video id="al-video" controls></video>
+    </div>
+
+    <!-- Silence timeline -->
+    <div class="al-section">
+      <div class="al-section-header">Timeline <span class="al-section-count" id="al-timeline-info">—</span></div>
+      <div class="al-section-body">
+        <div class="al-timeline" id="al-timeline">
+          <div class="al-playhead" id="al-playhead" style="left:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="al-section">
+      <div class="al-section-header">Search Transcripts</div>
+      <div class="al-search-row">
+        <input type="text" id="al-search-input" placeholder="Search words or phrases...">
+        <button class="al-btn" id="al-btn-search">Search</button>
+      </div>
+      <div id="al-search-results" style="max-height:250px;overflow-y:auto;"></div>
+      <div class="al-status" id="al-search-status"></div>
+    </div>
+
+    <!-- Transcript chunks -->
+    <div class="al-section">
+      <div class="al-section-header">Transcript <span class="al-section-count" id="al-chunk-count">0 chunks</span></div>
+      <div class="al-chunk-list" id="al-chunk-list"></div>
+    </div>
+
+  </div>
+
+  <!-- Right column: chapters + silence stats -->
+  <div class="al-right">
+
+    <!-- Chapters -->
+    <div class="al-section">
+      <div class="al-section-header">Chapters <span class="al-section-count" id="al-chapter-count">—</span></div>
+      <div id="al-chapter-list" style="max-height:400px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- Silence stats -->
+    <div class="al-section">
+      <div class="al-section-header">Silence Analysis</div>
+      <div class="al-section-body">
+        <div class="al-silence-stats">
+          <div><div class="al-stat-value" id="al-s-speech">—</div><div class="al-stat-label">Speech</div></div>
+          <div><div class="al-stat-value" id="al-s-silence">—</div><div class="al-stat-label">Silence</div></div>
+          <div><div class="al-stat-value" id="al-s-pct">—</div><div class="al-stat-label">Silence %</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="al-section">
+      <div class="al-section-header">Actions</div>
+      <div class="al-section-body" style="display:flex;flex-direction:column;gap:8px;">
+        <button class="al-btn" id="al-btn-crop" style="width:100%;">Portrait Crop (Center)</button>
+        <button class="al-btn al-btn-secondary" id="al-btn-crop-face" style="width:100%;">Portrait Crop (Face)</button>
+        <button class="al-btn al-btn-secondary" id="al-btn-speakers" style="width:100%;">Detect Speakers</button>
+      </div>
+      <div class="al-status" id="al-action-status"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  var API = "http://127.0.0.1:8901";
+
+  // --- DOM refs ---
+  var elVideo      = document.getElementById("al-video");
+  var elVideoPath  = document.getElementById("al-video-path");
+  var elPlayhead   = document.getElementById("al-playhead");
+  var elTimeline   = document.getElementById("al-timeline");
+  var elChunkList  = document.getElementById("al-chunk-list");
+  var elChapterList = document.getElementById("al-chapter-list");
+  var elSearchInput = document.getElementById("al-search-input");
+  var elSearchResults = document.getElementById("al-search-results");
+
+  // --- State ---
+  var chunksData = null;
+  var silenceData = null;
+  var chaptersData = null;
+  var videoDuration = 0;
+
+  // --- Helpers ---
+  function fmt(s) {
+    var m = Math.floor(s / 60);
+    var sec = Math.floor(s % 60);
+    return m + ":" + (sec < 10 ? "0" : "") + sec;
+  }
+
+  function setStatus(elId, msg, cls) {
+    var el = document.getElementById(elId);
+    if (el) { el.textContent = msg; el.className = "al-status" + (cls ? " " + cls : ""); }
+  }
+
+  function apiFetch(path) {
+    return fetch(API + path).then(function(r) {
+      if (!r.ok) throw new Error(r.status + " " + r.statusText);
+      return r.json();
+    });
+  }
+
+  function apiPost(path, body) {
+    return fetch(API + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function(r) {
+      if (!r.ok) throw new Error(r.status + " " + r.statusText);
+      return r.json();
+    });
+  }
+
+  // --- Session check ---
+  function checkSession() {
+    apiFetch("/api/health").then(function(d) {
+      document.getElementById("al-session-status").innerHTML =
+        '<span class="dot on"></span> connected (' + d.tools.length + ' tools)';
+      return apiFetch("/api/session");
+    }).then(function(s) {
+      if (s.has_chunks) loadCachedChunks();
+      if (s.has_silence_map) loadCachedSilence();
+      if (s.has_chapters) loadCachedChapters();
+    }).catch(function() {
+      document.getElementById("al-session-status").innerHTML =
+        '<span class="dot off"></span> server offline';
+    });
+  }
+
+  // --- Load video ---
+  function loadVideo(path) {
+    elVideo.src = API + "/video/" + encodeURIComponent(path);
+    elVideo.load();
+  }
+
+  // --- Render chunks ---
+  function renderChunks(data) {
+    chunksData = data;
+    var chunks = data.chunks || [];
+    videoDuration = data.duration || 0;
+    var totalWords = 0;
+
+    elChunkList.innerHTML = "";
+    chunks.forEach(function(c) {
+      totalWords += c.word_count || 0;
+      var row = document.createElement("div");
+      row.className = "al-chunk-row" + (c.has_speech === false ? " silence" : "");
+      row.innerHTML = '<div class="al-chunk-time">' + fmt(c.start) + '</div>' +
+        '<div class="al-chunk-text' + (!c.text ? ' empty' : '') + '">' +
+        (c.text || "(silence)") + '</div>';
+      row.onclick = function() { elVideo.currentTime = c.start; elVideo.play(); };
+      elChunkList.appendChild(row);
+    });
+
+    document.getElementById("al-chunk-count").textContent = chunks.length + " chunks";
+    document.getElementById("al-g-chunks").textContent = chunks.length;
+    document.getElementById("al-g-words").textContent = totalWords;
+    document.getElementById("al-g-duration").textContent = fmt(videoDuration);
+    document.getElementById("al-g-source").textContent = data.source || "";
+  }
+
+  // --- Render silence ---
+  function renderSilence(data) {
+    silenceData = data;
+    var dur = data.duration || videoDuration || 1;
+    var html = '<div class="al-playhead" id="al-playhead" style="left:0%"></div>';
+
+    (data.speech || []).forEach(function(s) {
+      var left = (s.start / dur) * 100;
+      var width = ((s.end - s.start) / dur) * 100;
+      html += '<div class="al-timeline-seg speech" style="left:' + left + '%;width:' + width + '%"></div>';
+    });
+    (data.gaps || []).forEach(function(g) {
+      var left = (g.start / dur) * 100;
+      var width = ((g.end - g.start) / dur) * 100;
+      html += '<div class="al-timeline-seg silence" style="left:' + left + '%;width:' + width + '%"></div>';
+    });
+
+    elTimeline.innerHTML = html;
+    elPlayhead = document.getElementById("al-playhead");
+
+    var stats = data.stats || {};
+    document.getElementById("al-g-gaps").textContent = stats.gap_count || 0;
+    document.getElementById("al-g-silence-pct").textContent = (stats.silence_percentage || 0).toFixed(1) + "%";
+    document.getElementById("al-s-speech").textContent = fmt(stats.total_speech || 0);
+    document.getElementById("al-s-silence").textContent = fmt(stats.total_silence || 0);
+    document.getElementById("al-s-pct").textContent = (stats.silence_percentage || 0).toFixed(1) + "%";
+    document.getElementById("al-timeline-info").textContent =
+      fmt(dur) + " total | " + (stats.gap_count || 0) + " gaps";
+  }
+
+  // --- Render chapters ---
+  function renderChapters(data) {
+    var chapters = Array.isArray(data) ? data : (data.chapters || []);
+    chaptersData = chapters;
+    elChapterList.innerHTML = "";
+
+    chapters.forEach(function(ch) {
+      var row = document.createElement("div");
+      row.className = "al-chapter-row";
+      row.innerHTML = '<div class="al-chapter-time">' + fmt(ch.start) + '</div>' +
+        '<div class="al-chapter-title">' + (ch.title || "Chapter " + (ch.chapter_id || ch.id || 0)) + '</div>';
+      row.onclick = function() { elVideo.currentTime = ch.start; elVideo.play(); };
+      elChapterList.appendChild(row);
+    });
+
+    document.getElementById("al-chapter-count").textContent = chapters.length + " chapters";
+    document.getElementById("al-g-chapters").textContent = chapters.length;
+    document.getElementById("al-g-chapter-status").textContent = chapters.length > 0 ? "detected" : "none";
+
+    // Add chapter markers to timeline
+    if (silenceData) {
+      var dur = silenceData.duration || videoDuration || 1;
+      chapters.forEach(function(ch) {
+        var marker = document.createElement("div");
+        marker.className = "al-timeline-marker";
+        marker.style.left = ((ch.start / dur) * 100) + "%";
+        marker.title = "Ch: " + (ch.title || ch.chapter_id || ch.id);
+        elTimeline.appendChild(marker);
+      });
+    }
+  }
+
+  // --- Render search results ---
+  function renderSearchResults(data) {
+    var results = data.results || [];
+    elSearchResults.innerHTML = "";
+
+    if (results.length === 0) {
+      elSearchResults.innerHTML = '<div style="padding:12px 16px;color:var(--al-text-muted);font-size:13px;">No results found.</div>';
+      setStatus("al-search-status", "0 results", "");
+      return;
+    }
+
+    var query = (data.query || "").toLowerCase();
+    results.forEach(function(r) {
+      var chunk = null;
+      if (chunksData && chunksData.chunks) {
+        chunk = chunksData.chunks[r.chunk] || null;
+      }
+      var text = chunk ? chunk.text : "chunk " + r.chunk;
+      var start = chunk ? chunk.start : (r.start || 0);
+
+      // Highlight query in text
+      if (query && text) {
+        var re = new RegExp("(" + query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "gi");
+        text = text.replace(re, "<mark>$1</mark>");
+      }
+
+      var row = document.createElement("div");
+      row.className = "al-result-row";
+      row.innerHTML = '<div class="al-result-meta">' + fmt(start) + '</div>' +
+        '<div class="al-result-text">' + text + '</div>';
+      row.onclick = function() { elVideo.currentTime = start; elVideo.play(); };
+      elSearchResults.appendChild(row);
+    });
+
+    setStatus("al-search-status", data.count + " results", "success");
+  }
+
+  // --- Load cached data ---
+  function loadCachedChunks() {
+    apiFetch("/api/chunks").then(renderChunks).catch(function() {});
+  }
+  function loadCachedSilence() {
+    apiFetch("/api/silence_map").then(renderSilence).catch(function() {});
+  }
+  function loadCachedChapters() {
+    apiFetch("/api/chapters").then(renderChapters).catch(function() {});
+  }
+
+  // --- Event: Load video ---
+  document.getElementById("al-btn-load").onclick = function() {
+    var path = elVideoPath.value.trim();
+    if (!path) return;
+    loadVideo(path);
+  };
+
+  // --- Event: Transcribe ---
+  document.getElementById("al-btn-transcribe").onclick = function() {
+    var path = elVideoPath.value.trim();
+    if (!path) { setStatus("al-action-status", "Enter video path first", "error"); return; }
+    setStatus("al-action-status", "Transcribing...", "");
+    apiPost("/api/transcribe", { input_path: path, output_dir: "temp" })
+      .then(function(d) {
+        renderChunks(d);
+        setStatus("al-action-status", "Transcribed: " + (d.chunks || []).length + " chunks", "success");
+      })
+      .catch(function(e) { setStatus("al-action-status", "Error: " + e.message, "error"); });
+  };
+
+  // --- Event: Silence detect ---
+  document.getElementById("al-btn-silence").onclick = function() {
+    var path = elVideoPath.value.trim();
+    if (!path) { setStatus("al-action-status", "Enter video path first", "error"); return; }
+    setStatus("al-action-status", "Detecting silence...", "");
+    apiPost("/api/silence", { input_path: path, output_dir: "temp" })
+      .then(function(d) {
+        renderSilence(d);
+        setStatus("al-action-status", "Silence: " + (d.stats.gap_count || 0) + " gaps", "success");
+      })
+      .catch(function(e) { setStatus("al-action-status", "Error: " + e.message, "error"); });
+  };
+
+  // --- Event: Chapters ---
+  document.getElementById("al-btn-chapters").onclick = function() {
+    setStatus("al-action-status", "Detecting chapters...", "");
+    apiFetch("/api/chapters")
+      .then(function(d) {
+        renderChapters(d);
+        var ch = Array.isArray(d) ? d : (d.chapters || []);
+        setStatus("al-action-status", ch.length + " chapters detected", "success");
+      })
+      .catch(function(e) { setStatus("al-action-status", "Error: " + e.message, "error"); });
+  };
+
+  // --- Event: Search ---
+  function doSearch() {
+    var query = elSearchInput.value.trim();
+    if (!query) return;
+    setStatus("al-search-status", "Searching...", "");
+    apiPost("/api/search-transcripts", { query: query, max_results: 20 })
+      .then(renderSearchResults)
+      .catch(function(e) { setStatus("al-search-status", "Error: " + e.message, "error"); });
+  }
+  document.getElementById("al-btn-search").onclick = doSearch;
+  elSearchInput.addEventListener("keydown", function(e) { if (e.key === "Enter") doSearch(); });
+
+  // --- Event: Portrait crop ---
+  document.getElementById("al-btn-crop").onclick = function() {
+    var path = elVideoPath.value.trim();
+    if (!path) return;
+    setStatus("al-action-status", "Cropping (center)...", "");
+    apiPost("/api/portrait_crop", { input_path: path, output_dir: "output", method: "center" })
+      .then(function(d) { setStatus("al-action-status", "Crop done: " + (d.output || ""), "success"); })
+      .catch(function(e) { setStatus("al-action-status", "Error: " + e.message, "error"); });
+  };
+  document.getElementById("al-btn-crop-face").onclick = function() {
+    var path = elVideoPath.value.trim();
+    if (!path) return;
+    setStatus("al-action-status", "Cropping (face)...", "");
+    apiPost("/api/portrait_crop", { input_path: path, output_dir: "output", method: "face" })
+      .then(function(d) { setStatus("al-action-status", "Crop done: " + (d.output || ""), "success"); })
+      .catch(function(e) { setStatus("al-action-status", "Error: " + e.message, "error"); });
+  };
+
+  // --- Event: Speakers ---
+  document.getElementById("al-btn-speakers").onclick = function() {
+    setStatus("al-action-status", "Detecting speakers...", "");
+    apiFetch("/api/speakers")
+      .then(function(d) {
+        var count = (d.speakers || []).length;
+        setStatus("al-action-status", count + " speaker(s) detected", "success");
+      })
+      .catch(function(e) { setStatus("al-action-status", "Error: " + e.message, "error"); });
+  };
+
+  // --- Event: Timeline click → seek ---
+  elTimeline.onclick = function(e) {
+    var rect = elTimeline.getBoundingClientRect();
+    var pct = (e.clientX - rect.left) / rect.width;
+    var dur = (silenceData && silenceData.duration) || videoDuration || 1;
+    elVideo.currentTime = pct * dur;
+  };
+
+  // --- Event: Video timeupdate → playhead + active chunk/chapter ---
+  elVideo.addEventListener("timeupdate", function() {
+    var t = elVideo.currentTime;
+    var dur = (silenceData && silenceData.duration) || videoDuration || elVideo.duration || 1;
+    if (elPlayhead) elPlayhead.style.left = ((t / dur) * 100) + "%";
+
+    // Highlight active chunk
+    var rows = elChunkList.children;
+    if (chunksData && chunksData.chunks) {
+      for (var i = 0; i < chunksData.chunks.length; i++) {
+        var c = chunksData.chunks[i];
+        var isActive = t >= c.start && t < c.end;
+        if (rows[i]) rows[i].className = rows[i].className.replace(/ ?active/g, "") + (isActive ? " active" : "");
+        if (isActive && rows[i]) rows[i].scrollIntoView({ block: "nearest" });
+      }
+    }
+
+    // Highlight active chapter
+    var chRows = elChapterList.children;
+    if (chaptersData) {
+      for (var j = 0; j < chaptersData.length; j++) {
+        var ch = chaptersData[j];
+        var isActiveCh = t >= ch.start && t < (ch.end || Infinity);
+        if (chRows[j]) chRows[j].className = chRows[j].className.replace(/ ?active/g, "") + (isActiveCh ? " active" : "");
+      }
+    }
+  });
+
+  // --- Init ---
+  checkSession();
+
+})();
+</script>
+</body>
+</html>

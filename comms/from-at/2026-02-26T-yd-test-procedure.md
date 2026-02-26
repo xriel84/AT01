@@ -13,13 +13,16 @@ Pre-screened by Ari. Run in order. Each test has PASS/FAIL criteria.
 **Start server:** `py -3.12 C:\AT01\agents\edbot\server.py`
 **Viewer:** Open `http://127.0.0.1:8901/` in browser (serves viewer_v2.html)
 
-**Test video:** Use a video file accessible from one of these directories:
-- `C:\AT01\input\`
-- `C:\AT01\output\`
-- `C:\AT01\temp\`
+**Test videos** (both in `C:\AT01\input\`):
+- `IMG_5769.MOV` — 424s SIGGRAPH talk, continuous speech (use for P1 + P3)
+- `test_with_silence.mov` — 60s clip with 2 silence gaps at 20-25s and 45-50s (use for P2)
 
-Place your test video (e.g., `IMG_5769.MOV`) in `C:\AT01\input\` before starting.
 Replace `VIDEO_PATH` in all curl commands below with the full path (e.g., `C:\\AT01\\input\\IMG_5769.MOV`).
+For P2 silence tests, use: `C:\\AT01\\input\\test_with_silence.mov`
+
+**Viewer options:**
+- Original: `http://127.0.0.1:8901/` (viewer_v2.html)
+- New prototype: open `agents/edbot/frontend/al_edbot_viewer_v1.html` in browser (connects to same :8901)
 
 ---
 
