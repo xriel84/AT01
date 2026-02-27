@@ -32,7 +32,7 @@ animate.py         ComfyUI VACE / AnimateDiff (512x512 ONLY -- OOM at 1024)
 TIER 2 GATE        review animated versions (approve / reject / redo)
   |
   v
-label.py           tag + rename per AL taxonomy -> hand off to EdBot
+label.py           tag + rename per AT taxonomy -> hand off to EdBot
   |                naming: {project}_{subject}_{shot}_{action}_{seq}.{ext}
   v
 TIER 3 GATE        full clip review in #ai-workspace
@@ -246,7 +246,7 @@ def build_label(
     """Build a filename per NB11-COMFYUI-AGENT-PROTOCOL naming convention.
 
     Args:
-        project: Project prefix (e.g. "al", "nb10")
+        project: Project prefix (e.g. "at", "nb10")
         subject: Subject token (e.g. "aribot", "skyline")
         shot: Shot grid position (e.g. "M-C", "W-L", "C-C")
         action: Action token (e.g. "idle", "work", "loop")
@@ -260,7 +260,7 @@ def build_label(
 def rename_for_edbot(
     manifest: dict,
     output_dir: Path,
-    project: str = "al"
+    project: str = "at"
 ) -> list[Path]:
     """Rename and move approved assets to taxonomy-compliant names.
 
@@ -322,14 +322,14 @@ All assets follow the NB11-COMFYUI-AGENT-PROTOCOL schema:
 
 | Token     | Example Values                  | Required   |
 |-----------|---------------------------------|------------|
-| project   | `al`, `nb10`, `nb11`           | Yes        |
+| project   | `at`, `nb10`, `nb11`           | Yes        |
 | subject   | `aribot`, `kevin`, `skyline`   | Yes        |
 | shot      | `W-L`, `M-C`, `C-C`           | When spatial |
 | action    | `idle`, `work`, `loop`, `still`| Yes        |
 | seq       | `00001`, `f01of06`             | When multiple |
 | ext       | `.png`, `.webp`, `.mp4`        | Yes        |
 
-**ComfyUI Save node prefix:** `al/al_{subject}_{shot}_{action}`
+**ComfyUI Save node prefix:** `at/at_{subject}_{shot}_{action}`
 ComfyUI auto-appends `_00001`, `_00002`, etc.
 
 **Video platform extensions:** Append platform token before seq for video outputs:
@@ -417,7 +417,7 @@ ArtBot uses the shared message bus defined in `agents/shared/schema.md`.
 ### Message Types
 
 - **REPORT** (ArtBot -> EdBot): "3 approved assets labeled and ready for timeline import"
-- **REQUEST** (EdBot -> ArtBot): "Need 16:9 variant of al_aribot_M-C_idle for YouTube intro"
+- **REQUEST** (EdBot -> ArtBot): "Need 16:9 variant of at_aribot_M-C_idle for YouTube intro"
 - **FEEDBACK** (AnaBot -> ArtBot): "Gold palette assets get 2x engagement vs silver -- bias toward warm tones"
 
 ### Rules

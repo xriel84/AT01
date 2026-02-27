@@ -1,4 +1,4 @@
-"""ArtBot taxonomy labeling — name files per AL naming convention.
+"""ArtBot taxonomy labeling — name files per AT naming convention.
 
 Naming: {project}_{subject}_{shot}_{action}_{seq}.{ext}
 Per NB11-COMFYUI-AGENT-PROTOCOL.md
@@ -15,7 +15,7 @@ def build_label(project: str, subject: str, shot: str, action: str, seq: int) ->
     All parts lowercased.
 
     Args:
-        project: Project prefix, e.g. "al"
+        project: Project prefix, e.g. "at"
         subject: Subject category, e.g. "logo"
         shot: Shot type, e.g. "hero"
         action: Action descriptor, e.g. "idle"
@@ -30,7 +30,7 @@ def build_label(project: str, subject: str, shot: str, action: str, seq: int) ->
 
 
 def rename_for_edbot(
-    manifest: dict, output_dir: Path, project: str = "al"
+    manifest: dict, output_dir: Path, project: str = "at"
 ) -> list[Path]:
     """Rename and copy selected images to output_dir with taxonomy names.
 
@@ -42,7 +42,7 @@ def rename_for_edbot(
         manifest: Dict with "images" list. Each image dict has keys:
             path (str), selected (bool), subject, shot, action, seq (int).
         output_dir: Destination directory. Created if it doesn't exist.
-        project: Project prefix for build_label (default "al").
+        project: Project prefix for build_label (default "at").
 
     Returns:
         List of Path objects for the newly created files.

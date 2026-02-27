@@ -12,20 +12,20 @@ from label import build_label, rename_for_edbot
 
 class TestBuildLabel:
     def test_follows_naming_convention(self):
-        result = build_label("al", "logo", "hero", "idle", 1)
-        assert result == "al_logo_hero_idle_001"
+        result = build_label("at", "logo", "hero", "idle", 1)
+        assert result == "at_logo_hero_idle_001"
 
     def test_pads_sequence(self):
-        result = build_label("al", "logo", "hero", "idle", 42)
+        result = build_label("at", "logo", "hero", "idle", 42)
         assert result.endswith("_042")
 
     def test_pads_single_digit(self):
-        result = build_label("al", "logo", "hero", "idle", 1)
+        result = build_label("at", "logo", "hero", "idle", 1)
         assert result.endswith("_001")
 
     def test_all_lowercase(self):
-        result = build_label("AL", "LOGO", "HERO", "IDLE", 1)
-        assert result == "al_logo_hero_idle_001"
+        result = build_label("AT", "LOGO", "HERO", "IDLE", 1)
+        assert result == "at_logo_hero_idle_001"
 
 
 class TestRenameForEdbot:
@@ -40,7 +40,7 @@ class TestRenameForEdbot:
             (src / "raw_photo2.png").write_bytes(b"img2")
 
             manifest = {
-                "project": "al",
+                "project": "at",
                 "images": [
                     {
                         "path": str(src / "raw_photo1.png"),
@@ -61,10 +61,10 @@ class TestRenameForEdbot:
                 ],
             }
 
-            result = rename_for_edbot(manifest, out, project="al")
+            result = rename_for_edbot(manifest, out, project="at")
             assert len(result) == 2
-            assert result[0].name == "al_logo_hero_idle_001.png"
-            assert result[1].name == "al_logo_hero_idle_002.png"
+            assert result[0].name == "at_logo_hero_idle_001.png"
+            assert result[1].name == "at_logo_hero_idle_002.png"
             assert result[0].exists()
             assert result[1].exists()
 
@@ -78,7 +78,7 @@ class TestRenameForEdbot:
             (src / "still.png").write_bytes(b"image")
 
             manifest = {
-                "project": "al",
+                "project": "at",
                 "images": [
                     {
                         "path": str(src / "clip.mp4"),
@@ -99,7 +99,7 @@ class TestRenameForEdbot:
                 ],
             }
 
-            result = rename_for_edbot(manifest, out, project="al")
+            result = rename_for_edbot(manifest, out, project="at")
             assert result[0].suffix == ".mp4"
             assert result[1].suffix == ".png"
 
@@ -114,7 +114,7 @@ class TestRenameForEdbot:
             (src / "c.png").write_bytes(b"c")
 
             manifest = {
-                "project": "al",
+                "project": "at",
                 "images": [
                     {
                         "path": str(src / "a.png"),
@@ -143,7 +143,7 @@ class TestRenameForEdbot:
                 ],
             }
 
-            result = rename_for_edbot(manifest, out, project="al")
+            result = rename_for_edbot(manifest, out, project="at")
             assert len(result) == 2
             # Only 2 files should exist in output
             assert len(list(out.iterdir())) == 2
@@ -157,7 +157,7 @@ class TestRenameForEdbot:
             (src / "img.png").write_bytes(b"data")
 
             manifest = {
-                "project": "al",
+                "project": "at",
                 "images": [
                     {
                         "path": str(src / "img.png"),
@@ -170,6 +170,6 @@ class TestRenameForEdbot:
                 ],
             }
 
-            result = rename_for_edbot(manifest, out, project="al")
+            result = rename_for_edbot(manifest, out, project="at")
             assert isinstance(result, list)
             assert all(isinstance(p, Path) for p in result)

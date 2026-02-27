@@ -122,7 +122,7 @@ class TestCollectResults:
                 "outputs": {
                     "9": {
                         "images": [
-                            {"filename": "al_aribot_M-C_idle_00001.png", "subfolder": "al", "type": "output"}
+                            {"filename": "at_aribot_M-C_idle_00001.png", "subfolder": "at", "type": "output"}
                         ]
                     }
                 },
@@ -165,8 +165,8 @@ class TestCollectResults:
                 "outputs": {
                     "9": {
                         "images": [
-                            {"filename": "output_00001.png", "subfolder": "al", "type": "output"},
-                            {"filename": "output_00002.png", "subfolder": "al", "type": "output"},
+                            {"filename": "output_00001.png", "subfolder": "at", "type": "output"},
+                            {"filename": "output_00002.png", "subfolder": "at", "type": "output"},
                         ]
                     }
                 },

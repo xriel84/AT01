@@ -18,14 +18,14 @@ from animate import build_animate_workflow, animate_batch
 class TestBuildAnimateWorkflow:
     def test_uses_vace_512(self):
         """Workflow dict forces 512x512 resolution (VACE OOM constraint)."""
-        wf = build_animate_workflow(Path("C:/NB11/ComfyUI/output/al/test.png"))
+        wf = build_animate_workflow(Path("C:/NB11/ComfyUI/output/at/test.png"))
         payload_str = json.dumps(wf)
         assert '"width": 512' in payload_str or '"width":512' in payload_str
         assert '"height": 512' in payload_str or '"height":512' in payload_str
 
     def test_accepts_input_image(self):
         """Source image path string appears in workflow."""
-        image_path = Path("C:/NB11/ComfyUI/output/al/al_aribot_M-C_idle_00001.png")
+        image_path = Path("C:/NB11/ComfyUI/output/at/at_aribot_M-C_idle_00001.png")
         wf = build_animate_workflow(image_path)
         payload_str = json.dumps(wf)
         assert str(image_path) in payload_str or image_path.name in payload_str
@@ -53,9 +53,9 @@ class TestAnimateBatch:
         """Helper: manifest with 3 images, 2 animate=True, 1 animate=False."""
         return {
             "images": [
-                {"path": "C:/NB11/ComfyUI/output/al/img_a.png", "animate": True},
-                {"path": "C:/NB11/ComfyUI/output/al/img_b.png", "animate": True},
-                {"path": "C:/NB11/ComfyUI/output/al/img_c.png", "animate": False},
+                {"path": "C:/NB11/ComfyUI/output/at/img_a.png", "animate": True},
+                {"path": "C:/NB11/ComfyUI/output/at/img_b.png", "animate": True},
+                {"path": "C:/NB11/ComfyUI/output/at/img_c.png", "animate": False},
             ]
         }
 
@@ -79,8 +79,8 @@ class TestAnimateBatch:
         """Images with animate=False not submitted."""
         manifest = {
             "images": [
-                {"path": "C:/NB11/ComfyUI/output/al/static.png", "animate": False},
-                {"path": "C:/NB11/ComfyUI/output/al/static2.png", "animate": False},
+                {"path": "C:/NB11/ComfyUI/output/at/static.png", "animate": False},
+                {"path": "C:/NB11/ComfyUI/output/at/static2.png", "animate": False},
             ]
         }
 

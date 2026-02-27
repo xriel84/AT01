@@ -86,7 +86,7 @@ def cmd_animate(args: argparse.Namespace) -> None:
 
 
 def cmd_label(args: argparse.Namespace) -> None:
-    """Rename selected images per AL taxonomy convention."""
+    """Rename selected images per AT taxonomy convention."""
     from label import rename_for_edbot
 
     manifest = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
@@ -155,10 +155,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_anim.add_argument("--server", default="http://127.0.0.1:8188", help="ComfyUI server URL")
 
     # label ---
-    p_label = sub.add_parser("label", help="Rename files per AL taxonomy convention")
+    p_label = sub.add_parser("label", help="Rename files per AT taxonomy convention")
     p_label.add_argument("--manifest", required=True, help="Path to review manifest JSON")
     p_label.add_argument("--output-dir", required=True, help="Destination directory for labeled files")
-    p_label.add_argument("--project", default="al", help="Project prefix (default 'al')")
+    p_label.add_argument("--project", default="at", help="Project prefix (default 'at')")
 
     # promote ---
     p_promote = sub.add_parser("promote", help="Advance file to next quality tier")
