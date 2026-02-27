@@ -68,6 +68,10 @@ from video_cataloger import (
     enrich_with_frames, get_catalog, search_catalog,
 )
 from frame_scanner import scan_frames
+from manifest_writer import (
+    to_raptor_entry, to_assembly_clip,
+    write_raptor_library, write_assembly_manifest, sync_all,
+)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -76,7 +80,7 @@ from frame_scanner import scan_frames
 TOOL_NAMES = ["transcribe", "silence_detect", "nlp_action", "executor",
               "chapter_detect", "speaker_detect", "portrait_crop", "tiktok_chunk",
               "analytics_reader", "resolve_bridge", "video_prober", "drive_scanner",
-              "dropbox_scanner", "frame_scanner", "video_cataloger"]
+              "dropbox_scanner", "frame_scanner", "video_cataloger", "manifest_writer"]
 
 MEDIA_EXTENSIONS = {".mp4", ".mov", ".mkv", ".avi", ".webm"}
 
@@ -299,6 +303,25 @@ class ScanFramesRequest(BaseModel):
 
 class CatalogSearchRequest(BaseModel):
     query: str
+
+
+class ManifestSyncRequest(BaseModel):
+    video_dir: str
+    output_dir: str = "output"
+    chunks_dir: str | None = None
+
+
+class ManifestRaptorRequest(BaseModel):
+    video_path: str
+    output_path: str = "output/raptor-library.json"
+    source_root: str | None = None
+
+
+class ManifestAssemblyRequest(BaseModel):
+    source_id: str | None = None
+    platform: str = "tiktok"
+    aspect: str = "9:16"
+    output_path: str = "output/assembly_manifest.json"
 
 
 # ---------------------------------------------------------------------------
@@ -995,6 +1018,93 @@ def api_catalog_search(req: CatalogSearchRequest):
         error_response(400, "query must not be empty", "INVALID_INPUT")
     result = search_catalog(req.query)
     return result
+
+
+# ---------------------------------------------------------------------------
+# Manifest bridge (AT → JP viewer format)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/manifest/sync")
+def api_manifest_sync(req: ManifestSyncRequest):
+    """Scan videos and generate both raptor-library.json + assembly_manifest.json."""
+    try:
+        result = sync_all(
+            video_dir=req.video_dir,
+            output_dir=req.output_dir,
+            chunks_dir=req.chunks_dir,
+        )
+        if result.get("error"):
+            error_response(500, result["error"], "SYNC_ERROR")
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        error_response(500, str(exc), "SYNC_ERROR")
+
+
+@app.post("/api/manifest/raptor-library")
+def api_manifest_raptor(req: ManifestRaptorRequest):
+    """Generate a raptor-library entry for a single video using cached pipeline data."""
+    vpath = Path(req.video_path)
+    if not vpath.exists():
+        error_response(400, f"file not found: {req.video_path}", "FILE_NOT_FOUND")
+    try:
+        probe = probe_video(str(vpath))
+        if probe.get("error"):
+            error_response(500, probe["error"], probe.get("code", "PROBE_ERROR"))
+
+        # Use cached chunks/transcript if available
+        chunks_data = _cache.get("chunks") or {}
+        transcript_data = _cache.get("transcript") or {}
+        chunk_list = chunks_data.get("chunks", []) if chunks_data.get("source") == vpath.name else []
+        word_list = transcript_data.get("words", []) if transcript_data.get("source") == vpath.name else []
+
+        entry = to_raptor_entry(
+            video_probe=probe,
+            chunks=chunk_list,
+            transcript_words=word_list,
+            source_root=req.source_root,
+        )
+
+        # Write to file
+        out = Path(req.output_path)
+        library = write_raptor_library([entry], out, source_root=req.source_root or "")
+        return library
+    except HTTPException:
+        raise
+    except Exception as exc:
+        error_response(500, str(exc), "MANIFEST_ERROR")
+
+
+@app.post("/api/manifest/assembly")
+def api_manifest_assembly(req: ManifestAssemblyRequest):
+    """Generate an assembly_manifest from cached chunks (speech chunks → clips)."""
+    chunks_data = _cache.get("chunks")
+    if not chunks_data or not chunks_data.get("chunks"):
+        error_response(400, "no cached chunks — run /api/transcribe first", "NO_DATA")
+
+    try:
+        source_name = chunks_data.get("source", "")
+        chunk_list = chunks_data["chunks"]
+        speech_chunks = [c for c in chunk_list if c.get("has_speech")]
+
+        clips = []
+        for chunk in speech_chunks:
+            clip = to_assembly_clip(
+                chunk=chunk,
+                source_id=req.source_id,
+                platform=req.platform,
+                aspect=req.aspect,
+            )
+            clips.append(clip)
+
+        out = Path(req.output_path)
+        manifest = write_assembly_manifest(clips, out, source_clip=source_name)
+        return manifest
+    except HTTPException:
+        raise
+    except Exception as exc:
+        error_response(500, str(exc), "MANIFEST_ERROR")
 
 
 # ---------------------------------------------------------------------------

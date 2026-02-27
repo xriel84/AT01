@@ -321,6 +321,37 @@ curl -X POST http://127.0.0.1:8901/api/shorts/captions -H "Content-Type: applica
 
 ---
 
+## Manifest Bridge (AT → JP Viewer)
+
+### POST /api/manifest/sync
+Scan a video directory and generate both raptor-library.json + assembly_manifest.json.
+**Request:** `{"video_dir": "C:/AT01/input", "output_dir": "output", "chunks_dir": null}`
+**Response:** `{"raptor_library_path": "output/raptor-library.json", "assembly_manifest_path": "output/assembly_manifest.json", "entry_count": 5, "clip_count": 12, "errors": []}`
+**Errors:** `500 SYNC_ERROR`
+```bash
+curl -X POST http://127.0.0.1:8901/api/manifest/sync -H "Content-Type: application/json" -d "{\"video_dir\": \"C:/AT01/input\", \"output_dir\": \"output\"}"
+```
+
+### POST /api/manifest/raptor-library
+Generate a raptor-library.json entry for a single video (using cached pipeline data).
+**Request:** `{"video_path": "C:/AT01/input/video.mov", "output_path": "output/raptor-library.json", "source_root": null}`
+**Response:** `{"generated": "...", "source_root": "...", "total_files": 1, "entries": [...]}`
+**Errors:** `400 FILE_NOT_FOUND` | `500 MANIFEST_ERROR`
+```bash
+curl -X POST http://127.0.0.1:8901/api/manifest/raptor-library -H "Content-Type: application/json" -d "{\"video_path\": \"C:/AT01/input/video.mov\"}"
+```
+
+### POST /api/manifest/assembly
+Generate an assembly_manifest.json from cached transcription chunks.
+**Request:** `{"source_id": null, "platform": "tiktok", "aspect": "9:16", "output_path": "output/assembly_manifest.json"}`
+**Response:** `{"generated": "...", "source_clip": "video.mov", "clips": [...]}`
+**Errors:** `400 NO_DATA` | `500 MANIFEST_ERROR`
+```bash
+curl -X POST http://127.0.0.1:8901/api/manifest/assembly -H "Content-Type: application/json" -d "{\"platform\": \"tiktok\", \"aspect\": \"9:16\"}"
+```
+
+---
+
 ## Utility
 
 ### POST /api/benchmark
