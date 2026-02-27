@@ -1,14 +1,25 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "routes": {
     "transcribe": {
+      "min_tier": 0,
       "tiers": {
         "2": {"model": "large-v3", "compute": "float16", "label": "Best quality, A6000"},
         "1": {"model": "medium", "compute": "int8", "label": "Good quality, 4080"},
         "0": {"model": "small", "compute": "int8", "label": "Basic, CPU"}
       }
     },
+    "batch_transcribe": {
+      "min_tier": 0,
+      "inherits": "transcribe",
+      "tiers": {
+        "2": {"label": "Batch with large-v3 float16"},
+        "1": {"label": "Batch with medium int8"},
+        "0": {"label": "Batch with small CPU"}
+      }
+    },
     "speaker_diarize": {
+      "min_tier": 0,
       "tiers": {
         "2": {"method": "pyannote", "label": "Full diarization"},
         "1": {"method": "pyannote", "label": "Full diarization (slower)"},
@@ -16,27 +27,230 @@
       }
     },
     "portrait_crop": {
+      "min_tier": 0,
       "tiers": {
         "2": {"method": "yolo", "label": "YOLO person detection"},
         "1": {"method": "yolo", "label": "YOLO person detection"},
         "0": {"method": "center_crop", "label": "Center crop fallback"}
       }
     },
+    "frame_scanner": {
+      "min_tier": 1,
+      "tiers": {
+        "2": {"method": "clip", "label": "CLIP zero-shot + SceneDetect"},
+        "1": {"method": "clip", "label": "CLIP zero-shot + SceneDetect"},
+        "0": {"method": null, "label": "Not available (requires CLIP)"}
+      }
+    },
+    "subtitle_gen": {
+      "min_tier": 0,
+      "inherits": "transcribe",
+      "tiers": {
+        "2": {"label": "Subtitles via large-v3 float16"},
+        "1": {"label": "Subtitles via medium int8"},
+        "0": {"label": "Subtitles via small CPU"}
+      }
+    },
+    "video_cataloger": {
+      "min_tier": 1,
+      "tiers": {
+        "2": {"label": "Full catalog with CLIP + probes"},
+        "1": {"label": "Full catalog with CLIP + probes"},
+        "0": {"label": "Metadata only (no CLIP)"}
+      }
+    },
+    "chapter_detect": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "rule_based", "label": "CPU — silence gaps + chunk ratios"}
+      }
+    },
+    "auto_chapter": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "rule_based_nlp", "label": "CPU — chapter_detect + optional spaCy NER"}
+      }
+    },
+    "silence_detect": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "ffmpeg", "label": "CPU — FFmpeg silencedetect filter"}
+      }
+    },
+    "silence_remove": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "auto_editor", "label": "CPU — auto-editor + FFmpeg"}
+      }
+    },
+    "subtitle_burn": {
+      "min_tier": 0,
+      "tiers": {
+        "2": {"encoder": "h264_nvenc", "label": "GPU-accelerated encode"},
+        "1": {"encoder": "h264_nvenc", "label": "GPU-accelerated encode"},
+        "0": {"encoder": "libx264", "label": "CPU encode"}
+      }
+    },
+    "tiktok_chunk": {
+      "min_tier": 0,
+      "tiers": {
+        "2": {"label": "Chunk + YOLO crop"},
+        "1": {"label": "Chunk + YOLO crop"},
+        "0": {"label": "Chunk + center crop"}
+      }
+    },
+    "auto_name": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "spacy_ner", "label": "CPU — optional spaCy NER"}
+      }
+    },
+    "shot_matcher": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "text_similarity", "label": "CPU — SequenceMatcher"}
+      }
+    },
+    "nlp_action": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "regex", "label": "CPU — regex pattern matching"}
+      }
+    },
+    "executor": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "orchestrator", "label": "CPU — delegates to other tools"}
+      }
+    },
+    "analytics_reader": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "json_bus", "label": "CPU — JSON file I/O"}
+      }
+    },
+    "manifest_writer": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "json", "label": "CPU — JSON schema output"}
+      }
+    },
+    "video_prober": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "ffprobe", "label": "CPU — ffprobe metadata"}
+      }
+    },
+    "drive_scanner": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "api", "label": "CPU — Google Drive API"}
+      }
+    },
+    "dropbox_scanner": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "api", "label": "CPU — Dropbox SDK"}
+      }
+    },
+    "transcript_index": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "inverted_index", "label": "CPU — text indexing + optional spaCy"}
+      }
+    },
+    "output_watcher": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "watchdog", "label": "CPU — filesystem watcher"}
+      }
+    },
+    "gpu_check": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "torch_detect", "label": "CPU — GPU detection utility"}
+      }
+    },
+    "benchmark": {
+      "min_tier": 0,
+      "tiers": {
+        "2": {"label": "Full benchmark, large-v3 float16"},
+        "1": {"label": "Full benchmark, medium int8"},
+        "0": {"label": "CPU-only stages only"}
+      }
+    },
+    "resolve_bridge": {
+      "min_tier": 0,
+      "requires_service": "resolve",
+      "tiers": {
+        "2": {"label": "Full Resolve IPC — timeline, markers, render"},
+        "1": {"label": "Full Resolve IPC — timeline, markers, render"},
+        "0": {"label": "Full Resolve IPC — timeline, markers, render"}
+      }
+    },
+    "artbot_brief": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "text", "label": "CPU — brief parsing + prompt building"}
+      }
+    },
+    "artbot_label": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "filesystem", "label": "CPU — file rename + taxonomy"}
+      }
+    },
+    "artbot_review": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "manifest", "label": "CPU — review manifest builder"}
+      }
+    },
+    "artbot_promote": {
+      "min_tier": 0,
+      "tiers": {
+        "0": {"method": "filesystem", "label": "CPU — file promotion pipeline"}
+      }
+    },
+    "artbot_generate": {
+      "min_tier": 2,
+      "requires_service": "comfyui",
+      "tiers": {
+        "2": {"method": "comfyui_sdxl", "label": "SDXL generation via ComfyUI"},
+        "1": {"method": null, "label": "Not available (SDXL needs >16GB)"},
+        "0": {"method": null, "label": "Not available"}
+      }
+    },
+    "artbot_animate": {
+      "min_tier": 2,
+      "requires_service": "comfyui",
+      "tiers": {
+        "2": {"method": "vace_animatediff", "label": "VACE + AnimateDiff via ComfyUI"},
+        "1": {"method": null, "label": "Not available (VACE needs >16GB)"},
+        "0": {"method": null, "label": "Not available"}
+      }
+    },
     "ollama_planning": {
+      "min_tier": 1,
+      "requires_service": "ollama",
       "tiers": {
         "2": {"model": "llama3.3:70b", "label": "70B planner"},
-        "1": {"model": "__YD_FILL__", "label": "YD best planner"},
+        "1": {"model": "mistral-nemo", "label": "12B planner (YD)"},
         "0": {"model": null, "label": "Claude only"}
       }
     },
     "ollama_coding": {
+      "min_tier": 1,
+      "requires_service": "ollama",
       "tiers": {
         "2": {"model": "qwen2.5-coder:32b", "label": "32B coder"},
-        "1": {"model": "__YD_FILL__", "label": "YD best coder"},
+        "1": {"model": "qwen2.5-coder:14b", "label": "14B coder (YD)"},
         "0": {"model": null, "label": "Claude only"}
       }
     },
     "ollama_worker": {
+      "min_tier": 1,
+      "requires_service": "ollama",
       "tiers": {
         "2": {"model": "mistral-nemo", "label": "12B worker"},
         "1": {"model": "mistral-nemo", "label": "12B worker (fits 16GB)"},
@@ -44,6 +258,8 @@
       }
     },
     "image_gen_still": {
+      "min_tier": 2,
+      "requires_service": "comfyui",
       "tiers": {
         "2": {"method": "comfyui_sdxl", "label": "SDXL 1024x1024"},
         "1": {"method": null, "label": "Not available on 16GB"},
@@ -51,11 +267,31 @@
       }
     },
     "image_gen_animated": {
+      "min_tier": 2,
+      "requires_service": "comfyui",
       "tiers": {
         "2": {"method": "vace_i2v", "resolution": 512, "label": "VACE 512x512"},
         "1": {"method": null, "label": "Needs 20GB+"},
         "0": {"method": null, "label": "Not available"}
       }
     }
+  },
+  "tier_summary": {
+    "tier_0_cpu_only": [
+      "chapter_detect", "auto_chapter", "silence_detect", "silence_remove",
+      "auto_name", "shot_matcher", "nlp_action", "executor", "analytics_reader",
+      "manifest_writer", "video_prober", "drive_scanner", "dropbox_scanner",
+      "transcript_index", "output_watcher", "gpu_check",
+      "artbot_brief", "artbot_label", "artbot_review", "artbot_promote"
+    ],
+    "tier_1_gpu_16gb": [
+      "transcribe", "batch_transcribe", "speaker_diarize", "portrait_crop",
+      "frame_scanner", "subtitle_gen", "video_cataloger", "subtitle_burn",
+      "tiktok_chunk", "benchmark", "resolve_bridge",
+      "ollama_planning", "ollama_coding", "ollama_worker"
+    ],
+    "tier_2_gpu_48gb": [
+      "artbot_generate", "artbot_animate", "image_gen_still", "image_gen_animated"
+    ]
   }
 }

@@ -18,42 +18,16 @@ git fetch origin at
 git merge origin/at
 ```
 
-### A2. Fill your GPU config
+### A2. GPU config — PRE-FILLED (S19)
 
-Edit `configs/gpu_capabilities_stran.json`. Replace all placeholder values:
+Your `configs/gpu_capabilities_stran.json` is now **fully filled** with your confirmed specs:
+- GPU: NVIDIA RTX 4080 16GB, CUDA 13.1, driver 591.74
+- Ollama models: llama3.1:8b, mistral-nemo, nomic-embed-text, qwen2.5-coder:14b
+- Planning model: mistral-nemo | Coding model: qwen2.5-coder:14b | Worker: llama3.1:8b
+- ML: whisper medium/int8, pyannote true, yolo true, mediapipe true
+- Services: ollama 11434, edbot_api 8901, resolve true
 
-| Placeholder | What to put |
-|-------------|-------------|
-| `__YD_FILL__largest_model_from_ollama_list__` | Your biggest general Ollama model (e.g., `qwen2.5:14b`) |
-| `__YD_FILL__best_coder_model__` | Your best code model (e.g., `qwen2.5-coder:14b`) |
-| `__YD_FILL__smallest_fast_model__` | Your fastest small model (e.g., `mistral-nemo` or `llama3.1:8b`) |
-| `__YD_TEST__` (pyannote) | `true` or `false` after running import test below |
-| `__YD_TEST__` (yolo) | `true` or `false` after running import test below |
-| `__YD_CHECK__` (resolve) | `true` if Resolve installed, `false` if not |
-| `__YD_DECIDE__` (edbot_api) | `8901` if you want to run the server, `null` if not |
-
-### A3. Install recommended Ollama models (optional, pick what fits)
-
-```powershell
-ollama pull mistral-nemo          # 7.1 GB — fast worker, fits easily
-ollama pull qwen2.5:14b           # 9.0 GB — good general model
-ollama pull qwen2.5-coder:14b     # 9.0 GB — code tasks (if available)
-ollama pull nomic-embed-text      # 274 MB — embeddings
-```
-
-Check what you have: `ollama list`
-
-### A4. Test ML imports
-
-```powershell
-py -3.12 -c "import pyannote.audio; print('pyannote OK')"
-py -3.12 -c "from ultralytics import YOLO; print('yolo OK')"
-py -3.12 -c "import mediapipe; print('mediapipe OK')"
-```
-
-Set `true`/`false` in your config for each result.
-
-### A5. Verify GPU config loads
+**No placeholders remain.** After pulling, just verify the config loads:
 
 ```powershell
 py -3.12 -c "from configs.gpu_config import get_gpu_tier, get_vram_gb; print(f'Tier: {get_gpu_tier()}, VRAM: {get_vram_gb()}GB')"
@@ -61,7 +35,17 @@ py -3.12 -c "from configs.gpu_config import get_gpu_tier, get_vram_gb; print(f'T
 
 Expected output: `Tier: 1, VRAM: 16GB`
 
-### A6. Run tier-filtered tests
+If pyannote or yolo don't actually work on your setup, update the `ml_capabilities` section to `false` for those.
+
+### A3. Test ML imports
+
+```powershell
+py -3.12 -c "import pyannote.audio; print('pyannote OK')"
+py -3.12 -c "from ultralytics import YOLO; print('yolo OK')"
+py -3.12 -c "import mediapipe; print('mediapipe OK')"
+```
+
+### A4. Run tier-filtered tests
 
 ```powershell
 py -3.12 -m pytest tests/test_gpu_config.py -v
@@ -69,6 +53,51 @@ py -3.12 -m pytest -m "not gpu_tier_2" --tb=short -q
 ```
 
 The `-m "not gpu_tier_2"` flag skips AT-only tests. Everything else should pass.
+
+---
+
+## Part A2: Ollama Cross-Machine Setup
+
+### For YD to reach AT's Ollama (AT already configured):
+
+```powershell
+curl http://192.168.1.115:11434/api/tags
+```
+
+Should return 9 models. If fails: AT's VPN may need reconnect with LAN enabled.
+
+### For AT to reach YD's Ollama (YD needs to configure):
+
+Currently AT cannot reach your Ollama (tested 2026-02-27, connection timed out).
+Your Ollama is likely bound to 127.0.0.1 instead of 0.0.0.0.
+
+**Fix — run these on your machine (DESKTOP-BD76CV3):**
+
+```powershell
+# Set machine-level env var to bind Ollama to all interfaces:
+[System.Environment]::SetEnvironmentVariable("OLLAMA_HOST", "0.0.0.0", "Machine")
+
+# Restart Ollama (close tray icon, relaunch — or reboot)
+
+# Verify it's binding correctly:
+netstat -an | findstr "11434"
+# Must show 0.0.0.0:11434, NOT 127.0.0.1:11434
+```
+
+**Windows Firewall (if netstat shows 0.0.0.0 but AT still can't connect):**
+
+```powershell
+# Run as Administrator:
+New-NetFirewallRule -DisplayName "Ollama LAN" -Direction Inbound -Protocol TCP -LocalPort 11434 -Action Allow
+```
+
+**Test from your machine that AT can see you:**
+
+```powershell
+curl http://192.168.1.151:11434/api/tags
+```
+
+Once both directions work, we can route Ollama tasks cross-machine via task_router.
 
 ---
 

@@ -175,6 +175,14 @@ Generate enhanced chapters with NLP titles.
 curl -X POST http://127.0.0.1:8901/api/auto-chapter -H "Content-Type: application/json" -d "{\"video_path\": \"C:/AT01/input/video.mov\"}"
 ```
 
+### POST /api/build-index
+Build or rebuild the transcript search index from chunk files in temp/.
+**Response:** `{"status": "ok", "files_indexed": 3, "terms": 150}`
+**Errors:** `404 NO_CHUNKS` | `500 TOOL_ERROR`
+```bash
+curl -X POST http://127.0.0.1:8901/api/build-index
+```
+
 ### GET /api/transcript-index
 Return transcript index.
 **Response:** `{"files": [...], "terms": {...}}`

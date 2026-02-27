@@ -64,13 +64,17 @@ class TestGpuConfig:
             data = json.load(f)
         assert data["ml_capabilities"]["whisper_model"] == "large-v3"
 
-    def test_stran_template_has_placeholders(self):
+    def test_stran_config_filled(self):
+        """Verify stran config has real values (no remaining placeholders)."""
         config_dir = Path(__file__).parent.parent / "configs"
         stran = config_dir / "gpu_capabilities_stran.json"
         if stran.exists():
             with open(stran) as f:
                 content = f.read()
-            assert "__YD_" in content
+            assert "__YD_" not in content
+            data = json.loads(content)
+            assert data["gpu"]["vram_gb"] == 16
+            assert data["gpu"]["tier"] == 1
 
     def test_detect_machine_env_var(self):
         from configs.gpu_config import _detect_machine_id
