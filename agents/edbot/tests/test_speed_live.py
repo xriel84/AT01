@@ -19,12 +19,14 @@ except ImportError:
     _CUDA = False
 
 skip_no_cuda = pytest.mark.skipif(not _CUDA, reason="CUDA required")
+gpu_tier_2 = pytest.mark.gpu_tier_2
 
 _TEST_VIDEO_SHORT = Path(r"C:\AT01\input\test_with_silence.mov")
 _TEST_VIDEO_LONG = Path(r"C:\AT01\input\IMG_5769.MOV")
 
 
 @skip_no_cuda
+@gpu_tier_2
 class TestGpuCheckLive:
     """Live tests for gpu_check module."""
 
@@ -58,6 +60,7 @@ class TestGpuCheckLive:
 
 
 @skip_no_cuda
+@gpu_tier_2
 class TestTranscribeLive:
     """Live transcription speed tests."""
 

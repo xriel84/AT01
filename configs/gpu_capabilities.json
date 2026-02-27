@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "machine_id": "rielt",
+  "machine_name": "ENKI64",
+  "gpu": {
+    "name": "NVIDIA RTX A6000",
+    "vram_gb": 48,
+    "tier": 2
+  },
+  "tier_definitions": {
+    "0": "No GPU / CPU only — whisper small, no ML inference",
+    "1": "Standard GPU 8-24GB — whisper medium int8, 14B Ollama, YOLO, pyannote",
+    "2": "Workstation GPU 24GB+ — whisper large-v3 float16, 70B Ollama, VACE 14B, ComfyUI SDXL"
+  },
+  "ollama": {
+    "host": "0.0.0.0",
+    "port": 11434,
+    "max_model_for_planning": "llama3.3:70b",
+    "max_model_for_coding": "qwen2.5-coder:32b",
+    "default_worker_model": "mistral-nemo"
+  },
+  "ml_capabilities": {
+    "whisper_model": "large-v3",
+    "whisper_compute": "float16",
+    "pyannote": true,
+    "yolo": true,
+    "mediapipe": true,
+    "vace": true,
+    "vace_max_res": 512,
+    "comfyui_sdxl": true
+  },
+  "services": {
+    "ollama": 11434,
+    "comfyui": 8188,
+    "edbot_api": 8901,
+    "resolve": true
+  }
+}

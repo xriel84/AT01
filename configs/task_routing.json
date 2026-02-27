@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "routes": {
+    "transcribe": {
+      "tiers": {
+        "2": {"model": "large-v3", "compute": "float16", "label": "Best quality, A6000"},
+        "1": {"model": "medium", "compute": "int8", "label": "Good quality, 4080"},
+        "0": {"model": "small", "compute": "int8", "label": "Basic, CPU"}
+      }
+    },
+    "speaker_diarize": {
+      "tiers": {
+        "2": {"method": "pyannote", "label": "Full diarization"},
+        "1": {"method": "pyannote", "label": "Full diarization (slower)"},
+        "0": {"method": "energy_fallback", "label": "Energy-based only"}
+      }
+    },
+    "portrait_crop": {
+      "tiers": {
+        "2": {"method": "yolo", "label": "YOLO person detection"},
+        "1": {"method": "yolo", "label": "YOLO person detection"},
+        "0": {"method": "center_crop", "label": "Center crop fallback"}
+      }
+    },
+    "ollama_planning": {
+      "tiers": {
+        "2": {"model": "llama3.3:70b", "label": "70B planner"},
+        "1": {"model": "__YD_FILL__", "label": "YD best planner"},
+        "0": {"model": null, "label": "Claude only"}
+      }
+    },
+    "ollama_coding": {
+      "tiers": {
+        "2": {"model": "qwen2.5-coder:32b", "label": "32B coder"},
+        "1": {"model": "__YD_FILL__", "label": "YD best coder"},
+        "0": {"model": null, "label": "Claude only"}
+      }
+    },
+    "ollama_worker": {
+      "tiers": {
+        "2": {"model": "mistral-nemo", "label": "12B worker"},
+        "1": {"model": "mistral-nemo", "label": "12B worker (fits 16GB)"},
+        "0": {"model": null, "label": "No local worker"}
+      }
+    },
+    "image_gen_still": {
+      "tiers": {
+        "2": {"method": "comfyui_sdxl", "label": "SDXL 1024x1024"},
+        "1": {"method": null, "label": "Not available on 16GB"},
+        "0": {"method": null, "label": "Not available"}
+      }
+    },
+    "image_gen_animated": {
+      "tiers": {
+        "2": {"method": "vace_i2v", "resolution": 512, "label": "VACE 512x512"},
+        "1": {"method": null, "label": "Needs 20GB+"},
+        "0": {"method": null, "label": "Not available"}
+      }
+    }
+  }
+}

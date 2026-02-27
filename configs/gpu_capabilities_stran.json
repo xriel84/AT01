@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "machine_id": "stran",
+  "machine_name": "YD-WORKSTATION",
+  "gpu": {
+    "name": "NVIDIA RTX 4080",
+    "vram_gb": 16,
+    "tier": 1
+  },
+  "ollama": {
+    "host": "127.0.0.1",
+    "port": 11434,
+    "max_model_for_planning": "__YD_FILL__largest_model_from_ollama_list__",
+    "max_model_for_coding": "__YD_FILL__best_coder_model__",
+    "default_worker_model": "__YD_FILL__smallest_fast_model__"
+  },
+  "ml_capabilities": {
+    "whisper_model": "medium",
+    "whisper_compute": "int8",
+    "pyannote": "__YD_TEST__",
+    "yolo": "__YD_TEST__",
+    "mediapipe": true,
+    "vace": false,
+    "vace_max_res": null,
+    "comfyui_sdxl": false
+  },
+  "services": {
+    "ollama": 11434,
+    "comfyui": null,
+    "edbot_api": "__YD_DECIDE__",
+    "resolve": "__YD_CHECK__"
+  }
+}
