@@ -13,7 +13,7 @@ Use `py -3.12` — never bare `python`.
 
 ## Scope
 - EdBot pipeline: transcription, silence detection, chapters, speakers, portrait crop, TikTok chunks, Resolve bridge, analytics reader, benchmarks
-- 23 tools | 39 endpoints | FastAPI :8901 | 816 tests
+- 27 edbot tools | 7 artbot tools | 50 endpoints | FastAPI :8901 | 988 tests
 - Collaboration with YD via AgileLens/edbot (`at` branch pushes, `AL` branch is YD's)
 - JP01 coordination via comms/private/ local-only channel
 
@@ -94,35 +94,50 @@ Copy-Item "C:\JP01\comms\at\{filename}" "C:\AT01\comms\private\jp-to-at\{filenam
 
 ---
 
-## Current State (Post Session 8 — 2026-02-27)
+## Current State (Post Session 16 — 2026-02-27)
 
 | Item | Value |
 |------|-------|
 | Branch | main |
-| Commit | 9aa9493 |
-| Tests | 816 |
-| Tools | 23 |
-| Endpoints | 39 |
+| Commit | 878f690 |
+| Tests | 988 |
+| EdBot tools | 27 |
+| ArtBot tools | 7 |
+| Endpoints | 50 |
 | Server | FastAPI :8901 |
-| Resolve | Studio 20.3.1.6 — IPC CONFIRMED WORKING |
+| Resolve | Studio 20.3.1.6 — IPC CONFIRMED, 18/18 live tests PASS |
+| ComfyUI | v0.12.3 :8188 — LayerDiffusion + VACE operational |
 | Frontend | al_edbot_viewer_v1.html |
 | Test videos | IMG_5769.MOV (continuous), test_with_silence.mov (2 gaps) |
 
+### Benchmark Results (S16 live — Resolve running, int8_float16)
+
+| Stage | Short (60s) | Long (7min) | Target |
+|-------|-------------|-------------|--------|
+| Transcription | 8.3s | 84.1s | <30s |
+| Silence detect | 1.5s | 9.8s | <10s |
+| Chapter detect | <0.001s | <0.001s | <5s |
+| Search | <0.001s | <0.001s | <0.1s |
+| Full pipeline | 9.6s | 98.6s | <60s |
+
+Note: Long video transcription exceeds target because Resolve holds GPU, forcing int8 compute. All other stages <10s total.
+
 ### Pending
-- Session 9: JP conflict resolution (comms only, no code)
-- Speed benchmarks (benchmark.py exists, needs live run)
+- Scanner credentials (Alex Dropbox, Kevin Drive)
 - YD test feedback (not yet received)
 - Slack integration (awaiting Sam token)
+- JP dispatch results review
 
 ---
 
 ## Style Firewall
-| Prefix | Repo | Style |
-|--------|------|-------|
-| `al_` | AT01 | Art Deco |
-| `jp_` | JP01 | Steampunk |
+| Prefix | Repo | Style | ComfyUI output |
+|--------|------|-------|----------------|
+| `at_` | AT01 | Art Deco | output/at/ |
+| `jp_` | JP01 | Steampunk | output/jp/ |
 
 No cross-contamination. Ever. Bridge branches are the only exception.
+Note: `al_` prefix was renamed to `at_` in S15 for output folders and code references.
 
 ---
 

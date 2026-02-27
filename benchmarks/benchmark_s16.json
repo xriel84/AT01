@@ -1,0 +1,93 @@
+{
+  "session": "S16",
+  "date": "2026-02-27",
+  "machine": "ENKI64",
+  "gpu": "RTX A6000 48GB",
+  "ram": "128GB",
+  "python": "3.12.10",
+  "whisper_model": "large-v3",
+  "compute_type": "int8_float16",
+  "resolve_running": true,
+  "free_vram_mb": 45644,
+  "videos": {
+    "test_with_silence.mov": {
+      "video_duration_sec": 60.01,
+      "results": {
+        "transcribe": {
+          "mean_s": 8.324,
+          "target_s": 30,
+          "pass": true,
+          "word_count": 52,
+          "chunked": false
+        },
+        "search": {
+          "mean_s": 0.000085,
+          "target_s": 0.1,
+          "pass": true
+        },
+        "silence_detect": {
+          "mean_s": 1.545,
+          "target_s": 10,
+          "pass": true
+        },
+        "chapter_detect": {
+          "mean_s": 0.000037,
+          "target_s": 5,
+          "pass": true
+        },
+        "full_pipeline": {
+          "mean_s": 9.647,
+          "target_s": 60,
+          "pass": true
+        }
+      }
+    },
+    "IMG_5769.MOV": {
+      "video_duration_sec": 424.81,
+      "results": {
+        "transcribe": {
+          "mean_s": 84.092,
+          "target_s": 30,
+          "pass": false,
+          "word_count": 1142,
+          "chunked": true,
+          "chunk_count": 5,
+          "note": "Resolve running forces int8_float16 compute. float16 crashes on long audio with Resolve holding GPU."
+        },
+        "search": {
+          "mean_s": 0.000024,
+          "target_s": 0.1,
+          "pass": true
+        },
+        "silence_detect": {
+          "mean_s": 9.816,
+          "target_s": 10,
+          "pass": true
+        },
+        "chapter_detect": {
+          "mean_s": 0.000041,
+          "target_s": 5,
+          "pass": true
+        },
+        "full_pipeline": {
+          "mean_s": 98.6,
+          "target_s": 60,
+          "pass": false,
+          "note": "Transcription bottleneck. All other stages <10s total."
+        }
+      }
+    }
+  },
+  "resolve_live_tests": {
+    "total": 18,
+    "passed": 18,
+    "failed": 0,
+    "duration_s": 475.08
+  },
+  "comparison_with_prior_run": {
+    "prior_date": "2026-02-27",
+    "prior_transcribe_long_s": 62.052,
+    "s16_transcribe_long_s": 84.092,
+    "note": "Variance due to GPU thermal state and VRAM fragmentation between runs. Both use int8_float16."
+  }
+}
