@@ -1,0 +1,31 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [{
+          "type": "command",
+          "command": "jq -r '.tool_input.file_path // empty' | grep '\\.py$' | head -1 | xargs -I{} sh -c 'cd /c/AT01 && py -3.12 -m ruff format \"{}\" 2>/dev/null; exit 0'"
+        }]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{
+          "type": "command",
+          "command": ".claude/hooks/guard-dangerous-ops.sh"
+        }]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [{
+          "type": "command",
+          "command": ".claude/hooks/verify-environment.sh"
+        }]
+      }
+    ]
+  }
+}

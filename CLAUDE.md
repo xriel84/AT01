@@ -1,162 +1,92 @@
 # AT01 — AriBot Context
 
-## Identity
-AriBot. GitHub: xriel84. Public repo for EdBot resolve-tools collaboration.
+## WHAT
+- AriBot. GitHub: xriel84. Public repo.
+- Remotes: `origin` = xriel84/AT01 | `agilelens` = AgileLens/edbot (`at` branch)
+- Python 3.12.10, FastAPI :8901, Pydantic v2, uvicorn
+- 27 EdBot tools | 7 ArtBot tools | 50 endpoints | 988 tests
+- ML: faster-whisper, pyannote-audio, ultralytics YOLO11, mediapipe
+- FFmpeg (via ffmpeg-python wrapper) | ComfyUI :8188 | Resolve Studio 20.3.1.6 (pybmd)
+- Node.js: al_asset_bridge.js, al_review_server.js :3456, al_gen.js
+- ENKI64: RTX A6000 48GB | 128GB RAM | Win11 | C:\AT01 | C:\JP01
 
-## Remotes
-- `origin` = xriel84/AT01 (public)
-- `agilelens` = AgileLens/edbot (collaboration — `at` branch)
+## WHY
+- faster-whisper over openai-whisper: CTranslate2 backend, 4x faster
+- ffmpeg-python over subprocess: structured filter chains, error handling
+- GPU fallback chain: float16 → int8 → medium/int8 → small/cpu (no crashes)
+- JSON message bus (agents/shared/*.json) over direct IPC: independent agent dev
+- FastMCP over raw MCP SDK: simpler registration, stdio transport
 
-## Shell
-PowerShell only. No CMD. No Unix.
-Use `py -3.12` — never bare `python`.
+## HOW
 
-## Scope
-- EdBot pipeline: transcription, silence detection, chapters, speakers, portrait crop, TikTok chunks, Resolve bridge, analytics reader, benchmarks
-- 27 edbot tools | 7 artbot tools | 50 endpoints | FastAPI :8901 | 988 tests
-- Collaboration with YD via AgileLens/edbot (`at` branch pushes, `AL` branch is YD's)
-- JP01 coordination via comms/private/ local-only channel
+### Shell
+PowerShell only. No CMD. No Unix. `py -3.12` — never bare `python`.
 
-## Rules
-- Pull before starting. Always.
-- Commits prefixed with `[aribot]`
-- Never reference JP01 private details in public commits, PRs, or Slack
+### Commands
+- Tests: `py -3.12 -m pytest [path] -q`
+- Server: `py -3.12 -m uvicorn server:app --port 8901`
+- Preflight: `gh auth switch --user xriel84 && gh auth status`
+- Pull: `git pull origin main` before ANY work
 
-## Preflight
-Before ANY work, verify correct GitHub account:
-```powershell
-gh auth switch --user xriel84
-gh auth status
-```
-MUST show: `Logged in to github.com account xriel84`
+### Verification (after ANY change)
+- Tool change → `py -3.12 -m pytest agents/edbot/tests/ -q`
+- ArtBot change → `py -3.12 -m pytest agents/artbot/tests/ -q`
+- Server/endpoint change → `py -3.12 -m pytest tests/ -q`
+- Test count must NOT decrease. Current: 988.
 
----
+### Commits
+- Prefix: `[aribot]`
+- Pull before work. Push comms before code push.
 
-## AT01 ↔ JP01 SECURITY MODEL
+### Comms (AT ↔ JP — local only, NEVER committed)
+- Inbox: `comms/private/jp-to-at/` | Outbox: `comms/private/at-to-jp/`
+- Check JP: `Get-ChildItem C:\JP01\comms\at\ -Filter *.md 2>$null`
+- Check AT: `Get-ChildItem .\comms\private\jp-to-at\ -Filter *.md`
+- Filename: `{YYYY-MM-DD}T{HH-MM}-at-{slug}.md` with YAML frontmatter
 
-### Ownership
-AT01 and JP01 are BOTH Ari's accounts. Same owner, different visibility levels.
-- AT01 (xriel84) = PUBLIC. Anyone can see it.
-- JP01 (NewEccentric) = PRIVATE. Personal creative work, credentials, channel identity.
-
-### Access Rules
-
-| Direction | Access | Rule |
-|-----------|--------|------|
-| AT → JP01 filesystem | **READ allowed** | AT (Claude Code on /rielt) CAN read C:\JP01 for coordination |
-| AT → JP01 content in public output | **BLOCKED** | AT must NEVER leak JP private details into public commits, Slack, PRs |
-| JP → AT01 | **FULL ACCESS** | JP can read/write anything on AT01 (it's public, same owner) |
-| Sam → AT01 | **Slack only** | Sam interacts via Slack public channels. No repo access. |
-| Sam → JP01 | **ZERO. EVER.** | Sam has no awareness of JP01 internals. Non-negotiable. |
-
-### What AT validates before any public output
-1. No JP01 file paths (C:\JP01\...) in commits or messages
-2. No NewEccentric account references in public materials
-3. No YouTube OAuth tokens, credentials, or channel data
-4. No jp_ prefixed content or steampunk styling in AT01 code
-5. No personal/private creative work from JP01
-
-### AT as security shield
-AT01 is the public-facing layer. All shared libraries, agent infrastructure, and collaborative tooling live here. AT acts as a filter — JP01 data can flow INTO AT for coordination purposes, but AT is responsible for ensuring nothing private flows OUT to public surfaces.
+### Session Start
+1. `gh auth status` → must show xriel84
+2. Check JP inbox + AT inbox
+3. Read new messages before starting
+4. `git pull origin main`
 
 ---
 
-## Private Comms (AT ↔ JP)
+## SECURITY (non-negotiable)
 
-Local-only channel. NEVER committed or pushed to remote.
+| Direction | Rule |
+|-----------|------|
+| AT → JP01 filesystem | READ allowed for coordination |
+| AT → public output | BLOCKED — no JP01 paths, no NewEccentric refs, no credentials, no jp_ content |
+| Sam → AT01 | Slack only. No repo access. |
+| Sam → JP01 | **ZERO. EVER.** |
 
-- Inbox (from JP): `comms/private/jp-to-at/`
-- Outbox (to JP): `comms/private/at-to-jp/`
-- Check inbox: `Get-ChildItem .\comms\private\jp-to-at\ -Filter *.md | Sort-Object Name`
-- Read latest: `Get-ChildItem .\comms\private\jp-to-at\ -Filter *.md | Sort-Object Name | Select-Object -Last 1 | Get-Content`
-
-### Writing a message
-Filename: `{YYYY-MM-DD}T{HH-MM}-at-{slug}.md`
-Always include YAML frontmatter (from, to, date, re).
-Never edit or delete sent messages.
-
-### Reading JP comms from JP01
-```powershell
-# AT CAN read JP01 comms directly for coordination
-Get-ChildItem C:\JP01\comms\at\ -Filter *.md | Sort-Object Name
-# Then copy to AT inbox for processing
-Copy-Item "C:\JP01\comms\at\{filename}" "C:\AT01\comms\private\jp-to-at\{filename}"
-```
-
----
-
-## Session Start Checklist
-1. `gh auth status` — must show xriel84
-2. Check JP inbox: `Get-ChildItem C:\JP01\comms\at\ -Filter *.md 2>$null`
-3. Check AT inbox: `Get-ChildItem .\comms\private\jp-to-at\ -Filter *.md`
-4. If new messages, read before starting work
-5. `git pull origin main`
-
----
-
-## Current State (Post Session 17 — 2026-02-27)
-
-| Item | Value |
-|------|-------|
-| Branch | main |
-| Commit | 8b8b9b5 |
-| Tests | 988 |
-| EdBot tools | 27 |
-| ArtBot tools | 7 |
-| Endpoints | 50 |
-| Server | FastAPI :8901 |
-| Resolve | Studio 20.3.1.6 — IPC CONFIRMED, 18/18 live tests PASS |
-| ComfyUI | v0.12.3 :8188 — LayerDiffusion + VACE operational |
-| Frontend | al_edbot_viewer_v1.html |
-| Test videos | IMG_5769.MOV (continuous), test_with_silence.mov (2 gaps) |
-
-### Transcription Speed (S16-S17)
-
-| Condition | Compute | 7-min Video | Target |
-|-----------|---------|-------------|--------|
-| Resolve running (S16) | int8_float16 | 84.1s | <30s |
-| Resolve closed (S17) | float16 | 87.8s | <30s |
-
-GPU contention is NOT the bottleneck. Whisper large-v3 processes 7-min audio at ~5x realtime regardless of compute type. The <30s target requires a smaller model or parallel chunking.
-
-### Pipeline Benchmarks (S16 — short video, 60s)
-
-| Stage | Time | Target | Pass |
-|-------|------|--------|------|
-| Transcription | 8.3s | <30s | PASS |
-| Silence detect | 1.5s | <10s | PASS |
-| Chapter detect | <0.001s | <5s | PASS |
-| Search | <0.001s | <0.1s | PASS |
-| Full pipeline | 9.6s | <60s | PASS |
-
-### JP Comms Status
-- 10 messages received and triaged (7 ACKNOWLEDGE, 3 PARK)
-- PARK items: viewer v8 Part A/B integration, 4 YD script evaluation
-- All questions answered (conflict-resolution-response + batch response sent)
-
-### Pending
-- Scanner credentials (Alex Dropbox, Kevin Drive)
-- YD test feedback (not yet received)
-- Slack integration (awaiting Sam token)
-- JP viewer v8 integration session (PARKED)
-- JP YD scripts evaluation (PARKED)
-
----
-
-## Style Firewall
+### Style Firewall
 | Prefix | Repo | Style | ComfyUI output |
 |--------|------|-------|----------------|
 | `at_` | AT01 | Art Deco | output/at/ |
 | `jp_` | JP01 | Steampunk | output/jp/ |
 
-No cross-contamination. Ever. Bridge branches are the only exception.
-Note: `al_` prefix was renamed to `at_` in S15 for output folders and code references.
+No cross-contamination. Bridge branches only exception.
 
 ---
 
-## Machine Config
-- ENKI64 (/rielt): 192.168.1.115 | RTX A6000 48GB | 128GB RAM | Win11
-- AT01: C:\AT01 | JP01: C:\JP01
-- Ollama: 0.0.0.0:11434 (9 models, A6000)
-- Resolve Studio 20.3.1.6 (2-seat license, env vars set user-level)
-- Python 3.12.10
+## PITFALLS (things Claude Code gets wrong)
+
+- `pyannote-audio`: requires HF_TOKEN env var set BEFORE import
+- `faster-whisper`: model loading ~10s — cache instance, don't reload per-call
+- `mediapipe`: CPU-ONLY on desktop Python (15-25 FPS) — no GPU acceleration
+- `pybmd`/Resolve: must be running + env vars set at USER level (not system)
+- FFmpeg: ALWAYS use `ffmpeg-python` wrapper, never raw `subprocess`
+- VACE I2V: 512x512 ONLY — 1024 causes OOM on 48GB A6000
+- Resolve API: NOT thread-safe — serialize all IPC calls through queue
+- Resolve API: CANNOT trim/split/retime clips, no color control, no playback, no effects
+- `[PLACEHOLDER: ADD PITFALLS AS YOU DISCOVER THEM]`
+
+---
+
+## REFERENCES
+- Endpoint inventory: @docs/API.md
+- `[PLACEHOLDER: @agents/edbot/README.md — create if useful]`
+- `[PLACEHOLDER: @agents/artbot/README.md — create if useful]`
+- `[PLACEHOLDER: @docs/message-bus-spec.md — document IPC schema if needed]`
