@@ -1,0 +1,11 @@
+{
+  "compute_type": "float16",
+  "model": "large-v3",
+  "device": "cuda",
+  "resolve_running": false,
+  "load_time_s": 13.4,
+  "transcription_time_s": 87.8,
+  "total_time_s": 101.2,
+  "word_count": 1126,
+  "video_duration_s": 424.8
+}

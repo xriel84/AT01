@@ -94,12 +94,12 @@ Copy-Item "C:\JP01\comms\at\{filename}" "C:\AT01\comms\private\jp-to-at\{filenam
 
 ---
 
-## Current State (Post Session 16 — 2026-02-27)
+## Current State (Post Session 17 — 2026-02-27)
 
 | Item | Value |
 |------|-------|
 | Branch | main |
-| Commit | 878f690 |
+| Commit | 8b8b9b5 |
 | Tests | 988 |
 | EdBot tools | 27 |
 | ArtBot tools | 7 |
@@ -110,23 +110,36 @@ Copy-Item "C:\JP01\comms\at\{filename}" "C:\AT01\comms\private\jp-to-at\{filenam
 | Frontend | al_edbot_viewer_v1.html |
 | Test videos | IMG_5769.MOV (continuous), test_with_silence.mov (2 gaps) |
 
-### Benchmark Results (S16 live — Resolve running, int8_float16)
+### Transcription Speed (S16-S17)
 
-| Stage | Short (60s) | Long (7min) | Target |
-|-------|-------------|-------------|--------|
-| Transcription | 8.3s | 84.1s | <30s |
-| Silence detect | 1.5s | 9.8s | <10s |
-| Chapter detect | <0.001s | <0.001s | <5s |
-| Search | <0.001s | <0.001s | <0.1s |
-| Full pipeline | 9.6s | 98.6s | <60s |
+| Condition | Compute | 7-min Video | Target |
+|-----------|---------|-------------|--------|
+| Resolve running (S16) | int8_float16 | 84.1s | <30s |
+| Resolve closed (S17) | float16 | 87.8s | <30s |
 
-Note: Long video transcription exceeds target because Resolve holds GPU, forcing int8 compute. All other stages <10s total.
+GPU contention is NOT the bottleneck. Whisper large-v3 processes 7-min audio at ~5x realtime regardless of compute type. The <30s target requires a smaller model or parallel chunking.
+
+### Pipeline Benchmarks (S16 — short video, 60s)
+
+| Stage | Time | Target | Pass |
+|-------|------|--------|------|
+| Transcription | 8.3s | <30s | PASS |
+| Silence detect | 1.5s | <10s | PASS |
+| Chapter detect | <0.001s | <5s | PASS |
+| Search | <0.001s | <0.1s | PASS |
+| Full pipeline | 9.6s | <60s | PASS |
+
+### JP Comms Status
+- 10 messages received and triaged (7 ACKNOWLEDGE, 3 PARK)
+- PARK items: viewer v8 Part A/B integration, 4 YD script evaluation
+- All questions answered (conflict-resolution-response + batch response sent)
 
 ### Pending
 - Scanner credentials (Alex Dropbox, Kevin Drive)
 - YD test feedback (not yet received)
 - Slack integration (awaiting Sam token)
-- JP dispatch results review
+- JP viewer v8 integration session (PARKED)
+- JP YD scripts evaluation (PARKED)
 
 ---
 
