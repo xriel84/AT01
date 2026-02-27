@@ -210,6 +210,9 @@ async def broadcast_progress(stage: str, status: str, detail: str = "") -> None:
 class ProcessRequest(BaseModel):
     input_path: str
     output_dir: str = "output"
+    model_size: str | None = None
+    compute_type: str | None = None
+    device: str | None = None
 
 
 class ParseRequest(BaseModel):
@@ -356,7 +359,12 @@ def api_transcribe(req: ProcessRequest):
         error_response(400, f"file not found: {req.input_path}", "FILE_NOT_FOUND")
     if p.suffix.lower() not in MEDIA_EXTENSIONS:
         error_response(400, f"unsupported file extension: {p.suffix}", "INVALID_INPUT")
-    result = transcribe_video(req.input_path, req.output_dir)
+    result = transcribe_video(
+        req.input_path, req.output_dir,
+        model_size=req.model_size,
+        compute_type=req.compute_type,
+        device=req.device,
+    )
     if result.get("error"):
         error_response(500, result["error"], "TOOL_ERROR")
     _cache["chunks"] = result

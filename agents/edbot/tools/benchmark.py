@@ -13,7 +13,7 @@ def run_benchmark(video_path: str, runs: int = 3) -> dict[str, Any]:
         video_path: Absolute path to a video file.
         runs: Number of timed runs per stage (default 3).
 
-    Returns dict with per-stage results and metadata.
+    Returns dict with per-stage results, GPU config, and metadata.
     """
     p = Path(video_path)
     if not p.exists():
@@ -28,6 +28,17 @@ def run_benchmark(video_path: str, runs: int = 3) -> dict[str, Any]:
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
+    # Capture GPU config
+    try:
+        from gpu_check import check_gpu, recommend_whisper_config
+        gpu_status = check_gpu()
+        whisper_rec = recommend_whisper_config(gpu_status)
+        results["gpu_config"] = gpu_status
+        results["whisper_recommendation"] = whisper_rec
+    except ImportError:
+        results["gpu_config"] = None
+        results["whisper_recommendation"] = None
+
     # Stage 1: transcribe
     from transcribe import transcribe_video
 
@@ -39,11 +50,18 @@ def run_benchmark(video_path: str, runs: int = 3) -> dict[str, Any]:
         transcribe_times.append(time.perf_counter() - t0)
 
     mean_t = sum(transcribe_times) / len(transcribe_times)
-    results["transcribe"] = {
+    stage_info: dict[str, Any] = {
         "mean_s": round(mean_t, 3),
         "target_s": 30,
         "pass": mean_t < 30,
     }
+    # Capture config_used and chunking info from transcription result
+    if transcribe_result:
+        stage_info["config_used"] = transcribe_result.get("config_used")
+        stage_info["chunked"] = transcribe_result.get("chunked", False)
+        stage_info["chunk_count"] = transcribe_result.get("chunk_count")
+        stage_info["word_count"] = transcribe_result.get("word_count")
+    results["transcribe"] = stage_info
 
     # Stage 2: search (stress test with common word)
     from transcript_index import build_index, search_index

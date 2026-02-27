@@ -137,7 +137,10 @@ def test_transcribe_endpoint(mock_exists, mock_tv, client):
     data = resp.json()
     assert data["source"] == "test.mp4"
     assert len(data["chunks"]) == 3
-    mock_tv.assert_called_once_with("C:/AT01/input/test.mp4", "output")
+    mock_tv.assert_called_once_with(
+        "C:/AT01/input/test.mp4", "output",
+        model_size=None, compute_type=None, device=None,
+    )
 
 
 # ---------------------------------------------------------------------------

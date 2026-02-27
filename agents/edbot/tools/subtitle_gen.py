@@ -100,14 +100,25 @@ PLATFORM_STYLES = {
 }
 
 
-def transcribe_clip(clip_path: Path, model_size: str = "large-v3") -> list[dict]:
+def transcribe_clip(
+    clip_path: Path,
+    model_size: str = "large-v3",
+    device: str = "cuda",
+    compute_type: str = "float16",
+) -> list[dict]:
     """Transcribe a clip using faster-whisper with word timestamps.
+
+    Args:
+        clip_path: Path to audio/video file.
+        model_size: Whisper model size (e.g. "large-v3", "medium", "small").
+        device: "cuda" or "cpu".
+        compute_type: "float16", "int8_float16", "int8", etc.
 
     Returns list of dicts: [{"word": str, "start": float, "end": float}, ...]
     """
     from faster_whisper import WhisperModel
 
-    model = WhisperModel(model_size, device="cuda", compute_type="float16")
+    model = WhisperModel(model_size, device=device, compute_type=compute_type)
     segments, _ = model.transcribe(
         str(clip_path),
         word_timestamps=True,
