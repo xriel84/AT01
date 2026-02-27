@@ -49,6 +49,8 @@ def build_index(manifest: dict, output_dir: str = "temp") -> dict[str, Any]:
 
     word_index: dict[str, list[dict]] = {}
     entity_index: dict[str, list[dict]] = {}
+    chunk_texts: dict[str, str] = {}  # "file:chunk" -> text
+    filenames: list[str] = []
     files_indexed = 0
     total_words = 0
 
@@ -66,11 +68,14 @@ def build_index(manifest: dict, output_dir: str = "temp") -> dict[str, Any]:
 
         chunks = data.get("chunks", []) if isinstance(data, dict) else data
         files_indexed += 1
+        filenames.append(file_entry.get("filename", stem))
 
         for chunk in chunks:
             text = chunk.get("text", "")
             chunk_idx = chunk.get("id", 0)
             start = chunk.get("start", 0.0)
+            if text.strip():
+                chunk_texts[f"{file_idx}:{chunk_idx}"] = text.strip()
 
             words = re.findall(r"[a-zA-Z]+", text)
             for word in words:
@@ -99,6 +104,8 @@ def build_index(manifest: dict, output_dir: str = "temp") -> dict[str, Any]:
         "files_indexed": files_indexed,
         "words": word_index,
         "entities": entity_index,
+        "chunk_texts": chunk_texts,
+        "filenames": filenames,
     }
 
     index_path = out_dir / "transcript_index.json"
@@ -106,6 +113,34 @@ def build_index(manifest: dict, output_dir: str = "temp") -> dict[str, Any]:
         json.dump(index, f, indent=2)
 
     return index
+
+
+def auto_build_index(output_dir: str = "temp") -> dict[str, Any] | None:
+    """Auto-build index from batch manifest or individual chunk files.
+
+    Tries batch manifest first. Falls back to scanning for *_chunks.json files.
+    Returns the index dict, or None if no chunk data exists.
+    """
+    out_dir = Path(output_dir)
+    manifest_path = out_dir / "batch_manifest.json"
+
+    if manifest_path.exists():
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+        return build_index(manifest, output_dir)
+
+    # Fallback: scan for individual _chunks.json files
+    chunk_files = sorted(out_dir.glob("*_chunks.json"))
+    if not chunk_files:
+        return None
+
+    # Synthesize a manifest from found chunk files
+    manifest = {"files": []}
+    for cf in chunk_files:
+        stem = cf.stem.replace("_chunks", "")
+        manifest["files"].append({"filename": f"{stem}.mov"})
+
+    return build_index(manifest, output_dir)
 
 
 def search_index(index: dict, query: str, max_results: int = 20) -> list[dict]:
@@ -136,6 +171,8 @@ def search_index(index: dict, query: str, max_results: int = 20) -> list[dict]:
 
     word_index = index.get("words", {})
     entity_index = index.get("entities", {})
+    chunk_texts = index.get("chunk_texts", {})
+    filenames = index.get("filenames", [])
 
     # Entity index (exact substring match on entity name)
     entity_results: list[dict] = []
@@ -186,4 +223,12 @@ def search_index(index: dict, query: str, max_results: int = 20) -> list[dict]:
             combined.append(r)
 
     combined.sort(key=lambda x: (x["file"], x["chunk"]))
+
+    # Enrich results with chunk text and filename
+    for r in combined:
+        key = f"{r['file']}:{r['chunk']}"
+        r["chunk_text"] = chunk_texts.get(key, "")
+        if filenames and r["file"] < len(filenames):
+            r["filename"] = filenames[r["file"]]
+
     return combined[:max_results]

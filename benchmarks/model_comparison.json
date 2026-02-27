@@ -1,0 +1,42 @@
+{
+  "video": "IMG_5769.MOV",
+  "duration_s": 424.8,
+  "results": [
+    {
+      "model": "large-v3",
+      "load_s": 4.8,
+      "transcribe_s": 75.6,
+      "total_s": 80.5,
+      "word_count": 1155,
+      "word_match_pct": 100.0,
+      "rtf": 5.6
+    },
+    {
+      "model": "medium",
+      "load_s": 2.5,
+      "transcribe_s": 28.5,
+      "total_s": 31.0,
+      "word_count": 1099,
+      "word_match_pct": 0,
+      "rtf": 14.9
+    },
+    {
+      "model": "small",
+      "load_s": 1.4,
+      "transcribe_s": 23.0,
+      "total_s": 24.4,
+      "word_count": 1116,
+      "word_match_pct": 93.6,
+      "rtf": 18.5
+    },
+    {
+      "model": "base",
+      "load_s": 0.8,
+      "transcribe_s": 10.0,
+      "total_s": 10.8,
+      "word_count": 1107,
+      "word_match_pct": 0,
+      "rtf": 42.5
+    }
+  ]
+}

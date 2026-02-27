@@ -774,15 +774,34 @@ def api_transcript_index():
         return json.load(f)
 
 
+@app.post("/api/build-index")
+def api_build_index():
+    """Build or rebuild the transcript search index from chunk files."""
+    try:
+        from transcript_index import auto_build_index
+        index = auto_build_index("temp")
+        if index is None:
+            error_response(404, "no chunk files found — run /api/transcribe first", "NO_CHUNKS")
+        return {
+            "status": "ok",
+            "files_indexed": index.get("files_indexed", 0),
+            "word_count": index.get("word_count", 0),
+        }
+    except Exception as exc:
+        error_response(500, str(exc), "TOOL_ERROR")
+
+
 @app.post("/api/search-transcripts")
 def api_search_transcripts(req: SearchTranscriptsRequest):
-    """Search transcript index for query."""
+    """Search transcript index for query. Auto-builds index if missing."""
     try:
         import json
-        from transcript_index import search_index
+        from transcript_index import search_index, auto_build_index
         index_path = Path("temp") / "transcript_index.json"
         if not index_path.exists():
-            error_response(404, "no transcript index", "NO_INDEX")
+            auto_built = auto_build_index("temp")
+            if auto_built is None:
+                error_response(404, "no transcript data — run /api/transcribe first", "NO_CHUNKS")
         with open(index_path, "r", encoding="utf-8") as f:
             index = json.load(f)
         results = search_index(index, req.query, req.max_results)
