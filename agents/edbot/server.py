@@ -61,6 +61,8 @@ from resolve_bridge import (
     resolve_available, list_projects, create_timeline_from_video,
     add_markers_from_chapters, render_timeline, get_render_status,
 )
+from resolve_decisions import validate_decisions, execute_decisions
+from resolve_nlp import translate_command
 from benchmark import run_benchmark
 from video_prober import probe_video, scan_local_dir
 from video_cataloger import (
@@ -259,6 +261,13 @@ class ResolveRenderRequest(BaseModel):
     timeline_name: str
     output_path: str
     preset: str = "h264_mp4"
+
+
+class ResolveCommandRequest(BaseModel):
+    command: str | None = None
+    decisions: dict | None = None
+    context: dict | None = None
+    mode: str = "dry-run"
 
 
 class AnalyticsMarkRequest(BaseModel):
@@ -896,6 +905,59 @@ def api_resolve_render_status(job_id: str):
     if result.get("status") == "error":
         error_response(404, result.get("error", "job not found"), "NOT_FOUND")
     return result
+
+
+# Resolve IPC is NOT thread-safe — serialize all calls through a single lock
+_resolve_lock = asyncio.Lock()
+
+
+@app.post("/api/resolve/command")
+async def api_resolve_command(req: ResolveCommandRequest):
+    """Accept NLP command or structured decisions for Resolve execution.
+
+    If 'command' is present: translate via NLP → validate → execute.
+    If 'decisions' is present: validate → execute (skip NLP).
+    Mode: dry-run (default) | confirm | execute.
+    """
+    if req.mode not in ("dry-run", "confirm", "execute"):
+        error_response(400, f"Invalid mode: {req.mode}", "INVALID_INPUT")
+
+    if not req.command and not req.decisions:
+        error_response(400, "Provide 'command' (NLP) or 'decisions' (structured JSON)", "INVALID_INPUT")
+
+    context = req.context or {}
+    translation_method = "direct"
+    decisions_data = None
+
+    # Path 1: NLP command → translate → decisions
+    if req.command:
+        translated = translate_command(req.command, context)
+        if "error" in translated:
+            error_response(
+                422, f"Translation failed: {translated['error']}", "TRANSLATION_ERROR"
+            )
+        translation_method = translated.get("_translation_method", "unknown")
+        # Remove internal key before passing to executor
+        translated.pop("_translation_method", None)
+        decisions_data = translated
+
+    # Path 2: Pre-built decisions
+    elif req.decisions:
+        valid, errors = validate_decisions(req.decisions)
+        if not valid:
+            error_response(422, f"Validation failed: {errors}", "VALIDATION_ERROR")
+        decisions_data = req.decisions
+
+    # Execute under lock (Resolve IPC is not thread-safe)
+    async with _resolve_lock:
+        results = execute_decisions(decisions_data, mode=req.mode)
+
+    return {
+        "plan": decisions_data,
+        "results": results,
+        "translation_method": translation_method,
+        "mode": req.mode,
+    }
 
 
 # ---------------------------------------------------------------------------

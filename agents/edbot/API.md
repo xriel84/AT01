@@ -258,6 +258,16 @@ Get status of a Resolve render job.
 curl http://127.0.0.1:8901/api/resolve/render/a1b2c3d4
 ```
 
+### POST /api/resolve/command
+Accept NLP command or structured decisions for Resolve execution. Supports two input paths: natural language command (translated via templates or Ollama) or pre-built decisions JSON. All modes: dry-run (default, safe), confirm (returns plan), execute (runs against Resolve).
+**Body (NLP):** `{"command": "mark chapters as blue markers", "context": {"chapters": [...], "fps": 24}, "mode": "dry-run"}`
+**Body (direct):** `{"decisions": {"generated_by": "...", "generated_at": "...", "fps": 24, "decisions": [...]}, "mode": "dry-run"}`
+**Response:** `{"plan": {...}, "results": {"succeeded": 2, "failed": 0, "skipped": 0, "mode": "dry-run", "details": [...]}, "translation_method": "template", "mode": "dry-run"}`
+**Errors:** `400 INVALID_INPUT` (empty request, invalid mode), `422 TRANSLATION_ERROR | VALIDATION_ERROR`
+```bash
+curl -X POST http://127.0.0.1:8901/api/resolve/command -H "Content-Type: application/json" -d "{\"command\": \"mark chapters as blue markers\", \"context\": {\"chapters\": [{\"title\": \"Intro\", \"start\": 0}], \"fps\": 24}, \"mode\": \"dry-run\"}"
+```
+
 ---
 
 ## Analytics
