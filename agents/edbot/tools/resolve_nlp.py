@@ -429,7 +429,7 @@ def _translate_via_ollama(
 def translate_command(
     command: str,
     context: dict[str, Any],
-    model: str = "qwen2.5-coder:14b",
+    model: str | None = None,
     ollama_host: str = "http://localhost:11434",
 ) -> dict[str, Any]:
     """Translate a natural language editing command into edit-decisions JSON.

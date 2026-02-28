@@ -24,7 +24,8 @@ PowerShell only. No CMD. No Unix. `py -3.12` — never bare `python`.
 
 ### Commands
 - Tests: `py -3.12 -m pytest [path] -q`
-- Server: `py -3.12 -m uvicorn agents.edbot.server:app --port 8901`
+- Server: `.\scripts\ensure-server.ps1` (kills stale, starts fresh, verifies routes)
+- Server (manual): `py -3.12 -m uvicorn agents.edbot.server:app --port 8901`
 - Preflight: `gh auth switch --user xriel84 && gh auth status`
 - Pull: `git pull origin main` before ANY work
 
