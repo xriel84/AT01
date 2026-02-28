@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AT COMMAND CONSOLE</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════
+   CSS VARIABLES — edit this block to re-theme
+   ══════════════════════════════════════════════════════ */
+:root {
+  --bg: #0a0c0f;
+  --surface: #111318;
+  --surface-raised: #161a22;
+  --border: #1e2330;
+  --border-active: #06b6d4;
+  --cyan: #06b6d4;
+  --cyan-dim: #0891b2;
+  --amber: #f59e0b;
+  --amber-dim: #d97706;
+  --text: #e2e8f0;
+  --text-muted: #64748b;
+  --text-dim: #475569;
+  --red: #ef4444;
+  --green: #22c55e;
+  --purple: #a78bfa;
+  --font: 'IBM Plex Mono', monospace;
+
+  /* Activity log event colors */
+  --log-assistant: #e2e8f0;
+  --log-tool-call: #a78bfa;
+  --log-tool-result: #06b6d4;
+  --log-error: #ef4444;
+  --log-complete: #22c55e;
+  --log-mock: #64748b;
+  --log-sent: #f59e0b;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: hidden;
+  height: 100vh;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ── LAYOUT ── */
+.at_app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ── STATUS BAR ── */
+.at_status_bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.at_status_title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--cyan);
+  letter-spacing: 1px;
+  margin-right: 8px;
+}
+
+.at_status_item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+}
+
+.at_dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.at_dot_green { background: var(--green); }
+.at_dot_gray { background: var(--text-dim); }
+.at_dot_red { background: var(--red); }
+.at_dot_amber { background: var(--amber); }
+
+.at_mode_label {
+  font-weight: 600;
+}
+.at_mode_live { color: var(--green); }
+.at_mode_mock { color: var(--text-dim); }
+.at_mode_error { color: var(--red); }
+
+.at_status_spacer { flex: 1; }
+
+.at_toggle_btn {
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-family: var(--font);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.at_toggle_btn:hover { color: var(--text); border-color: var(--text-dim); }
+
+/* ── MAIN PANELS ── */
+.at_panels {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── LEFT PANEL: COMMAND INPUT ── */
+.at_left_panel {
+  width: 380px;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.at_input_section {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.at_input_label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+.at_textarea {
+  width: 100%;
+  min-height: 100px;
+  max-height: 200px;
+  resize: vertical;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.at_textarea:focus { border-color: var(--cyan); }
+.at_textarea::placeholder { color: var(--text-dim); }
+
+.at_input_actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.at_btn {
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.at_btn:hover { color: var(--text); border-color: var(--text-dim); }
+.at_btn:disabled { opacity: 0.4; cursor: default; }
+.at_btn_cyan { color: var(--cyan); border-color: var(--cyan-dim); }
+.at_btn_cyan:hover { background: var(--cyan); color: var(--bg); }
+.at_btn_amber { color: var(--amber); border-color: var(--amber-dim); }
+.at_btn_amber:hover { background: var(--amber); color: var(--bg); }
+.at_btn_red { color: var(--red); border-color: var(--red); }
+.at_btn_red:hover { background: var(--red); color: var(--bg); }
+
+.at_shortcut_hint {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
+kbd {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: var(--font);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* ── QUICK COMMANDS ── */
+.at_quick_section {
+  padding: 0 12px 12px;
+  flex-shrink: 0;
+}
+
+.at_quick_divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+.at_quick_divider::before,
+.at_quick_divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.at_quick_grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.at_quick_btn {
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-family: var(--font);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.at_quick_btn:hover {
+  color: var(--cyan);
+  border-color: var(--cyan-dim);
+  background: var(--surface-raised);
+}
+
+/* ── DECISION LOADER ── */
+.at_decision_section {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  padding: 10px 12px;
+  flex-shrink: 0;
+}
+
+.at_drop_area {
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  padding: 12px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.at_drop_area:hover,
+.at_drop_area.at_drag_over {
+  border-color: var(--cyan);
+  color: var(--text-muted);
+}
+
+.at_decision_loaded {
+  display: none;
+}
+.at_decision_loaded.at_visible {
+  display: block;
+}
+
+.at_decision_summary {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.at_decision_summary strong {
+  color: var(--amber);
+}
+
+.at_decision_preview {
+  max-height: 100px;
+  overflow-y: auto;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  background: var(--bg);
+  border-radius: 3px;
+  padding: 4px 6px;
+}
+
+.at_decision_preview_row {
+  padding: 1px 0;
+  border-bottom: 1px solid var(--border);
+}
+.at_decision_preview_row:last-child { border-bottom: none; }
+
+.at_decision_actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── RIGHT PANEL: ACTIVITY LOG ── */
+.at_right_panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.at_log_header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.at_log_count {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.at_log_clear {
+  margin-left: auto;
+}
+
+.at_log_area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+
+.at_log_empty {
+  color: var(--text-dim);
+  font-size: 12px;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+/* ── LOG ENTRIES ── */
+.at_log_entry {
+  margin-bottom: 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.at_log_entry.at_entry_error { border-color: rgba(239, 68, 68, 0.3); }
+
+.at_log_entry_header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+}
+.at_log_entry_header:hover { background: var(--surface-raised); }
+
+.at_log_arrow {
+  color: var(--text-dim);
+  font-size: 9px;
+  margin-top: 3px;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.at_log_entry.at_expanded .at_log_arrow { transform: rotate(90deg); }
+
+.at_log_timestamp {
+  color: var(--text-dim);
+  font-size: 10px;
+  flex-shrink: 0;
+  min-width: 58px;
+}
+
+.at_log_command {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.at_log_status {
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.at_status_pending { color: var(--amber); background: rgba(245, 158, 11, 0.1); }
+.at_status_complete { color: var(--green); background: rgba(34, 197, 94, 0.1); }
+.at_status_error { color: var(--red); background: rgba(239, 68, 68, 0.1); }
+.at_status_mock { color: var(--text-dim); background: rgba(100, 116, 139, 0.1); }
+
+.at_log_entry_body {
+  display: none;
+  padding: 0 10px 8px;
+  border-top: 1px solid var(--border);
+}
+.at_log_entry.at_expanded .at_log_entry_body { display: block; }
+
+.at_log_event {
+  padding: 3px 0;
+  font-size: 11px;
+  display: flex;
+  gap: 6px;
+}
+
+.at_event_type {
+  font-weight: 600;
+  font-size: 10px;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+.at_event_type_sent { color: var(--log-sent); }
+.at_event_type_assistant { color: var(--log-assistant); }
+.at_event_type_tool_call { color: var(--log-tool-call); }
+.at_event_type_tool_result { color: var(--log-tool-result); }
+.at_event_type_error { color: var(--log-error); }
+.at_event_type_complete { color: var(--log-complete); }
+.at_event_type_mock { color: var(--log-mock); }
+
+.at_event_data {
+  color: var(--text-muted);
+  word-break: break-word;
+  min-width: 0;
+}
+</style>
+</head>
+<body>
+<div class="at_app">
+
+  <!-- STATUS BAR -->
+  <div class="at_status_bar">
+    <span class="at_status_title">AT COMMAND CONSOLE</span>
+    <div class="at_status_item">
+      <span class="at_dot at_dot_gray" id="atBridgeDot"></span>
+      Bridge: <span class="at_mode_label at_mode_mock" id="atBridgeLabel">MOCK</span>
+      <span id="atBridgePort">:8901</span>
+    </div>
+    <div class="at_status_item">
+      <span class="at_dot at_dot_gray" id="atResolveDot"></span>
+      Resolve: <span id="atResolveLabel">[PLACEHOLDER]</span>
+    </div>
+    <div class="at_status_item">
+      <span class="at_dot at_dot_gray" id="atOllamaDot"></span>
+      Ollama: <span id="atOllamaLabel">checking...</span>
+    </div>
+    <span class="at_status_spacer"></span>
+    <button class="at_toggle_btn" id="atToggleMode" title="Toggle LIVE/MOCK mode">FORCE MOCK</button>
+  </div>
+
+  <!-- MAIN PANELS -->
+  <div class="at_panels">
+
+    <!-- LEFT: COMMAND INPUT -->
+    <div class="at_left_panel">
+      <div class="at_input_section">
+        <div class="at_input_label">COMMAND</div>
+        <textarea class="at_textarea" id="atCommandInput"
+          placeholder="Type a command for Resolve via AT's bridge..."></textarea>
+        <div class="at_input_actions">
+          <button class="at_btn at_btn_cyan" id="atSendBtn">SEND</button>
+          <button class="at_btn" id="atClearInput">CLEAR</button>
+          <span class="at_shortcut_hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send</span>
+        </div>
+      </div>
+
+      <!-- QUICK COMMANDS -->
+      <div class="at_quick_section">
+        <div class="at_quick_divider">QUICK COMMANDS</div>
+        <div class="at_quick_grid" id="atQuickGrid"></div>
+      </div>
+
+      <!-- DECISION FILE LOADER -->
+      <div class="at_decision_section">
+        <div class="at_input_label" style="margin-bottom:6px">DECISION FILE</div>
+        <div class="at_drop_area" id="atDecisionDrop">
+          Drop edit_decisions.json here or click to browse
+        </div>
+        <div class="at_decision_loaded" id="atDecisionLoaded">
+          <div class="at_decision_summary" id="atDecisionSummary"></div>
+          <div class="at_decision_preview" id="atDecisionPreview"></div>
+          <div class="at_decision_actions">
+            <button class="at_btn at_btn_amber" id="atDryRunBtn">DRY RUN FIRST</button>
+            <button class="at_btn at_btn_cyan" id="atSendDecisions">SEND TO RESOLVE</button>
+            <button class="at_btn" id="atClearDecisions">CLEAR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: ACTIVITY LOG -->
+    <div class="at_right_panel">
+      <div class="at_log_header">
+        ACTIVITY LOG
+        <span class="at_log_count" id="atLogCount">0 entries</span>
+        <button class="at_btn at_log_clear" id="atClearLog">CLEAR LOG</button>
+      </div>
+      <div class="at_log_area" id="atLogArea">
+        <div class="at_log_empty" id="atLogEmpty">
+          No commands sent yet. Type a command or click a quick command button.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* =================================================================
+   AT COMMAND CONSOLE -- CONFIG
+   Edit these values. Everything else is wiring.
+   ================================================================= */
+const BRIDGE_PORT = 8901;
+const DEV_SERVER = 'http://localhost:8901';
+const OLLAMA_HOST = 'http://localhost:11434';
+const DEFAULT_AGENT = 'edbot';
+const SEND_SHORTCUT = 'ctrl+enter';  // 'ctrl+enter' or 'shift+enter'
+const MAX_LOG_ENTRIES = 100;
+const BRIDGE_POLL_MS = 10000;
+
+const QUICK_COMMANDS = [
+  { label: '[QUICK CMD 1 -- PLACEHOLDER]', command: '[COMMAND TEXT -- PLACEHOLDER]' },
+  { label: '[QUICK CMD 2 -- PLACEHOLDER]', command: '[COMMAND TEXT -- PLACEHOLDER]' },
+  { label: '[QUICK CMD 3 -- PLACEHOLDER]', command: '[COMMAND TEXT -- PLACEHOLDER]' },
+  { label: '[QUICK CMD 4 -- PLACEHOLDER]', command: '[COMMAND TEXT -- PLACEHOLDER]' },
+  { label: '[QUICK CMD 5 -- PLACEHOLDER]', command: '[COMMAND TEXT -- PLACEHOLDER]' },
+  { label: '[QUICK CMD 6 -- PLACEHOLDER]', command: '[COMMAND TEXT -- PLACEHOLDER]' },
+];
+// Fill these with your most-used NLP commands.
+// They populate the textarea and auto-send.
+
+/* =================================================================
+   STATE
+   ================================================================= */
+let bridgeMode = 'mock';   // 'live', 'mock', 'error'
+let forceMock = false;
+let currentAgent = DEFAULT_AGENT;
+let commandHistory = [];
+let historyIndex = -1;
+let logEntries = [];        // {id, command, events[], status, timestamp}
+let loadedDecisions = null;
+let bridgePollTimer = null;
+
+/* =================================================================
+   DOM REFS
+   ================================================================= */
+const commandInput = document.getElementById('atCommandInput');
+const sendBtn = document.getElementById('atSendBtn');
+const clearInputBtn = document.getElementById('atClearInput');
+const quickGrid = document.getElementById('atQuickGrid');
+const logArea = document.getElementById('atLogArea');
+const logEmpty = document.getElementById('atLogEmpty');
+const logCount = document.getElementById('atLogCount');
+const clearLogBtn = document.getElementById('atClearLog');
+const toggleModeBtn = document.getElementById('atToggleMode');
+
+const bridgeDot = document.getElementById('atBridgeDot');
+const bridgeLabel = document.getElementById('atBridgeLabel');
+const bridgePort = document.getElementById('atBridgePort');
+const resolveDot = document.getElementById('atResolveDot');
+const resolveLabel = document.getElementById('atResolveLabel');
+const ollamaDot = document.getElementById('atOllamaDot');
+const ollamaLabel = document.getElementById('atOllamaLabel');
+
+const decisionDrop = document.getElementById('atDecisionDrop');
+const decisionLoaded = document.getElementById('atDecisionLoaded');
+const decisionSummary = document.getElementById('atDecisionSummary');
+const decisionPreview = document.getElementById('atDecisionPreview');
+const dryRunBtn = document.getElementById('atDryRunBtn');
+const sendDecisionsBtn = document.getElementById('atSendDecisions');
+const clearDecisionsBtn = document.getElementById('atClearDecisions');
+
+/* =================================================================
+   BRIDGE COMMUNICATION -- LIVE MODE
+   ================================================================= */
+async function sendCommandLive(command) {
+  const taskId = 'live-' + Date.now();
+  const entry = createLogEntry(taskId, command);
+
+  try {
+    const resp = await fetch(`http://localhost:${BRIDGE_PORT}/task`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command, agent: currentAgent })
+    });
+
+    if (!resp.ok) {
+      addEvent(entry, 'error', `HTTP ${resp.status}: ${resp.statusText}`);
+      markEntryStatus(entry, 'error');
+      return taskId;
+    }
+
+    const data = await resp.json();
+    const streamId = data.task_id || taskId;
+    addEvent(entry, 'assistant', `Task accepted: ${streamId}`);
+
+    // Stream SSE events
+    const es = new EventSource(`http://localhost:${BRIDGE_PORT}/stream/${streamId}`);
+
+    es.addEventListener('message', (e) => {
+      try {
+        const evt = JSON.parse(e.data);
+        const type = evt.type || 'assistant';
+        const content = evt.content || evt.text || JSON.stringify(evt);
+        addEvent(entry, type, content);
+      } catch {
+        addEvent(entry, 'assistant', e.data);
+      }
+    });
+
+    es.addEventListener('tool_call', (e) => {
+      addEvent(entry, 'tool_call', e.data);
+    });
+
+    es.addEventListener('tool_result', (e) => {
+      addEvent(entry, 'tool_result', e.data);
+    });
+
+    es.addEventListener('complete', () => {
+      es.close();
+      markEntryStatus(entry, 'complete');
+    });
+
+    es.addEventListener('error', () => {
+      es.close();
+      if (entry.status === 'pending') {
+        addEvent(entry, 'error', 'SSE connection closed');
+        markEntryStatus(entry, 'error');
+      }
+    });
+
+  } catch (err) {
+    addEvent(entry, 'error', `Connection failed: ${err.message}`);
+    markEntryStatus(entry, 'error');
+  }
+
+  return taskId;
+}
+
+/* =================================================================
+   BRIDGE COMMUNICATION -- MOCK MODE
+   ================================================================= */
+function sendCommandMock(command) {
+  const taskId = 'mock-' + Date.now();
+  const entry = createLogEntry(taskId, command);
+
+  setTimeout(() => {
+    addEvent(entry, 'mock',
+      '[MOCK -- bridge not running. Command logged: ' + command + ']');
+    markEntryStatus(entry, 'mock');
+  }, 500);
+
+  return taskId;
+}
+
+/* =================================================================
+   COMMAND DISPATCH
+   ================================================================= */
+function sendCommand(command) {
+  if (!command.trim()) return;
+
+  // Add to history
+  commandHistory.unshift(command);
+  if (commandHistory.length > 50) commandHistory.pop();
+  historyIndex = -1;
+
+  // Clear input
+  commandInput.value = '';
+  commandInput.focus();
+
+  // Dispatch based on mode
+  if (bridgeMode === 'live' && !forceMock) {
+    sendCommandLive(command);
+  } else {
+    sendCommandMock(command);
+  }
+}
+
+/* =================================================================
+   ACTIVITY LOG
+   ================================================================= */
+function createLogEntry(id, command) {
+  const entry = {
+    id,
+    command,
+    events: [],
+    status: 'pending',
+    timestamp: new Date()
+  };
+
+  addEvent(entry, 'sent', command);
+  logEntries.unshift(entry);
+
+  // Cap entries
+  if (logEntries.length > MAX_LOG_ENTRIES) {
+    logEntries.pop();
+  }
+
+  renderLog();
+  return entry;
+}
+
+function addEvent(entry, type, data) {
+  entry.events.push({
+    type,
+    data,
+    timestamp: new Date()
+  });
+  renderLogEntry(entry);
+}
+
+function markEntryStatus(entry, status) {
+  entry.status = status;
+  renderLogEntry(entry);
+}
+
+function renderLog() {
+  logEmpty.style.display = logEntries.length === 0 ? 'block' : 'none';
+  logCount.textContent = `${logEntries.length} entr${logEntries.length === 1 ? 'y' : 'ies'}`;
+
+  // Rebuild the log DOM
+  const existingIds = new Set();
+  logArea.querySelectorAll('.at_log_entry').forEach(el => {
+    existingIds.add(el.dataset.entryId);
+  });
+
+  for (const entry of logEntries) {
+    if (!existingIds.has(entry.id)) {
+      const el = buildLogEntryEl(entry);
+      if (logArea.firstChild === logEmpty) {
+        logArea.insertBefore(el, logEmpty);
+      } else {
+        logArea.insertBefore(el, logArea.firstChild);
+      }
+    }
+  }
+
+  // Remove entries no longer in array
+  logArea.querySelectorAll('.at_log_entry').forEach(el => {
+    if (!logEntries.find(e => e.id === el.dataset.entryId)) {
+      el.remove();
+    }
+  });
+}
+
+function buildLogEntryEl(entry) {
+  const el = document.createElement('div');
+  el.className = 'at_log_entry';
+  el.dataset.entryId = entry.id;
+  if (entry.status === 'error') el.classList.add('at_entry_error');
+
+  const ts = formatTime(entry.timestamp);
+  const statusClass = {
+    pending: 'at_status_pending',
+    complete: 'at_status_complete',
+    error: 'at_status_error',
+    mock: 'at_status_mock'
+  }[entry.status] || 'at_status_pending';
+
+  const statusLabel = entry.status.toUpperCase();
+
+  el.innerHTML = `
+    <div class="at_log_entry_header">
+      <span class="at_log_arrow">&#9654;</span>
+      <span class="at_log_timestamp">${ts}</span>
+      <span class="at_log_command">${escapeHtml(truncate(entry.command, 80))}</span>
+      <span class="at_log_status ${statusClass}">${statusLabel}</span>
+    </div>
+    <div class="at_log_entry_body">
+      ${renderEvents(entry.events)}
+    </div>
+  `;
+
+  // Click to expand/collapse
+  el.querySelector('.at_log_entry_header').addEventListener('click', () => {
+    el.classList.toggle('at_expanded');
+  });
+
+  return el;
+}
+
+function renderLogEntry(entry) {
+  const el = logArea.querySelector(`[data-entry-id="${entry.id}"]`);
+  if (!el) return;
+
+  // Update status
+  const statusEl = el.querySelector('.at_log_status');
+  const statusClass = {
+    pending: 'at_status_pending',
+    complete: 'at_status_complete',
+    error: 'at_status_error',
+    mock: 'at_status_mock'
+  }[entry.status] || 'at_status_pending';
+
+  statusEl.className = `at_log_status ${statusClass}`;
+  statusEl.textContent = entry.status.toUpperCase();
+
+  if (entry.status === 'error') el.classList.add('at_entry_error');
+
+  // Update events
+  const body = el.querySelector('.at_log_entry_body');
+  body.innerHTML = renderEvents(entry.events);
+}
+
+function renderEvents(events) {
+  return events.map(evt => {
+    const typeClass = `at_event_type_${evt.type.replace(/[^a-z_]/g, '')}`;
+    const ts = formatTime(evt.timestamp);
+    return `
+      <div class="at_log_event">
+        <span class="at_event_type ${typeClass}">${evt.type}</span>
+        <span class="at_event_data">${escapeHtml(evt.data)}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+/* =================================================================
+   STATUS POLLING
+   ================================================================= */
+async function checkBridgeStatus() {
+  if (forceMock) {
+    setBridgeStatus('mock');
+    return;
+  }
+
+  try {
+    // Check for /docs — FastAPI auto-generates this endpoint.
+    // If something else is on the port (D3 conflict), /docs won't exist
+    // or won't have CORS headers, so fetch rejects -> mock mode.
+    const resp = await fetch(`http://localhost:${BRIDGE_PORT}/docs`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(3000)
+    });
+    if (resp.ok) {
+      // Verify it looks like FastAPI (response should be HTML with "swagger")
+      const text = await resp.text();
+      if (text.toLowerCase().includes('swagger') || text.toLowerCase().includes('fastapi')) {
+        setBridgeStatus('live');
+        checkResolveStatus();
+      } else {
+        setBridgeStatus('mock');
+      }
+    } else {
+      setBridgeStatus('mock');
+    }
+  } catch {
+    setBridgeStatus('mock');
+  }
+}
+
+function setBridgeStatus(mode) {
+  bridgeMode = mode;
+  bridgeDot.className = 'at_dot ' + ({
+    live: 'at_dot_green',
+    mock: 'at_dot_gray',
+    error: 'at_dot_red'
+  }[mode] || 'at_dot_gray');
+
+  bridgeLabel.className = 'at_mode_label ' + ({
+    live: 'at_mode_live',
+    mock: 'at_mode_mock',
+    error: 'at_mode_error'
+  }[mode] || 'at_mode_mock');
+
+  bridgeLabel.textContent = mode.toUpperCase();
+  bridgePort.textContent = `:${BRIDGE_PORT}`;
+}
+
+async function checkResolveStatus() {
+  try {
+    const resp = await fetch(`http://localhost:${BRIDGE_PORT}/resolve/state`, {
+      signal: AbortSignal.timeout(3000)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      const name = data.project || data.name || 'Connected';
+      resolveDot.className = 'at_dot at_dot_green';
+      resolveLabel.textContent = name;
+    } else {
+      resolveDot.className = 'at_dot at_dot_gray';
+      resolveLabel.textContent = '[PLACEHOLDER]';
+    }
+  } catch {
+    resolveDot.className = 'at_dot at_dot_gray';
+    resolveLabel.textContent = '[PLACEHOLDER]';
+  }
+}
+
+async function checkOllamaStatus() {
+  try {
+    const resp = await fetch(`${OLLAMA_HOST}/api/tags`, {
+      signal: AbortSignal.timeout(3000)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      const count = (data.models || []).length;
+      ollamaDot.className = 'at_dot at_dot_green';
+      ollamaLabel.textContent = `${count} model${count !== 1 ? 's' : ''}`;
+    } else {
+      ollamaDot.className = 'at_dot at_dot_red';
+      ollamaLabel.textContent = 'error';
+    }
+  } catch {
+    ollamaDot.className = 'at_dot at_dot_gray';
+    ollamaLabel.textContent = 'offline';
+  }
+}
+
+/* =================================================================
+   QUICK COMMANDS
+   ================================================================= */
+function buildQuickCommands() {
+  quickGrid.innerHTML = '';
+  for (const qc of QUICK_COMMANDS) {
+    const btn = document.createElement('button');
+    btn.className = 'at_quick_btn';
+    btn.textContent = qc.label;
+    btn.addEventListener('click', () => {
+      commandInput.value = qc.command;
+      sendCommand(qc.command);
+    });
+    quickGrid.appendChild(btn);
+  }
+}
+
+/* =================================================================
+   DECISION FILE LOADER
+   ================================================================= */
+decisionDrop.addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    if (e.target.files[0]) loadDecisionFile(e.target.files[0]);
+  };
+  input.click();
+});
+
+decisionDrop.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  decisionDrop.classList.add('at_drag_over');
+});
+
+decisionDrop.addEventListener('dragleave', () => {
+  decisionDrop.classList.remove('at_drag_over');
+});
+
+decisionDrop.addEventListener('drop', (e) => {
+  e.preventDefault();
+  decisionDrop.classList.remove('at_drag_over');
+  const file = e.dataTransfer.files[0];
+  if (file) loadDecisionFile(file);
+});
+
+function loadDecisionFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data.decisions || !Array.isArray(data.decisions)) {
+        alert('Invalid decision file: missing "decisions" array');
+        return;
+      }
+      loadedDecisions = data;
+      showDecisionPreview(data);
+    } catch (err) {
+      alert('JSON parse error: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function showDecisionPreview(data) {
+  const decisions = data.decisions;
+  const counts = {};
+  for (const d of decisions) {
+    const t = d.type || 'unknown';
+    counts[t] = (counts[t] || 0) + 1;
+  }
+
+  const countStr = Object.entries(counts)
+    .map(([k, v]) => `${v} ${k}`)
+    .join(', ');
+
+  decisionSummary.innerHTML =
+    `<strong>${decisions.length}</strong> decisions (${countStr})` +
+    ` | fps: ${data.fps || '?'} | mode: ${data.mode || '?'}`;
+
+  // Preview first 10 rows
+  const limit = Math.min(decisions.length, 10);
+  let html = '';
+  for (let i = 0; i < limit; i++) {
+    const d = decisions[i];
+    html += `<div class="at_decision_preview_row">${escapeHtml(
+      `${d.type} | ${d.entry_filename || '?'} | ${d.start_tc || d.timecode_in || ''}`
+    )}</div>`;
+  }
+  if (decisions.length > 10) {
+    html += `<div class="at_decision_preview_row" style="color:var(--text-dim)">...and ${decisions.length - 10} more</div>`;
+  }
+  decisionPreview.innerHTML = html;
+
+  decisionDrop.style.display = 'none';
+  decisionLoaded.classList.add('at_visible');
+}
+
+dryRunBtn.addEventListener('click', () => {
+  if (!loadedDecisions) return;
+  const cmd = 'apply decisions --dry-run --file inline';
+  const payload = JSON.stringify({
+    command: cmd,
+    agent: currentAgent,
+    decisions: loadedDecisions
+  });
+
+  // Log and send
+  const entry = createLogEntry('dec-dry-' + Date.now(), cmd);
+  addEvent(entry, 'assistant',
+    `Sending ${loadedDecisions.decisions.length} decisions (dry-run)...`);
+
+  if (bridgeMode === 'live' && !forceMock) {
+    sendDecisionPayload(entry, payload, 'dry-run');
+  } else {
+    setTimeout(() => {
+      addEvent(entry, 'mock',
+        `[MOCK] Would apply ${loadedDecisions.decisions.length} decisions in dry-run mode`);
+      markEntryStatus(entry, 'mock');
+    }, 500);
+  }
+});
+
+sendDecisionsBtn.addEventListener('click', () => {
+  if (!loadedDecisions) return;
+  if (!confirm(`Send ${loadedDecisions.decisions.length} decisions to Resolve via bridge?`)) return;
+
+  const cmd = 'apply decisions --confirm --file inline';
+  const entry = createLogEntry('dec-exec-' + Date.now(), cmd);
+  addEvent(entry, 'assistant',
+    `Sending ${loadedDecisions.decisions.length} decisions (confirm)...`);
+
+  if (bridgeMode === 'live' && !forceMock) {
+    const payload = JSON.stringify({
+      command: cmd,
+      agent: currentAgent,
+      decisions: loadedDecisions
+    });
+    sendDecisionPayload(entry, payload, 'confirm');
+  } else {
+    setTimeout(() => {
+      addEvent(entry, 'mock',
+        `[MOCK] Would apply ${loadedDecisions.decisions.length} decisions with confirmation`);
+      markEntryStatus(entry, 'mock');
+    }, 500);
+  }
+});
+
+async function sendDecisionPayload(entry, payload, mode) {
+  try {
+    const resp = await fetch(`http://localhost:${BRIDGE_PORT}/task`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload
+    });
+    if (!resp.ok) {
+      addEvent(entry, 'error', `HTTP ${resp.status}`);
+      markEntryStatus(entry, 'error');
+      return;
+    }
+    const data = await resp.json();
+    addEvent(entry, 'assistant', `Task ${data.task_id} accepted (${mode})`);
+    markEntryStatus(entry, 'complete');
+  } catch (err) {
+    addEvent(entry, 'error', `Connection failed: ${err.message}`);
+    markEntryStatus(entry, 'error');
+  }
+}
+
+clearDecisionsBtn.addEventListener('click', () => {
+  loadedDecisions = null;
+  decisionLoaded.classList.remove('at_visible');
+  decisionDrop.style.display = '';
+});
+
+/* =================================================================
+   UTILITIES
+   ================================================================= */
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function truncate(str, max) {
+  if (str.length <= max) return str;
+  return str.slice(0, max) + '...';
+}
+
+function formatTime(date) {
+  const h = String(date.getHours()).padStart(2, '0');
+  const m = String(date.getMinutes()).padStart(2, '0');
+  const s = String(date.getSeconds()).padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
+
+/* =================================================================
+   EVENT HANDLERS
+   ================================================================= */
+
+// Send button
+sendBtn.addEventListener('click', () => {
+  sendCommand(commandInput.value);
+});
+
+// Clear input
+clearInputBtn.addEventListener('click', () => {
+  commandInput.value = '';
+  commandInput.focus();
+});
+
+// Keyboard shortcuts on textarea
+commandInput.addEventListener('keydown', (e) => {
+  // Send shortcut
+  const isCtrlEnter = SEND_SHORTCUT === 'ctrl+enter' && e.ctrlKey && e.key === 'Enter';
+  const isShiftEnter = SEND_SHORTCUT === 'shift+enter' && e.shiftKey && e.key === 'Enter';
+  if (isCtrlEnter || isShiftEnter) {
+    e.preventDefault();
+    sendCommand(commandInput.value);
+    return;
+  }
+
+  // Command history
+  if (e.key === 'ArrowUp' && commandInput.selectionStart === 0) {
+    e.preventDefault();
+    if (historyIndex < commandHistory.length - 1) {
+      historyIndex++;
+      commandInput.value = commandHistory[historyIndex];
+    }
+  }
+  if (e.key === 'ArrowDown' && commandInput.selectionStart === 0) {
+    e.preventDefault();
+    if (historyIndex > 0) {
+      historyIndex--;
+      commandInput.value = commandHistory[historyIndex];
+    } else if (historyIndex === 0) {
+      historyIndex = -1;
+      commandInput.value = '';
+    }
+  }
+});
+
+// Clear log
+clearLogBtn.addEventListener('click', () => {
+  logEntries = [];
+  logArea.querySelectorAll('.at_log_entry').forEach(el => el.remove());
+  logEmpty.style.display = 'block';
+  logCount.textContent = '0 entries';
+});
+
+// Toggle LIVE/MOCK
+toggleModeBtn.addEventListener('click', () => {
+  forceMock = !forceMock;
+  toggleModeBtn.textContent = forceMock ? 'FORCE LIVE' : 'FORCE MOCK';
+  if (forceMock) {
+    setBridgeStatus('mock');
+  } else {
+    checkBridgeStatus();
+  }
+});
+
+// Global keyboard
+document.addEventListener('keydown', (e) => {
+  if (e.target === commandInput) return;
+  if (e.key === '/' || (e.key === 'k' && e.ctrlKey)) {
+    e.preventDefault();
+    commandInput.focus();
+  }
+});
+
+/* =================================================================
+   INIT
+   ================================================================= */
+buildQuickCommands();
+commandInput.focus();
+checkBridgeStatus();
+checkOllamaStatus();
+
+// Poll bridge status
+bridgePollTimer = setInterval(checkBridgeStatus, BRIDGE_POLL_MS);
+</script>
+</body>
+</html>

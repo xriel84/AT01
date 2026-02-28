@@ -1,0 +1,1942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YD DIALOGUE MATCHER</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+/* ── ROOT TOKENS (reused from yd-chapter-nav-3d) ── */
+:root {
+  --bg: #0a0c0f;
+  --surface: #111318;
+  --surface-raised: #161a22;
+  --border: #1e2330;
+  --border-active: #06b6d4;
+  --cyan: #06b6d4;
+  --cyan-dim: #0891b2;
+  --amber: #f59e0b;
+  --amber-dim: #d97706;
+  --text: #e2e8f0;
+  --text-muted: #64748b;
+  --text-dim: #475569;
+  --red: #ef4444;
+  --green: #22c55e;
+  --search-highlight: rgba(245, 158, 11, 0.2);
+  --font: 'IBM Plex Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: hidden;
+  height: 100vh;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ── LAYOUT ── */
+.at_app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── HUD BAR ── */
+.at_hud {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.at_hud_title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--cyan);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.at_mode_toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.at_mode_btn {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 3px 10px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.at_mode_btn:hover { color: var(--text); }
+.at_mode_btn.at_active {
+  background: var(--cyan);
+  color: var(--bg);
+  border-color: var(--cyan);
+}
+
+.at_stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.at_status_dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.at_status_dot.at_green { background: var(--green); }
+.at_status_dot.at_amber { background: var(--amber); }
+.at_status_dot.at_red { background: var(--red); }
+
+.at_search_wrap {
+  position: relative;
+  flex: 0 1 220px;
+  min-width: 140px;
+}
+
+.at_search {
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 28px 4px 8px;
+  font-family: var(--font);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.at_search:focus { border-color: var(--cyan); }
+.at_search::placeholder { color: var(--text-dim); }
+
+.at_search_clear {
+  position: absolute;
+  right: 4px; top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+  display: none;
+}
+.at_search_clear.at_visible { display: block; }
+
+.at_hit_count {
+  font-size: 11px;
+  color: var(--amber);
+  white-space: nowrap;
+}
+
+/* ── BUTTONS ── */
+.at_btn {
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.at_btn:hover { color: var(--text); border-color: var(--text-dim); }
+.at_btn:disabled { opacity: 0.4; cursor: default; }
+.at_btn_cyan { color: var(--cyan); border-color: var(--cyan-dim); }
+.at_btn_cyan:hover { background: var(--cyan); color: var(--bg); }
+.at_btn_amber { color: var(--amber); border-color: var(--amber-dim); }
+.at_btn_amber:hover { background: var(--amber); color: var(--bg); }
+.at_btn_red { color: var(--red); border-color: var(--red); }
+.at_btn_red:hover { background: var(--red); color: var(--bg); }
+
+.at_hud_actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* ── EXPORT DROPDOWN ── */
+.at_dropdown_wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.at_dropdown_menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 100;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 0;
+  margin-top: 4px;
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.at_dropdown_wrap.at_open .at_dropdown_menu { display: block; }
+
+.at_dropdown_item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 6px 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.at_dropdown_item:hover { background: var(--border); color: var(--text); }
+
+/* ── SETTINGS BAR ── */
+.at_settings {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.at_settings.at_visible { display: flex; }
+
+.at_settings label { white-space: nowrap; }
+
+.at_slider {
+  -webkit-appearance: none;
+  width: 120px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+}
+.at_slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  background: var(--cyan);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.at_slider_val {
+  color: var(--cyan);
+  font-weight: 600;
+  min-width: 30px;
+}
+
+/* ── PROGRESS AREA ── */
+.at_progress_area {
+  display: none;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.at_progress_area.at_visible { display: block; }
+
+.at_progress_bar_wrap {
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.at_progress_bar {
+  height: 100%;
+  background: var(--cyan);
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.1s;
+}
+
+.at_progress_text {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── MAIN AREA ── */
+.at_main_area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+/* ── DROP ZONE ── */
+.at_drop_zone {
+  display: none;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.2s;
+  margin: 40px auto;
+  max-width: 500px;
+}
+.at_drop_zone:hover, .at_drop_zone.at_drag_over {
+  border-color: var(--cyan);
+  color: var(--text);
+}
+.at_drop_zone.at_visible { display: block; }
+
+.at_drop_title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.at_drop_hint { font-size: 11px; color: var(--text-dim); }
+
+/* ── EMPTY STATE ── */
+.at_empty_state {
+  display: none;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.at_empty_state.at_visible { display: block; }
+
+/* ── MATCH GROUP CARDS ── */
+.at_group_list { display: flex; flex-direction: column; gap: 6px; }
+
+.at_match_group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.at_match_group:hover { border-color: var(--text-dim); }
+.at_match_group.at_expanded { border-color: var(--cyan-dim); }
+.at_match_group.at_dimmed { opacity: 0.3; }
+.at_match_group.at_selected { border-color: var(--amber); }
+
+.at_group_header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.at_checkbox {
+  width: 16px; height: 16px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.at_checkbox:hover { border-color: var(--cyan); }
+.at_checkbox.at_checked {
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
+.at_checkbox.at_checked::after {
+  content: '\2713';
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 700;
+}
+.at_checkbox.at_partial {
+  background: var(--surface-raised);
+  border-color: var(--cyan-dim);
+}
+.at_checkbox.at_partial::after {
+  content: '\2012';
+  color: var(--cyan);
+  font-size: 11px;
+}
+
+.at_group_id {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-weight: 600;
+  min-width: 52px;
+}
+
+.at_group_text {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.at_group_badges {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.at_badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.at_badge_matches {
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--cyan);
+}
+.at_badge_entries {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--amber);
+}
+
+.at_group_arrow {
+  color: var(--text-dim);
+  font-size: 10px;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.at_expanded .at_group_arrow { transform: rotate(90deg); }
+
+/* ── EXPANDED BODY ── */
+.at_group_body {
+  display: none;
+  padding: 0 12px 10px;
+  border-top: 1px solid var(--border);
+}
+.at_expanded .at_group_body { display: block; }
+
+.at_group_actions {
+  display: flex;
+  gap: 4px;
+  padding: 8px 0 6px;
+  flex-wrap: wrap;
+}
+
+/* ── ALIGNMENT ROWS ── */
+.at_alignment_row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.at_alignment_row:last-child { border-bottom: none; }
+
+.at_align_check { flex-shrink: 0; }
+
+.at_align_entry {
+  color: var(--amber);
+  font-weight: 600;
+  min-width: 100px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.at_align_tc {
+  color: var(--text-muted);
+  font-size: 10px;
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+.at_align_text {
+  flex: 1;
+  color: var(--text);
+  min-width: 0;
+}
+
+.at_timeline_bar {
+  width: 100px;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.at_timeline_segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--cyan);
+  border-radius: 3px;
+  min-width: 2px;
+}
+
+.at_align_similarity {
+  color: var(--text-dim);
+  font-size: 10px;
+  min-width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.at_more_btn {
+  display: block;
+  width: 100%;
+  background: var(--bg);
+  color: var(--cyan);
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  padding: 6px;
+  font-family: var(--font);
+  font-size: 11px;
+  cursor: pointer;
+  margin-top: 4px;
+  text-align: center;
+  transition: all 0.15s;
+}
+.at_more_btn:hover { border-color: var(--cyan); background: var(--surface); }
+
+.at_load_more_btn {
+  display: block;
+  width: 100%;
+  background: var(--surface);
+  color: var(--cyan);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  text-align: center;
+  transition: all 0.15s;
+}
+.at_load_more_btn:hover { border-color: var(--cyan); }
+
+/* ── PREVIEW MODAL ── */
+.at_preview_modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,0.7);
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.at_preview_modal.at_visible { display: flex; }
+
+.at_preview_inner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 720px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.at_preview_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--cyan);
+}
+
+.at_preview_close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+.at_preview_close:hover { color: var(--text); }
+
+.at_preview_body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+.at_preview_body pre {
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── BOTTOM BAR ── */
+.at_bottom_bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.at_decision_count {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.at_decision_breakdown {
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.at_bottom_actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+kbd {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: var(--font);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+mark.at_highlight {
+  background: var(--search-highlight);
+  color: var(--amber);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+</style>
+</head>
+<body>
+<div class="at_app">
+
+  <!-- HUD -->
+  <div class="at_hud">
+    <span class="at_hud_title">DIALOGUE MATCHER</span>
+    <div class="at_mode_toggle">
+      <button class="at_mode_btn at_active" data-mode="A" title="Exact match (normalized)">A</button>
+      <button class="at_mode_btn" data-mode="B" title="Substring containment (5+ words)">B</button>
+      <button class="at_mode_btn" data-mode="C" title="Jaccard similarity (threshold)">C</button>
+    </div>
+    <div class="at_stats">
+      <span class="at_status_dot at_amber" id="atStatusDot"></span>
+      <span id="atStatsText">[AWAITING DATA]</span>
+    </div>
+    <div class="at_search_wrap">
+      <input class="at_search" id="atSearch" type="text" placeholder="search matches..." disabled>
+      <button class="at_search_clear" id="atSearchClear">&times;</button>
+    </div>
+    <span class="at_hit_count" id="atHitCount"></span>
+    <div class="at_hud_actions">
+      <button class="at_btn" id="atSelectAll" disabled>SELECT VISIBLE</button>
+      <div class="at_dropdown_wrap" id="atExportDrop">
+        <button class="at_btn at_btn_cyan" id="atExportBtn" disabled>EXPORT &#9662;</button>
+        <div class="at_dropdown_menu">
+          <button class="at_dropdown_item" data-export="decisions">edit_decisions.json</button>
+          <button class="at_dropdown_item" data-export="edl">EDL (CMX3600)</button>
+          <button class="at_dropdown_item" data-export="markers">Resolve Markers JSON</button>
+          <button class="at_dropdown_item" data-export="csv">CSV</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS (Mode C threshold) -->
+  <div class="at_settings" id="atSettings">
+    <label>SIMILARITY THRESHOLD</label>
+    <input type="range" class="at_slider" id="atThreshold" min="0.3" max="0.95" step="0.05" value="0.6">
+    <span class="at_slider_val" id="atThresholdVal">0.60</span>
+    <label style="margin-left:16px">MIN WORDS</label>
+    <input type="range" class="at_slider" id="atMinWords" min="3" max="10" step="1" value="4">
+    <span class="at_slider_val" id="atMinWordsVal">4</span>
+    <button class="at_btn at_btn_cyan" id="atRerun" style="margin-left:8px">RE-RUN</button>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="at_progress_area" id="atProgress">
+    <div class="at_progress_bar_wrap">
+      <div class="at_progress_bar" id="atProgressBar"></div>
+    </div>
+    <div class="at_progress_text" id="atProgressText">[INDEXING...]</div>
+  </div>
+
+  <!-- MAIN AREA -->
+  <div class="at_main_area" id="atMainArea">
+    <div class="at_drop_zone" id="atDropZone">
+      <div class="at_drop_title">DROP LIBRARY JSON</div>
+      <div class="at_drop_hint">or click to browse &middot; configurable via ?library= URL param</div>
+    </div>
+    <div class="at_empty_state" id="atEmptyState">
+      NO MATCHING DIALOGUE FOUND
+    </div>
+    <div class="at_group_list" id="atGroupList"></div>
+  </div>
+
+  <!-- PREVIEW MODAL -->
+  <div class="at_preview_modal" id="atPreviewModal">
+    <div class="at_preview_inner">
+      <div class="at_preview_header">
+        <span>DECISION QUEUE PREVIEW</span>
+        <button class="at_preview_close" id="atPreviewClose">&times;</button>
+      </div>
+      <div class="at_preview_body">
+        <pre id="atPreviewContent"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="at_bottom_bar">
+    <span class="at_decision_count" id="atDecisionCount">0 DECISIONS QUEUED</span>
+    <span class="at_decision_breakdown" id="atDecisionBreakdown"></span>
+    <span style="flex:1"></span>
+    <kbd>/</kbd> Search
+    <span style="color:var(--border)">|</span>
+    <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Mode
+    <span style="color:var(--border)">|</span>
+    <kbd>Esc</kbd> Close
+    <span style="color:var(--border)">|</span>
+    <div class="at_bottom_actions">
+      <button class="at_btn at_btn_red" id="atClearQueue" disabled>CLEAR QUEUE</button>
+      <button class="at_btn" id="atPreviewBtn" disabled>PREVIEW JSON</button>
+      <button class="at_btn at_btn_cyan" id="atExportDecisions" disabled>EXPORT DECISIONS</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   YD DIALOGUE MATCHER — Stage 1: Detection + Alignment + Export
+   ═══════════════════════════════════════════════════════════════ */
+
+// ── CONFIG ──
+const params = new URLSearchParams(window.location.search);
+const MANIFEST_URL = params.get('library') || 'yd-library.json';
+const FPS = 24;
+const MIN_WORDS_DEFAULT = 4;
+const SIMILARITY_THRESHOLD_DEFAULT = 0.6;
+const SUBSTRING_MIN_WORDS = 5;
+const MAX_SEGMENTS_WARN = 20000;
+const SEARCH_DEBOUNCE_MS = 200;
+const MAX_RENDERED_GROUPS = 200;
+const MAX_MATCHES_SHOWN = 10;
+const BATCH_SIZE = 2000;
+
+// ── STOP WORDS for Jaccard pre-filter ──
+const STOP_WORDS = new Set([
+  'the','a','an','is','are','was','were','be','been','being','have','has','had',
+  'do','does','did','will','would','could','should','shall','may','might','can',
+  'i','you','he','she','it','we','they','me','him','her','us','them','my','your',
+  'his','its','our','their','this','that','these','those','and','but','or','not',
+  'no','so','if','of','in','on','at','to','for','with','by','from','up','out',
+  'about','into','then','than','too','very','just','like','know','what','when',
+  'how','all','each','every','both','few','more','most','some','any','such','only',
+  'own','same','other','new','old','also','back','even','still','well','just',
+  'now','here','there','where','why','way','who','which','oh','yeah','okay','ok',
+  'um','uh','ah','hey','hi','hello','yes','no','right','got','get','go','going',
+  'went','come','came','see','saw','look','said','say','tell','told','think',
+  'thought','want','wanted','need','make','made','take','took','put','thing',
+  'things','one','two','people','time','day','man','woman','much','many'
+]);
+
+// ── STATE ──
+let allEntries = [];
+let allSegments = [];
+let matchGroups = [];
+let filteredGroups = [];
+let decisions = [];
+let currentMode = 'A';
+let searchTerm = '';
+let searchDebounceTimer = null;
+let renderedCount = 0;
+let expandedGroups = new Set();
+let expandedMore = new Set();
+let selectedMatches = new Set();  // keys: "groupId:matchIdx"
+let isProcessing = false;
+let similarityThreshold = SIMILARITY_THRESHOLD_DEFAULT;
+let minWords = MIN_WORDS_DEFAULT;
+
+// ── DOM REFS ──
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+const statusDot = $('#atStatusDot');
+const statsText = $('#atStatsText');
+const searchInput = $('#atSearch');
+const searchClear = $('#atSearchClear');
+const hitCount = $('#atHitCount');
+const selectAllBtn = $('#atSelectAll');
+const exportBtn = $('#atExportBtn');
+const exportDrop = $('#atExportDrop');
+const settingsBar = $('#atSettings');
+const thresholdSlider = $('#atThreshold');
+const thresholdVal = $('#atThresholdVal');
+const minWordsSlider = $('#atMinWords');
+const minWordsVal = $('#atMinWordsVal');
+const rerunBtn = $('#atRerun');
+const progressArea = $('#atProgress');
+const progressBar = $('#atProgressBar');
+const progressText = $('#atProgressText');
+const mainArea = $('#atMainArea');
+const dropZone = $('#atDropZone');
+const emptyState = $('#atEmptyState');
+const groupList = $('#atGroupList');
+const previewModal = $('#atPreviewModal');
+const previewContent = $('#atPreviewContent');
+const previewClose = $('#atPreviewClose');
+const previewBtn = $('#atPreviewBtn');
+const decisionCount = $('#atDecisionCount');
+const decisionBreakdown = $('#atDecisionBreakdown');
+const clearQueueBtn = $('#atClearQueue');
+const exportDecisionsBtn = $('#atExportDecisions');
+
+// ── UTILITIES ──
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function highlightText(text, term) {
+  if (!term) return escapeHtml(text);
+  const escaped = escapeHtml(text);
+  const termEscaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${termEscaped})`, 'gi');
+  return escaped.replace(regex, '<mark class="at_highlight">$1</mark>');
+}
+
+function sanitizeFilename(name) {
+  return name.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+}
+
+function downloadFile(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function setStatus(color, text) {
+  statusDot.className = `at_status_dot at_${color}`;
+  statsText.textContent = text;
+}
+
+function formatTC(secs) {
+  if (secs == null || isNaN(secs)) return '00:00:00';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  if (h > 0) return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+  return `${pad2(m)}:${pad2(s)}`;
+}
+
+function formatDuration(secs) {
+  if (!secs || isNaN(secs)) return '0:00';
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m}:${pad2(s)}`;
+}
+
+function secsToTC(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  const f = Math.floor((secs % 1) * FPS);
+  return `${pad2(h)}:${pad2(m)}:${pad2(s)}:${pad2(f)}`;
+}
+
+function normalizeText(text) {
+  return (text || '').toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function showProgress(pct, text) {
+  progressArea.classList.add('at_visible');
+  progressBar.style.width = pct + '%';
+  progressText.textContent = text;
+}
+
+function hideProgress() {
+  progressArea.classList.remove('at_visible');
+}
+
+function yieldUI() {
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+function commaNum(n) {
+  return n.toLocaleString();
+}
+
+// ── DATA LOADING ──
+async function loadFromServer() {
+  setStatus('amber', '[LOADING LIBRARY JSON...]');
+  try {
+    const resp = await fetch(MANIFEST_URL);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    processLoadedData(data);
+  } catch (err) {
+    console.warn('[DIALOGUE-MATCHER] Fetch failed:', err.message);
+    showDropZone();
+  }
+}
+
+function showDropZone() {
+  dropZone.classList.add('at_visible');
+  setStatus('amber', '[DRAG & DROP OR CLICK TO LOAD]');
+}
+
+function processLoadedData(data) {
+  dropZone.classList.remove('at_visible');
+  let entries;
+  if (Array.isArray(data)) {
+    entries = data;
+  } else if (data && Array.isArray(data.entries)) {
+    entries = data.entries;
+  } else if (data && Array.isArray(data.clips)) {
+    entries = data.clips;
+  } else {
+    console.error('[DIALOGUE-MATCHER] Unexpected data format');
+    showDropZone();
+    return;
+  }
+
+  allEntries = entries.filter(e =>
+    e.whisper_segments && Array.isArray(e.whisper_segments) && e.whisper_segments.length > 0
+  );
+
+  if (allEntries.length === 0) {
+    setStatus('red', '[NO CLIPS WITH TRANSCRIPTS FOUND]');
+    return;
+  }
+
+  searchInput.disabled = false;
+  indexSegments();
+}
+
+// ── DROP ZONE HANDLERS ──
+dropZone.addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    if (e.target.files[0]) readDroppedFile(e.target.files[0]);
+  };
+  input.click();
+});
+
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('at_drag_over');
+});
+
+dropZone.addEventListener('dragleave', () => {
+  dropZone.classList.remove('at_drag_over');
+});
+
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('at_drag_over');
+  const file = e.dataTransfer.files[0];
+  if (file) readDroppedFile(file);
+});
+
+function readDroppedFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      processLoadedData(data);
+    } catch (err) {
+      console.error('[DIALOGUE-MATCHER] JSON parse error:', err);
+      setStatus('red', '[JSON PARSE ERROR]');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── SEGMENT INDEXING ──
+function indexSegments() {
+  allSegments = [];
+  showProgress(0, `[INDEXING: 0/${allEntries.length} entries...]`);
+
+  for (let e = 0; e < allEntries.length; e++) {
+    const entry = allEntries[e];
+    const segs = entry.whisper_segments;
+    for (let s = 0; s < segs.length; s++) {
+      const seg = segs[s];
+      const text = (seg.text || '').trim();
+      if (!text) continue;
+      const normalized = normalizeText(text);
+      const words = normalized.split(' ').filter(w => w.length > 0);
+      if (words.length < 1) continue;
+
+      allSegments.push({
+        normalized,
+        original: text,
+        entryId: entry.id,
+        entryFilename: entry.filename || entry.id,
+        twoWordName: entry.two_word_name || entry.id,
+        entryDuration: entry.duration_sec || 0,
+        start: seg.start,
+        end: seg.end,
+        segIndex: s,
+        wordSet: new Set(words),
+        nonStopWords: new Set(words.filter(w => !STOP_WORDS.has(w))),
+        wordCount: words.length
+      });
+    }
+    showProgress(((e + 1) / allEntries.length) * 100,
+      `[INDEXING: ${e + 1}/${allEntries.length} entries...]`);
+  }
+
+  if (allSegments.length > MAX_SEGMENTS_WARN) {
+    console.warn(`[DIALOGUE-MATCHER] ${commaNum(allSegments.length)} segments — Mode B/C may be slow`);
+  }
+
+  hideProgress();
+  setStatus('green', `${allEntries.length} clips · ${commaNum(allSegments.length)} segments`);
+  enableControls();
+  runMatch();
+}
+
+function enableControls() {
+  selectAllBtn.disabled = false;
+  exportBtn.disabled = false;
+  previewBtn.disabled = false;
+  clearQueueBtn.disabled = false;
+  exportDecisionsBtn.disabled = false;
+}
+
+// ── MATCHING: DISPATCHER ──
+async function runMatch() {
+  if (isProcessing) return;
+  isProcessing = true;
+  matchGroups = [];
+  filteredGroups = [];
+  expandedGroups.clear();
+  expandedMore.clear();
+  renderedCount = 0;
+  groupList.innerHTML = '';
+  emptyState.classList.remove('at_visible');
+
+  if (currentMode === 'A') {
+    matchModeA();
+  } else if (currentMode === 'B') {
+    await matchModeB();
+  } else if (currentMode === 'C') {
+    await matchModeC();
+  }
+
+  assembleGroups();
+  applySearch();
+  renderGroups();
+  hideProgress();
+  isProcessing = false;
+}
+
+// ── MODE A: EXACT ──
+function matchModeA() {
+  showProgress(50, '[MODE A: EXACT MATCHING...]');
+  const map = new Map();
+
+  for (const seg of allSegments) {
+    if (seg.wordCount < 2) continue;
+    if (!map.has(seg.normalized)) {
+      map.set(seg.normalized, []);
+    }
+    map.get(seg.normalized).push(seg);
+  }
+
+  let groupIdx = 0;
+  for (const [normalized, segs] of map) {
+    const uniqueEntries = new Set(segs.map(s => s.entryId));
+    if (uniqueEntries.size < 2) continue;
+
+    matchGroups.push({
+      group_id: `MG_${String(++groupIdx).padStart(3, '0')}`,
+      canonical_text: segs[0].original,
+      normalized,
+      matches: segs.map(s => ({
+        entry_id: s.entryId,
+        entry_filename: s.entryFilename,
+        two_word_name: s.twoWordName,
+        start: s.start,
+        end: s.end,
+        duration: s.entryDuration,
+        original_text: s.original,
+        similarity: 1.0,
+        seg_index: s.segIndex
+      })),
+      match_count: segs.length,
+      unique_entries: uniqueEntries.size
+    });
+  }
+  showProgress(100, `[MODE A: ${matchGroups.length} groups found]`);
+}
+
+// ── MODE B: SUBSTRING ──
+async function matchModeB() {
+  const eligible = allSegments.filter(s => s.wordCount >= SUBSTRING_MIN_WORDS);
+  const totalPairs = countCrossEntryPairs(eligible);
+  showProgress(0, `[MODE B: COMPARING ${commaNum(totalPairs)} pairs...]`);
+
+  // Build a map of results: key = canonical pair signature -> { segments }
+  const unionFind = new UnionFind();
+  let processed = 0;
+
+  for (let i = 0; i < eligible.length; i++) {
+    for (let j = i + 1; j < eligible.length; j++) {
+      if (eligible[i].entryId === eligible[j].entryId) continue;
+      processed++;
+
+      const a = eligible[i].normalized;
+      const b = eligible[j].normalized;
+
+      if (a.includes(b) || b.includes(a)) {
+        unionFind.union(i, j);
+      }
+
+      if (processed % BATCH_SIZE === 0) {
+        const pct = Math.min(99, (processed / totalPairs) * 100);
+        showProgress(pct, `[MODE B: ${commaNum(processed)} / ${commaNum(totalPairs)} pairs...]`);
+        await yieldUI();
+      }
+    }
+  }
+
+  // Build groups from union-find
+  const groupMap = new Map();
+  for (let i = 0; i < eligible.length; i++) {
+    const root = unionFind.find(i);
+    if (!groupMap.has(root)) groupMap.set(root, []);
+    groupMap.get(root).push(eligible[i]);
+  }
+
+  let groupIdx = 0;
+  for (const [, segs] of groupMap) {
+    const uniqueEntries = new Set(segs.map(s => s.entryId));
+    if (uniqueEntries.size < 2) continue;
+
+    // Use the longest text as canonical
+    const canonical = segs.reduce((a, b) => a.original.length > b.original.length ? a : b);
+
+    matchGroups.push({
+      group_id: `MG_${String(++groupIdx).padStart(3, '0')}`,
+      canonical_text: canonical.original,
+      normalized: canonical.normalized,
+      matches: segs.map(s => ({
+        entry_id: s.entryId,
+        entry_filename: s.entryFilename,
+        two_word_name: s.twoWordName,
+        start: s.start,
+        end: s.end,
+        duration: s.entryDuration,
+        original_text: s.original,
+        similarity: 1.0,
+        seg_index: s.segIndex
+      })),
+      match_count: segs.length,
+      unique_entries: uniqueEntries.size
+    });
+  }
+  showProgress(100, `[MODE B: ${matchGroups.length} groups found]`);
+}
+
+// ── MODE C: JACCARD ──
+async function matchModeC() {
+  const mw = minWords;
+  const eligible = allSegments.filter(s => s.wordCount >= mw);
+  const totalPairs = countCrossEntryPairs(eligible);
+  showProgress(0, `[MODE C: COMPARING ${commaNum(totalPairs)} pairs...]`);
+
+  const unionFind = new UnionFind();
+  const similarities = new Map(); // "i:j" -> similarity
+  let processed = 0;
+  let skippedNoOverlap = 0;
+
+  for (let i = 0; i < eligible.length; i++) {
+    for (let j = i + 1; j < eligible.length; j++) {
+      if (eligible[i].entryId === eligible[j].entryId) continue;
+      processed++;
+
+      const a = eligible[i];
+      const b = eligible[j];
+
+      // Pre-filter: skip if no shared non-stop words
+      let hasShared = false;
+      for (const w of a.nonStopWords) {
+        if (b.nonStopWords.has(w)) { hasShared = true; break; }
+      }
+      if (!hasShared) { skippedNoOverlap++; continue; }
+
+      // Pre-filter: skip if durations differ by >50%
+      if (a.duration > 0 && b.duration > 0) {
+        const segDurA = a.end - a.start;
+        const segDurB = b.end - b.start;
+        if (segDurA > 0 && segDurB > 0) {
+          const ratio = segDurA / segDurB;
+          if (ratio > 2.0 || ratio < 0.5) continue;
+        }
+      }
+
+      // Jaccard similarity
+      const intersection = new Set([...a.wordSet].filter(w => b.wordSet.has(w)));
+      const unionSize = new Set([...a.wordSet, ...b.wordSet]).size;
+      const sim = intersection.size / unionSize;
+
+      if (sim >= similarityThreshold) {
+        unionFind.union(i, j);
+        similarities.set(`${i}:${j}`, sim);
+      }
+
+      if (processed % BATCH_SIZE === 0) {
+        const pct = Math.min(99, (processed / totalPairs) * 100);
+        showProgress(pct, `[MODE C: ${commaNum(processed)} / ${commaNum(totalPairs)} pairs...]`);
+        await yieldUI();
+      }
+    }
+  }
+
+  // Build groups
+  const groupMap = new Map();
+  for (let i = 0; i < eligible.length; i++) {
+    const root = unionFind.find(i);
+    if (!groupMap.has(root)) groupMap.set(root, []);
+    groupMap.get(root).push({ seg: eligible[i], idx: i });
+  }
+
+  let groupIdx = 0;
+  for (const [, items] of groupMap) {
+    const uniqueEntries = new Set(items.map(it => it.seg.entryId));
+    if (uniqueEntries.size < 2) continue;
+
+    const canonical = items.reduce((a, b) =>
+      a.seg.original.length > b.seg.original.length ? a : b
+    );
+
+    matchGroups.push({
+      group_id: `MG_${String(++groupIdx).padStart(3, '0')}`,
+      canonical_text: canonical.seg.original,
+      normalized: canonical.seg.normalized,
+      matches: items.map(it => {
+        // Find best similarity to canonical
+        let sim = 1.0;
+        if (it.idx !== canonical.idx) {
+          const key1 = `${Math.min(it.idx, canonical.idx)}:${Math.max(it.idx, canonical.idx)}`;
+          sim = similarities.get(key1) || 0.6;
+        }
+        return {
+          entry_id: it.seg.entryId,
+          entry_filename: it.seg.entryFilename,
+          two_word_name: it.seg.twoWordName,
+          start: it.seg.start,
+          end: it.seg.end,
+          duration: it.seg.entryDuration,
+          original_text: it.seg.original,
+          similarity: Math.round(sim * 100) / 100,
+          seg_index: it.seg.segIndex
+        };
+      }),
+      match_count: items.length,
+      unique_entries: uniqueEntries.size
+    });
+  }
+
+  console.log(`[MODE C] Skipped ${commaNum(skippedNoOverlap)} pairs (no shared content words)`);
+  showProgress(100, `[MODE C: ${matchGroups.length} groups found]`);
+}
+
+// ── UNION FIND ──
+class UnionFind {
+  constructor() { this.parent = new Map(); this.rank = new Map(); }
+  find(x) {
+    if (!this.parent.has(x)) { this.parent.set(x, x); this.rank.set(x, 0); }
+    if (this.parent.get(x) !== x) this.parent.set(x, this.find(this.parent.get(x)));
+    return this.parent.get(x);
+  }
+  union(x, y) {
+    const rx = this.find(x), ry = this.find(y);
+    if (rx === ry) return;
+    const rankX = this.rank.get(rx), rankY = this.rank.get(ry);
+    if (rankX < rankY) { this.parent.set(rx, ry); }
+    else if (rankX > rankY) { this.parent.set(ry, rx); }
+    else { this.parent.set(ry, rx); this.rank.set(rx, rankX + 1); }
+  }
+}
+
+// ── HELPERS ──
+function countCrossEntryPairs(segs) {
+  // Approximate count: total pairs minus same-entry pairs
+  const entryCounts = new Map();
+  for (const s of segs) {
+    entryCounts.set(s.entryId, (entryCounts.get(s.entryId) || 0) + 1);
+  }
+  const total = (segs.length * (segs.length - 1)) / 2;
+  let sameEntry = 0;
+  for (const c of entryCounts.values()) sameEntry += (c * (c - 1)) / 2;
+  return Math.max(0, Math.floor(total - sameEntry));
+}
+
+// ── GROUP ASSEMBLY ──
+function assembleGroups() {
+  // Sort: unique_entries DESC, then match_count DESC
+  matchGroups.sort((a, b) => {
+    if (b.unique_entries !== a.unique_entries) return b.unique_entries - a.unique_entries;
+    return b.match_count - a.match_count;
+  });
+
+  // Re-number group IDs after sort
+  matchGroups.forEach((g, i) => {
+    g.group_id = `MG_${String(i + 1).padStart(3, '0')}`;
+  });
+}
+
+// ── SEARCH ──
+function applySearch() {
+  if (!searchTerm) {
+    filteredGroups = matchGroups;
+  } else {
+    const lower = searchTerm.toLowerCase();
+    filteredGroups = matchGroups.filter(g => {
+      if (g.canonical_text.toLowerCase().includes(lower)) return true;
+      return g.matches.some(m => m.original_text.toLowerCase().includes(lower));
+    });
+  }
+
+  hitCount.textContent = searchTerm
+    ? `${filteredGroups.length} hit${filteredGroups.length !== 1 ? 's' : ''}`
+    : '';
+}
+
+// ── RENDERING ──
+function renderGroups() {
+  renderedCount = 0;
+  groupList.innerHTML = '';
+
+  if (filteredGroups.length === 0 && allSegments.length > 0) {
+    emptyState.classList.add('at_visible');
+    setStatus('green',
+      `${allEntries.length} clips · ${commaNum(allSegments.length)} segs · 0 groups`);
+    return;
+  }
+  emptyState.classList.remove('at_visible');
+
+  const toRender = Math.min(filteredGroups.length, MAX_RENDERED_GROUPS);
+  const frag = document.createDocumentFragment();
+
+  for (let i = 0; i < toRender; i++) {
+    frag.appendChild(createGroupCard(filteredGroups[i], i));
+  }
+  renderedCount = toRender;
+
+  if (filteredGroups.length > toRender) {
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'at_load_more_btn';
+    moreBtn.textContent = `LOAD ${filteredGroups.length - toRender} MORE GROUPS`;
+    moreBtn.addEventListener('click', () => loadMoreGroups(moreBtn));
+    frag.appendChild(moreBtn);
+  }
+
+  groupList.appendChild(frag);
+
+  setStatus('green',
+    `${allEntries.length} clips · ${commaNum(allSegments.length)} segs · ${matchGroups.length} groups`);
+
+  // Animate entrance
+  const cards = groupList.querySelectorAll('.at_match_group');
+  if (cards.length > 0) {
+    gsap.fromTo(cards,
+      { opacity: 0, y: 8 },
+      { opacity: 1, y: 0, duration: 0.25, stagger: 0.015, ease: 'power2.out' }
+    );
+  }
+}
+
+function loadMoreGroups(btn) {
+  btn.remove();
+  const start = renderedCount;
+  const end = Math.min(filteredGroups.length, start + MAX_RENDERED_GROUPS);
+  const frag = document.createDocumentFragment();
+
+  for (let i = start; i < end; i++) {
+    frag.appendChild(createGroupCard(filteredGroups[i], i));
+  }
+  renderedCount = end;
+
+  if (filteredGroups.length > end) {
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'at_load_more_btn';
+    moreBtn.textContent = `LOAD ${filteredGroups.length - end} MORE GROUPS`;
+    moreBtn.addEventListener('click', () => loadMoreGroups(moreBtn));
+    frag.appendChild(moreBtn);
+  }
+
+  groupList.appendChild(frag);
+}
+
+function createGroupCard(group, idx) {
+  const card = document.createElement('div');
+  card.className = 'at_match_group';
+  card.dataset.groupId = group.group_id;
+
+  if (expandedGroups.has(group.group_id)) card.classList.add('at_expanded');
+  if (searchTerm && !matchesSearch(group)) card.classList.add('at_dimmed');
+
+  // Check selection state
+  const allSelected = group.matches.every((_, mi) =>
+    selectedMatches.has(`${group.group_id}:${mi}`));
+  const someSelected = group.matches.some((_, mi) =>
+    selectedMatches.has(`${group.group_id}:${mi}`));
+
+  card.innerHTML = `
+    <div class="at_group_header">
+      <div class="at_checkbox ${allSelected ? 'at_checked' : someSelected ? 'at_partial' : ''}"
+           data-action="toggle-group" data-group="${group.group_id}"></div>
+      <span class="at_group_id">${group.group_id}</span>
+      <span class="at_group_text">${highlightText(truncate(group.canonical_text, 100), searchTerm)}</span>
+      <div class="at_group_badges">
+        <span class="at_badge at_badge_matches">${group.match_count} match${group.match_count !== 1 ? 'es' : ''}</span>
+        <span class="at_badge at_badge_entries">${group.unique_entries} clip${group.unique_entries !== 1 ? 's' : ''}</span>
+      </div>
+      <span class="at_group_arrow">&#9654;</span>
+    </div>
+    <div class="at_group_body">
+      <div class="at_group_actions">
+        <button class="at_btn at_btn_cyan" data-action="mark-all" data-group="${group.group_id}">MARK ALL</button>
+        <button class="at_btn at_btn_amber" data-action="subclip-all" data-group="${group.group_id}">SUBCLIP ALL</button>
+        <button class="at_btn" data-action="color-all" data-group="${group.group_id}">COLOR ALL</button>
+      </div>
+      ${renderMatchRows(group)}
+    </div>
+  `;
+
+  return card;
+}
+
+function renderMatchRows(group) {
+  const limit = expandedMore.has(group.group_id)
+    ? group.matches.length
+    : Math.min(group.matches.length, MAX_MATCHES_SHOWN);
+
+  let html = '';
+  for (let i = 0; i < limit; i++) {
+    const m = group.matches[i];
+    const checked = selectedMatches.has(`${group.group_id}:${i}`) ? 'at_checked' : '';
+    const posLeft = m.duration > 0 ? ((m.start / m.duration) * 100) : 0;
+    const posWidth = m.duration > 0 ? (((m.end - m.start) / m.duration) * 100) : 2;
+
+    html += `
+      <div class="at_alignment_row">
+        <div class="at_checkbox at_align_check ${checked}"
+             data-action="toggle-match" data-group="${group.group_id}" data-match="${i}"></div>
+        <span class="at_align_entry" title="${escapeHtml(m.entry_filename)}">${escapeHtml(m.two_word_name)}</span>
+        <span class="at_align_tc">${formatTC(m.start)}</span>
+        <span class="at_align_text">${highlightText(m.original_text, searchTerm)}</span>
+        <div class="at_timeline_bar">
+          <div class="at_timeline_segment" style="left:${posLeft}%;width:${Math.max(posWidth, 1)}%"></div>
+        </div>
+        ${currentMode === 'C' && m.similarity < 1.0
+          ? `<span class="at_align_similarity">${Math.round(m.similarity * 100)}%</span>`
+          : ''}
+      </div>
+    `;
+  }
+
+  if (group.matches.length > MAX_MATCHES_SHOWN && !expandedMore.has(group.group_id)) {
+    html += `<button class="at_more_btn" data-action="show-more" data-group="${group.group_id}">+${group.matches.length - MAX_MATCHES_SHOWN} MORE</button>`;
+  }
+
+  return html;
+}
+
+function matchesSearch(group) {
+  if (!searchTerm) return true;
+  const lower = searchTerm.toLowerCase();
+  if (group.canonical_text.toLowerCase().includes(lower)) return true;
+  return group.matches.some(m => m.original_text.toLowerCase().includes(lower));
+}
+
+function truncate(text, max) {
+  if (text.length <= max) return text;
+  return text.slice(0, max) + '...';
+}
+
+// ── EVENT DELEGATION ──
+groupList.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el) {
+    // Click on header to expand/collapse
+    const header = e.target.closest('.at_group_header');
+    if (header && !e.target.closest('.at_checkbox')) {
+      const card = header.closest('.at_match_group');
+      const gid = card.dataset.groupId;
+      if (expandedGroups.has(gid)) {
+        expandedGroups.delete(gid);
+        card.classList.remove('at_expanded');
+      } else {
+        expandedGroups.add(gid);
+        card.classList.add('at_expanded');
+        // Animate body in
+        const body = card.querySelector('.at_group_body');
+        gsap.fromTo(body, { opacity: 0 }, { opacity: 1, duration: 0.25 });
+      }
+    }
+    return;
+  }
+
+  const action = el.dataset.action;
+  const gid = el.dataset.group;
+
+  switch (action) {
+    case 'toggle-group': toggleGroup(gid); break;
+    case 'toggle-match': toggleMatch(gid, parseInt(el.dataset.match)); break;
+    case 'mark-all': queueAction(gid, 'add_marker'); break;
+    case 'subclip-all': queueAction(gid, 'create_subclip'); break;
+    case 'color-all': queueAction(gid, 'set_clip_color'); break;
+    case 'show-more': showMoreMatches(gid); break;
+  }
+});
+
+// ── SELECTION ──
+function toggleGroup(gid) {
+  const group = matchGroups.find(g => g.group_id === gid);
+  if (!group) return;
+
+  const allSelected = group.matches.every((_, i) =>
+    selectedMatches.has(`${gid}:${i}`));
+
+  group.matches.forEach((_, i) => {
+    const key = `${gid}:${i}`;
+    if (allSelected) {
+      selectedMatches.delete(key);
+    } else {
+      selectedMatches.add(key);
+    }
+  });
+
+  refreshGroupCard(gid);
+  updateDecisionUI();
+}
+
+function toggleMatch(gid, matchIdx) {
+  const key = `${gid}:${matchIdx}`;
+  if (selectedMatches.has(key)) {
+    selectedMatches.delete(key);
+  } else {
+    selectedMatches.add(key);
+  }
+  refreshGroupCard(gid);
+  updateDecisionUI();
+}
+
+function selectAllVisible() {
+  for (const g of filteredGroups) {
+    const limit = expandedMore.has(g.group_id)
+      ? g.matches.length
+      : Math.min(g.matches.length, MAX_MATCHES_SHOWN);
+    for (let i = 0; i < limit; i++) {
+      selectedMatches.add(`${g.group_id}:${i}`);
+    }
+  }
+  refreshAllCards();
+  updateDecisionUI();
+}
+
+function showMoreMatches(gid) {
+  expandedMore.add(gid);
+  refreshGroupCard(gid);
+}
+
+function refreshGroupCard(gid) {
+  const card = groupList.querySelector(`[data-group-id="${gid}"]`);
+  if (!card) return;
+
+  const group = matchGroups.find(g => g.group_id === gid);
+  if (!group) return;
+
+  const wasExpanded = card.classList.contains('at_expanded');
+  const idx = filteredGroups.indexOf(group);
+  const newCard = createGroupCard(group, idx);
+  if (wasExpanded) {
+    newCard.classList.add('at_expanded');
+    expandedGroups.add(gid);
+  }
+  card.replaceWith(newCard);
+}
+
+function refreshAllCards() {
+  const cards = groupList.querySelectorAll('.at_match_group');
+  cards.forEach(card => {
+    const gid = card.dataset.groupId;
+    refreshGroupCard(gid);
+  });
+}
+
+// ── DECISION QUEUE ──
+function queueAction(gid, actionType) {
+  const group = matchGroups.find(g => g.group_id === gid);
+  if (!group) return;
+
+  // Get selected matches in this group, or all if none selected
+  const selected = group.matches
+    .map((m, i) => ({ match: m, idx: i }))
+    .filter(({ idx }) => selectedMatches.has(`${gid}:${idx}`));
+
+  const targets = selected.length > 0 ? selected.map(s => s.match) : group.matches;
+
+  if (actionType === 'set_clip_color') {
+    // One decision per unique entry
+    const seenEntries = new Set();
+    for (const m of targets) {
+      if (seenEntries.has(m.entry_id)) continue;
+      seenEntries.add(m.entry_id);
+      decisions.push({
+        type: 'set_clip_color',
+        group_id: gid,
+        entry_id: m.entry_id,
+        entry_filename: m.entry_filename,
+        color: 'Chocolate',
+        note: `Dialogue match group ${gid}: "${truncate(group.canonical_text, 60)}"`
+      });
+    }
+  } else {
+    for (const m of targets) {
+      decisions.push({
+        type: actionType,
+        group_id: gid,
+        entry_id: m.entry_id,
+        entry_filename: m.entry_filename,
+        two_word_name: m.two_word_name,
+        start_sec: m.start,
+        end_sec: m.end,
+        start_tc: secsToTC(m.start),
+        end_tc: secsToTC(m.end),
+        text: m.original_text,
+        ...(actionType === 'add_marker' ? {
+          marker_name: `Match: ${truncate(group.canonical_text, 40)}`,
+          marker_color: 'Blue',
+          marker_note: `${gid} | sim=${m.similarity}`
+        } : {}),
+        ...(actionType === 'create_subclip' ? {
+          subclip_name: `${gid}_${sanitizeFilename(m.two_word_name)}_${formatTC(m.start).replace(/:/g, '')}`,
+        } : {})
+      });
+    }
+  }
+
+  updateDecisionUI();
+
+  // Pulse animation on decision count
+  gsap.fromTo(decisionCount, { scale: 1.15 }, { scale: 1, duration: 0.3, ease: 'power2.out' });
+}
+
+function updateDecisionUI() {
+  const count = decisions.length;
+  decisionCount.textContent = `${count} DECISION${count !== 1 ? 'S' : ''} QUEUED`;
+
+  const markers = decisions.filter(d => d.type === 'add_marker').length;
+  const subclips = decisions.filter(d => d.type === 'create_subclip').length;
+  const colors = decisions.filter(d => d.type === 'set_clip_color').length;
+
+  const parts = [];
+  if (markers) parts.push(`${markers} marker${markers !== 1 ? 's' : ''}`);
+  if (subclips) parts.push(`${subclips} subclip${subclips !== 1 ? 's' : ''}`);
+  if (colors) parts.push(`${colors} color${colors !== 1 ? 's' : ''}`);
+  decisionBreakdown.textContent = parts.join(' · ');
+}
+
+function clearQueue() {
+  decisions = [];
+  updateDecisionUI();
+}
+
+// ── EXPORTS ──
+function buildDecisionsPayload() {
+  return {
+    generated_by: 'yd-dialogue-matcher',
+    generated_at: new Date().toISOString(),
+    fps: FPS,
+    mode: currentMode,
+    similarity_threshold: currentMode === 'C' ? similarityThreshold : null,
+    total_groups: matchGroups.length,
+    total_segments: allSegments.length,
+    decisions: decisions
+  };
+}
+
+function exportDecisions() {
+  const payload = buildDecisionsPayload();
+  downloadFile(JSON.stringify(payload, null, 2), 'edit_decisions.json', 'application/json');
+}
+
+function exportEdl() {
+  let edl = `TITLE: YD_DIALOGUE_MATCHES\nFCM: NON-DROP FRAME\n\n`;
+  let eventNum = 0;
+
+  for (const group of matchGroups) {
+    for (const m of group.matches) {
+      eventNum++;
+      const num = String(eventNum).padStart(3, '0');
+      const srcIn = secsToTC(m.start);
+      const srcOut = secsToTC(m.end);
+
+      edl += `${num}  AX       V     C        ${srcIn} ${srcOut} ${srcIn} ${srcOut}\n`;
+      edl += `* FROM CLIP NAME: ${m.entry_filename}\n`;
+      edl += `* COMMENT: ${group.group_id} | ${m.two_word_name} | "${truncate(group.canonical_text, 50)}"\n\n`;
+    }
+  }
+
+  downloadFile(edl, 'dialogue_matches.edl', 'text/plain');
+}
+
+function exportMarkers() {
+  const markers = [];
+  for (const group of matchGroups) {
+    for (const m of group.matches) {
+      markers.push({
+        name: `Match: ${truncate(group.canonical_text, 40)}`,
+        start_tc: secsToTC(m.start),
+        end_tc: secsToTC(m.end),
+        color: 'Blue',
+        note: `${group.group_id} | ${m.two_word_name} | sim=${m.similarity}`,
+        clip: m.entry_filename
+      });
+    }
+  }
+
+  downloadFile(JSON.stringify(markers, null, 2), 'dialogue_markers.json', 'application/json');
+}
+
+function exportCsv() {
+  const header = 'group_id,canonical_text,entry_filename,two_word_name,timecode_in,timecode_out,similarity,decision_type\n';
+  let rows = '';
+
+  for (const group of matchGroups) {
+    for (const m of group.matches) {
+      const decisionTypes = decisions
+        .filter(d => d.group_id === group.group_id && d.entry_id === m.entry_id)
+        .map(d => d.type)
+        .join(';') || '';
+
+      rows += [
+        group.group_id,
+        `"${group.canonical_text.replace(/"/g, '""')}"`,
+        `"${m.entry_filename.replace(/"/g, '""')}"`,
+        `"${m.two_word_name.replace(/"/g, '""')}"`,
+        secsToTC(m.start),
+        secsToTC(m.end),
+        m.similarity,
+        decisionTypes
+      ].join(',') + '\n';
+    }
+  }
+
+  downloadFile(header + rows, 'dialogue_matches.csv', 'text/csv');
+}
+
+// ── MODE TOGGLE ──
+$$('.at_mode_btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (isProcessing) return;
+    const mode = btn.dataset.mode;
+    if (mode === currentMode) return;
+
+    $$('.at_mode_btn').forEach(b => b.classList.remove('at_active'));
+    btn.classList.add('at_active');
+    currentMode = mode;
+
+    // Show/hide settings bar for Mode C
+    settingsBar.classList.toggle('at_visible', mode === 'C');
+
+    if (allSegments.length > 0) runMatch();
+  });
+});
+
+// ── SETTINGS ──
+thresholdSlider.addEventListener('input', () => {
+  similarityThreshold = parseFloat(thresholdSlider.value);
+  thresholdVal.textContent = similarityThreshold.toFixed(2);
+});
+
+minWordsSlider.addEventListener('input', () => {
+  minWords = parseInt(minWordsSlider.value);
+  minWordsVal.textContent = minWords;
+});
+
+rerunBtn.addEventListener('click', () => {
+  if (allSegments.length > 0 && !isProcessing) runMatch();
+});
+
+// ── SEARCH ──
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    searchTerm = searchInput.value.trim();
+    searchClear.classList.toggle('at_visible', searchTerm.length > 0);
+    applySearch();
+    renderGroups();
+  }, SEARCH_DEBOUNCE_MS);
+});
+
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchTerm = '';
+  searchClear.classList.remove('at_visible');
+  hitCount.textContent = '';
+  applySearch();
+  renderGroups();
+});
+
+// ── EXPORT DROPDOWN ──
+exportBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  exportDrop.classList.toggle('at_open');
+});
+
+document.addEventListener('click', () => {
+  exportDrop.classList.remove('at_open');
+});
+
+$$('.at_dropdown_item').forEach(item => {
+  item.addEventListener('click', () => {
+    exportDrop.classList.remove('at_open');
+    const type = item.dataset.export;
+    switch (type) {
+      case 'decisions': exportDecisions(); break;
+      case 'edl': exportEdl(); break;
+      case 'markers': exportMarkers(); break;
+      case 'csv': exportCsv(); break;
+    }
+  });
+});
+
+// ── BOTTOM BAR BUTTONS ──
+selectAllBtn.addEventListener('click', selectAllVisible);
+clearQueueBtn.addEventListener('click', clearQueue);
+exportDecisionsBtn.addEventListener('click', exportDecisions);
+
+previewBtn.addEventListener('click', () => {
+  const payload = buildDecisionsPayload();
+  previewContent.textContent = JSON.stringify(payload, null, 2);
+  previewModal.classList.add('at_visible');
+});
+
+previewClose.addEventListener('click', () => {
+  previewModal.classList.remove('at_visible');
+});
+
+previewModal.addEventListener('click', (e) => {
+  if (e.target === previewModal) previewModal.classList.remove('at_visible');
+});
+
+// ── KEYBOARD ──
+document.addEventListener('keydown', (e) => {
+  // Don't intercept when typing in input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    if (e.key === 'Escape') {
+      e.target.blur();
+      if (searchTerm) {
+        searchInput.value = '';
+        searchTerm = '';
+        searchClear.classList.remove('at_visible');
+        hitCount.textContent = '';
+        applySearch();
+        renderGroups();
+      }
+    }
+    return;
+  }
+
+  switch (e.key) {
+    case '/':
+      e.preventDefault();
+      searchInput.focus();
+      break;
+    case 'Escape':
+      if (previewModal.classList.contains('at_visible')) {
+        previewModal.classList.remove('at_visible');
+      } else if (searchTerm) {
+        searchInput.value = '';
+        searchTerm = '';
+        searchClear.classList.remove('at_visible');
+        hitCount.textContent = '';
+        applySearch();
+        renderGroups();
+      }
+      break;
+    case '1': switchMode('A'); break;
+    case '2': switchMode('B'); break;
+    case '3': switchMode('C'); break;
+  }
+});
+
+function switchMode(mode) {
+  if (isProcessing || mode === currentMode) return;
+  $$('.at_mode_btn').forEach(b => {
+    b.classList.toggle('at_active', b.dataset.mode === mode);
+  });
+  currentMode = mode;
+  settingsBar.classList.toggle('at_visible', mode === 'C');
+  if (allSegments.length > 0) runMatch();
+}
+
+// ── INIT ──
+loadFromServer();
+</script>
+</body>
+</html>

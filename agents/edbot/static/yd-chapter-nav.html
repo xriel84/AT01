@@ -3,573 +3,1090 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YD Chapter Nav</title>
+<title>YD Chapter Navigator</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* --- Reset & Base --- */
+/* ── RESET + BASE ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-    background: #1a1a2e;
-    color: #e0e0e0;
-    line-height: 1.4;
-    min-height: 100vh;
+
+:root {
+  --bg: #0a0c0f;
+  --surface: #111318;
+  --surface-raised: #161a22;
+  --border: #1e2330;
+  --border-active: #06b6d4;
+  --cyan: #06b6d4;
+  --cyan-dim: #0891b2;
+  --amber: #f59e0b;
+  --amber-dim: #d97706;
+  --text: #e2e8f0;
+  --text-muted: #64748b;
+  --text-dim: #475569;
+  --red: #ef4444;
+  --green: #22c55e;
+  --search-highlight: rgba(245, 158, 11, 0.2);
+  --font: 'IBM Plex Mono', monospace;
 }
 
-/* --- HUD Bar --- */
-.hud {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 16px;
-    background: #16213e;
-    border-bottom: 1px solid #0f3460;
-    flex-wrap: wrap;
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.5;
+  height: 100%;
+  overflow: hidden;
 }
-.hud h1 {
-    font-size: 16px; font-weight: 600;
-    color: #e94560; letter-spacing: 0.5px; white-space: nowrap;
-}
-.hud select, .hud input[type="text"] {
-    padding: 5px 8px; font-size: 12px;
-    background: #0f3460; border: 1px solid #1a4080;
-    color: #e0e0e0; border-radius: 3px;
-}
-.hud select { max-width: 340px; }
-.hud input[type="text"] { width: 200px; }
-.hud input[type="text"]:focus, .hud select:focus { outline: none; border-color: #e94560; }
-.hud-stats {
-    font-size: 11px; color: #8899aa; margin-left: auto; white-space: nowrap;
-}
-.hud-stats span { color: #e0e0e0; font-weight: 600; }
 
-/* --- Settings Bar --- */
-.settings-bar {
-    display: flex; align-items: center; gap: 14px;
-    padding: 6px 16px;
-    background: #16213e;
-    border-bottom: 1px solid #0f3460;
-    font-size: 12px; color: #8899aa;
+/* ── LAYOUT ── */
+.at_app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
-.settings-bar label { display: flex; align-items: center; gap: 4px; }
-.settings-bar input[type="range"] { width: 100px; accent-color: #e94560; }
-.settings-bar input[type="number"] {
-    width: 54px; padding: 3px 5px; font-size: 12px;
-    background: #0f3460; border: 1px solid #1a4080;
-    color: #e0e0e0; border-radius: 3px; text-align: center;
-}
-.settings-bar input[type="number"]:focus { outline: none; border-color: #e94560; }
-.settings-bar .val { color: #e0e0e0; font-weight: 600; min-width: 28px; text-align: center; }
 
-/* --- Buttons --- */
-.btn {
-    padding: 5px 12px; font-size: 12px; font-weight: 600;
-    border: 1px solid #1a4080; border-radius: 3px;
-    cursor: pointer; background: #0f3460; color: #e0e0e0; white-space: nowrap;
+/* ── HUD BAR ── */
+.at_hud {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
 }
-.btn:hover { background: #1a4080; }
-.btn:active { background: #245090; }
-.btn-accent { background: #e94560; border-color: #e94560; color: #fff; }
-.btn-accent:hover { background: #d63050; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* --- Drop zone --- */
-.drop-zone {
-    margin: 40px auto; padding: 60px 20px;
-    max-width: 600px; text-align: center;
-    border: 2px dashed #0f3460; border-radius: 8px;
-    color: #8899aa; font-size: 14px;
-    transition: border-color 0.2s;
+.at_hud_title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
 }
-.drop-zone.over { border-color: #e94560; color: #e0e0e0; }
-.drop-zone p { margin-bottom: 8px; }
 
-/* --- Chapter list --- */
-.chapter-list { padding: 12px 16px; max-width: 1000px; margin: 0 auto; }
-
-.chapter-card {
-    background: #16213e;
-    border: 1px solid #0f3460;
-    border-radius: 6px;
-    margin-bottom: 8px;
-    overflow: hidden;
-    transition: border-color 0.15s;
+.at_clip_select {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  max-width: 360px;
+  cursor: pointer;
 }
-.chapter-card:hover { border-color: #1a4080; }
-.chapter-card.search-hit { border-color: #c08020; }
+.at_clip_select:focus { border-color: var(--cyan); outline: none; }
 
-.card-header {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 14px;
-    cursor: pointer;
-    user-select: none;
+.at_search_wrap {
+  position: relative;
+  flex: 1;
+  min-width: 140px;
+  max-width: 320px;
 }
-.card-header:hover { background: rgba(255,255,255,0.02); }
 
-.ch-pill {
-    display: inline-flex; align-items: center; justify-content: center;
-    min-width: 28px; height: 22px; padding: 0 6px;
-    background: #e94560; color: #fff;
-    font-size: 11px; font-weight: 700;
-    border-radius: 11px; flex-shrink: 0;
+.at_search {
+  width: 100%;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 4px 28px 4px 8px;
+  border-radius: 3px;
 }
-.ch-label {
-    flex: 1; font-size: 13px; font-weight: 600;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.ch-tc {
-    font-family: "Cascadia Mono", "Consolas", monospace;
-    font-size: 11px; color: #8899aa; white-space: nowrap;
-}
-.ch-dur { font-size: 11px; color: #667788; white-space: nowrap; }
-.ch-toggle { font-size: 10px; color: #667788; transition: transform 0.2s; }
-.chapter-card.open .ch-toggle { transform: rotate(90deg); }
+.at_search:focus { border-color: var(--cyan); outline: none; }
+.at_search::placeholder { color: var(--text-dim); }
 
-.card-body {
-    display: none; padding: 0 14px 12px;
-    font-size: 12px; color: #aabbcc;
+.at_search_clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  display: none;
+  font-family: var(--font);
 }
-.chapter-card.open .card-body { display: block; }
+.at_search_clear.at_visible { display: block; }
+.at_search_clear:hover { color: var(--text); }
 
-.card-body .snippet {
-    background: #0d1b30; padding: 8px 10px;
-    border-radius: 4px; margin-bottom: 8px;
-    max-height: 160px; overflow-y: auto;
-    line-height: 1.5; white-space: pre-wrap;
+.at_stats {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.card-body .card-actions { display: flex; gap: 6px; }
-mark { background: #c08020; color: #fff; border-radius: 2px; padding: 0 1px; }
 
-/* --- Hidden --- */
-.hidden { display: none !important; }
+.at_status_dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.at_status_dot.at_green { background: var(--green); }
+.at_status_dot.at_amber { background: var(--amber); }
+.at_status_dot.at_red { background: var(--red); }
 
-/* --- Scrollbar --- */
+.at_hit_count {
+  color: var(--amber);
+  font-weight: 500;
+}
+
+.at_hud_actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.at_btn {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+.at_btn:hover { border-color: var(--amber); color: var(--amber); }
+.at_btn:active { background: rgba(245, 158, 11, 0.1); }
+.at_btn:disabled { opacity: 0.3; cursor: default; }
+
+.at_btn_cyan:hover { border-color: var(--cyan); color: var(--cyan); }
+.at_btn_cyan:active { background: rgba(6, 182, 212, 0.1); }
+
+/* ── SETTINGS BAR ── */
+.at_settings {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 4px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.at_setting_label {
+  color: var(--text-dim);
+}
+
+.at_setting_input {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  width: 50px;
+  text-align: center;
+}
+.at_setting_input:focus { border-color: var(--cyan); outline: none; }
+
+/* ── CARD LIST ── */
+.at_card_area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.at_card_list {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── SINGLE CARD ── */
+.at_card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.15s, opacity 0.2s;
+}
+.at_card.at_active { border-color: var(--cyan); }
+.at_card.at_dimmed { opacity: 0.15; }
+
+.at_card_header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  flex-wrap: wrap;
+}
+.at_card_header:hover { background: var(--surface-raised); }
+
+.at_card_index {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--cyan);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 2px;
+  min-width: 28px;
+  text-align: center;
+}
+
+.at_card_label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  flex: 1 1 0%;
+  min-width: 200px;
+}
+
+.at_card_tc {
+  font-size: 10px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.at_card_meta {
+  font-size: 9px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.at_card_snippet {
+  padding: 0 12px 6px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  max-height: 40px;
+  overflow: hidden;
+}
+
+.at_card_actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.at_card_id {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
+/* ── EXPANDED TRANSCRIPT ── */
+.at_card_transcript {
+  display: none;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  padding: 10px 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.at_card.at_expanded .at_card_transcript { display: block; }
+.at_card.at_expanded .at_expand_label::after { content: ' \25B2'; }
+.at_card:not(.at_expanded) .at_expand_label::after { content: ' \25BC'; }
+
+.at_seg_row {
+  display: flex;
+  gap: 10px;
+  padding: 2px 0;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.at_seg_tc {
+  color: var(--cyan-dim);
+  font-size: 9px;
+  min-width: 60px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.at_seg_text {
+  color: var(--text-muted);
+}
+
+mark.at_highlight {
+  background: var(--search-highlight);
+  color: var(--amber);
+  border-radius: 1px;
+  padding: 0 1px;
+}
+
+/* ── EMPTY / LOADING STATES ── */
+.at_state_msg {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.at_state_msg_large {
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+}
+
+/* ── DROP ZONE ── */
+.at_dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+  max-width: 400px;
+  margin: 20px auto;
+}
+.at_dropzone.at_dragover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+/* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1a4080; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #245090; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 </style>
 </head>
 <body>
 
-<!-- HUD -->
-<div class="hud">
-    <h1>YD Chapter Nav</h1>
-    <select id="clipSelect" title="Select clip"><option value="">-- select clip --</option></select>
-    <input type="text" id="searchInput" placeholder="Search chapters..." title="Filter chapters by keyword">
-    <div class="hud-stats">
-        <span id="statChapters">0</span> chapters &middot;
-        <span id="statSegments">0</span> segments &middot;
-        <span id="statDuration">0:00</span> &middot;
-        hits: <span id="statHits">0</span>
+<div class="at_app" id="atApp">
+  <!-- HUD BAR -->
+  <div class="at_hud">
+    <span class="at_hud_title">YD CHAPTERS</span>
+    <select class="at_clip_select" id="atClipSelect" disabled>
+      <option>[AWAITING DATA]</option>
+    </select>
+    <div class="at_search_wrap">
+      <input class="at_search" id="atSearch" type="text" placeholder="search chapters + transcript..." disabled>
+      <button class="at_search_clear" id="atSearchClear">&times;</button>
     </div>
-    <button class="btn" id="btnExportAllEDL" disabled title="Export all chapters as CMX 3600 EDL">EDL</button>
-    <button class="btn" id="btnExportAllMarkers" disabled title="Export all chapters as Resolve markers JSON">MARKERS</button>
+    <div class="at_stats" id="atStats">
+      <span class="at_status_dot at_amber"></span>
+      <span id="atStatsText">[AWAITING DATA]</span>
+      <span class="at_hit_count" id="atHitCount"></span>
+    </div>
+    <div class="at_hud_actions">
+      <button class="at_btn" id="atExportEdl" disabled>EDL &darr;</button>
+      <button class="at_btn" id="atExportMarkers" disabled>MARKERS &darr;</button>
+      <button class="at_btn at_btn_cyan" id="atRefresh" title="Re-fetch from server">REFRESH</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS BAR -->
+  <div class="at_settings">
+    <span class="at_setting_label">MIN GAP</span>
+    <input class="at_setting_input" id="atMinGap" type="number" value="0.5" step="0.1" min="0.1" max="10" title="Minimum silence gap to consider as chapter break (seconds)">
+    <span class="at_setting_label">s</span>
+    <span style="color:var(--border)">|</span>
+    <span class="at_setting_label">TARGET CHAPTERS</span>
+    <input class="at_setting_input" id="atTargetChapters" type="number" value="0" step="1" min="0" max="100" title="0 = auto-scale (recommended)">
+    <span class="at_setting_label">(0=auto)</span>
+    <span style="color:var(--border)">|</span>
+    <span class="at_setting_label">FPS</span>
+    <input class="at_setting_input" id="atFps" type="number" value="24" step="1" min="1" max="60">
+  </div>
+
+  <!-- CARD AREA -->
+  <div class="at_card_area" id="atCardArea">
+    <div class="at_state_msg" id="atEmptyState">
+      <div class="at_state_msg_large">[LOADING...]</div>
+      <div>Fetching library data</div>
+    </div>
+    <div class="at_card_list" id="atCardList" style="display:none"></div>
+  </div>
 </div>
 
-<!-- Settings -->
-<div class="settings-bar">
-    <label>Min gap (s):
-        <input type="range" id="sliderMinGap" min="0.5" max="10" step="0.5" value="2">
-        <span class="val" id="valMinGap">2.0</span>
-    </label>
-    <label>Target chapters:
-        <input type="number" id="inputTargetCh" min="0" max="100" value="0" title="0 = auto">
-    </label>
-    <label>FPS:
-        <input type="number" id="inputFPS" min="1" max="120" value="24">
-    </label>
-</div>
-
-<!-- Drop zone (shown when no data loaded) -->
-<div class="drop-zone" id="dropZone">
-    <p>Drop a library JSON file here</p>
-    <p style="font-size:12px; color:#667788;">or use <code>?library=filename.json</code> URL param</p>
-</div>
-
-<!-- Chapter list -->
-<div class="chapter-list hidden" id="chapterList"></div>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script>
-"use strict";
+/* ═══════════════════════════════════════════════════════════
+   YD CHAPTER NAVIGATOR — Stacked Cards (Iteration C)
+   ═══════════════════════════════════════════════════════════ */
 
-/* ===================================================================
-   State
-   =================================================================== */
-let libraryData = [];      // parsed library entries
-let currentEntry = null;   // selected clip entry
-let chapters = [];         // detected chapters for current clip
-let fps = 24;
+(function() {
+'use strict';
 
-/* ===================================================================
-   DOM refs
-   =================================================================== */
-const $clip     = document.getElementById("clipSelect");
-const $search   = document.getElementById("searchInput");
-const $list     = document.getElementById("chapterList");
-const $drop     = document.getElementById("dropZone");
-const $stats    = { ch: document.getElementById("statChapters"), seg: document.getElementById("statSegments"), dur: document.getElementById("statDuration"), hits: document.getElementById("statHits") };
-const $gap      = document.getElementById("sliderMinGap");
-const $gapVal   = document.getElementById("valMinGap");
-const $target   = document.getElementById("inputTargetCh");
-const $fps      = document.getElementById("inputFPS");
-const $edlAll   = document.getElementById("btnExportAllEDL");
-const $markAll  = document.getElementById("btnExportAllMarkers");
+/* ── STATE ── */
+let allEntries = [];       // raw library entries with whisper_segments
+let currentEntry = null;   // selected entry
+let chapters = [];         // computed chapters for current entry
+let activeCard = null;     // currently active card index (or null)
+let searchTerm = '';
 
-/* ===================================================================
-   Data loading
-   =================================================================== */
-function getLibraryURL() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("library") || "yd-library.json";
-}
-
-async function tryFetch() {
-    try {
-        const url = getLibraryURL();
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(res.status);
-        const data = await res.json();
-        ingestLibrary(data);
-    } catch {
-        // Show drop zone
-        $drop.classList.remove("hidden");
-    }
-}
-
-function ingestLibrary(data) {
-    libraryData = Array.isArray(data) ? data : (data.entries || data.clips || [data]);
-    $drop.classList.add("hidden");
-    populateClipSelect();
-}
-
-function populateClipSelect() {
-    $clip.innerHTML = '<option value="">-- select clip --</option>';
-    libraryData.forEach((entry, i) => {
-        const opt = document.createElement("option");
-        opt.value = i;
-        const dur = entry.duration ? ` (${fmtDur(entry.duration)})` : "";
-        const segs = entry.whisper_segments ? ` [${entry.whisper_segments.length} seg]` : "";
-        opt.textContent = (entry.filename || entry.name || `clip ${i}`) + dur + segs;
-        $clip.appendChild(opt);
-    });
-}
-
-/* Drop zone */
-$drop.addEventListener("dragover", e => { e.preventDefault(); $drop.classList.add("over"); });
-$drop.addEventListener("dragleave", () => $drop.classList.remove("over"));
-$drop.addEventListener("drop", e => {
-    e.preventDefault(); $drop.classList.remove("over");
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-        try { ingestLibrary(JSON.parse(reader.result)); }
-        catch (err) { alert("Invalid JSON: " + err.message); }
-    };
-    reader.readAsText(file);
-});
-
-/* ===================================================================
-   Chapter detection (client-side)
-   =================================================================== */
-
+/* ── STOP WORDS ── */
 const STOP_WORDS = new Set([
-    "the","a","an","and","or","but","in","on","at","to","for","of","with",
-    "is","it","this","that","was","are","be","been","being","have","has",
-    "had","do","does","did","will","would","shall","should","may","might",
-    "can","could","i","you","he","she","we","they","me","him","her","us",
-    "them","my","your","his","its","our","their","not","no","so","if","then",
-    "than","very","just","about","um","uh","ah","like","basically","actually",
-    "well","really","okay","right","yeah",
+  'the','a','an','and','or','but','is','are','was','were','be','been','being',
+  'have','has','had','do','does','did','will','would','could','should','shall',
+  'may','might','can','need','must','in','on','at','to','for','of','with',
+  'by','from','as','into','through','during','before','after','above','below',
+  'between','out','off','over','under','again','further','then','once','here',
+  'there','when','where','why','how','all','both','each','few','more','most',
+  'other','some','such','no','nor','not','only','own','same','so','than','too',
+  'very','just','because','if','while','about','up','down','it','its','i','me',
+  'my','we','our','you','your','he','him','his','she','her','they','them',
+  'their','this','that','these','those','what','which','who','whom','am',
+  'like','yeah','yes','ok','okay','well','right','got','get','go','going',
+  'know','think','thing','things','one','two','kind','really','actually',
+  'gonna','wanna','um','uh','stuff','lot','much','back','way','see','look',
+  'come','make','take','say','said','something','even','still','also','now',
+  // contractions + conversational filler
+  "i'm","i'll","i've","i'd","it's","that's","there's","here's","what's",
+  "don't","doesn't","didn't","can't","couldn't","wouldn't","shouldn't",
+  "won't","isn't","aren't","wasn't","weren't","haven't","hasn't","hadn't",
+  "let's","we're","we've","we'll","they're","they've","they'll",
+  "you're","you've","you'll","he's","she's","who's",
+  'hello','hey','alright','basically','literally','whatever','already',
+  'mean','means','put','try','trying','start','stop','recording','record',
+  'three','four','five','six','seven','eight','nine','ten','hundred',
+  'first','second','third','last','next','bit','little','big','new','old',
+  'good','great','bad','sure','want','wanted','give','gave','tell','told',
+  'called','call','use','using','used','work','working','end','let',
+  'might','maybe','probably','pretty','whole','set','keep','left','part'
 ]);
 
-function detectChapters(segments, minGapSec, targetCount) {
-    if (!segments || segments.length === 0) return [];
+/* ── TOPIC SHIFT PHRASES ── */
+const TOPIC_SHIFTS = [
+  'after that','the next','moving on','looking at','now let','now we',
+  'so the','another thing','switching to','turning to','next up',
+  'alright so','okay so','and then'
+];
 
-    const totalDur = segments[segments.length - 1].end - segments[0].start;
+/* ── DOM REFS ── */
+const $ = (id) => document.getElementById(id);
+const clipSelect = $('atClipSelect');
+const searchInput = $('atSearch');
+const searchClear = $('atSearchClear');
+const statsText = $('atStatsText');
+const hitCount = $('atHitCount');
+const cardList = $('atCardList');
+const emptyState = $('atEmptyState');
+const exportEdl = $('atExportEdl');
+const exportMarkers = $('atExportMarkers');
+const refreshBtn = $('atRefresh');
+const minGapInput = $('atMinGap');
+const targetInput = $('atTargetChapters');
+const fpsInput = $('atFps');
+const statusDot = document.querySelector('.at_status_dot');
 
-    // Auto target: ~1 chapter per 2 minutes, clamped 3-40
-    let target = targetCount > 0 ? targetCount : Math.max(3, Math.min(40, Math.round(totalDur / 120)));
-    const numBoundaries = target - 1;
+/* ═══════════════════════════════════════════
+   DATA LOADING
+   ═══════════════════════════════════════════ */
 
-    if (numBoundaries <= 0) {
-        return [buildChapter(0, segments, 0, segments.length - 1)];
+async function loadFromServer() {
+  setStatus('amber', '[LOADING...]');
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const url = params.get('library') || 'yd-library.json';
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    processLoadedData(data);
+  } catch (err) {
+    console.warn('[YD-NAV] Fetch failed:', err.message);
+    showDropZone();
+  }
+}
+
+function processLoadedData(data) {
+  let entries;
+  if (Array.isArray(data)) {
+    entries = data;
+  } else if (data && Array.isArray(data.entries)) {
+    entries = data.entries;
+  } else if (data && Array.isArray(data.clips)) {
+    entries = data.clips;
+  } else {
+    console.error('[YD-NAV] Unexpected data format');
+    showDropZone();
+    return;
+  }
+
+  allEntries = entries.filter(e => {
+    if (!e.whisper_segments || !Array.isArray(e.whisper_segments) || e.whisper_segments.length === 0) {
+      console.log(`[YD-NAV] Skipped: ${e.id || e.filename || '?'} (no whisper_segments)`);
+      return false;
     }
+    return true;
+  });
 
-    // Compute gaps between consecutive segments
-    const gaps = [];
-    for (let i = 1; i < segments.length; i++) {
-        const gap = segments[i].start - segments[i - 1].end;
-        gaps.push({ index: i, gap: gap });
+  if (allEntries.length === 0) {
+    setStatus('red', '[NO CLIPS WITH TRANSCRIPTS FOUND]');
+    emptyState.innerHTML = '<div class="at_state_msg_large">[NO CLIPS WITH TRANSCRIPTS FOUND]</div>' +
+      '<div>Library loaded but no entries have whisper_segments</div>';
+    return;
+  }
+
+  populateClipSelector();
+  selectClip(0);
+  setStatus('green', `${allEntries.length} clips loaded`);
+}
+
+function showDropZone() {
+  setStatus('amber', '[AWAITING DATA]');
+  emptyState.innerHTML =
+    '<div class="at_state_msg_large">[AWAITING DATA]</div>' +
+    '<div>Could not fetch library file. Use ?library=filename.json or drop a file below.</div>' +
+    '<div class="at_dropzone" id="atDropzone">' +
+    'DROP library JSON HERE<br><span style="font-size:10px;color:var(--text-dim)">or click to browse</span>' +
+    '</div>';
+  emptyState.style.display = '';
+  cardList.style.display = 'none';
+
+  const dz = $('atDropzone');
+  if (!dz) return;
+
+  dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('at_dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('at_dragover'));
+  dz.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dz.classList.remove('at_dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) readDroppedFile(file);
+  });
+  dz.addEventListener('click', () => {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '.json';
+    inp.onchange = () => { if (inp.files[0]) readDroppedFile(inp.files[0]); };
+    inp.click();
+  });
+}
+
+function readDroppedFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      processLoadedData(data);
+    } catch (err) {
+      console.error('[YD-NAV] JSON parse error:', err);
+      setStatus('red', '[JSON PARSE ERROR]');
     }
+  };
+  reader.readAsText(file);
+}
 
-    // Filter by minGapSec, then sort by gap size descending
-    const eligible = gaps.filter(g => g.gap >= minGapSec).sort((a, b) => b.gap - a.gap);
+/* ═══════════════════════════════════════════
+   CLIP SELECTOR
+   ═══════════════════════════════════════════ */
 
-    // Pick top N boundaries
-    const boundaryIndices = eligible.slice(0, numBoundaries).map(g => g.index).sort((a, b) => a - b);
+function populateClipSelector() {
+  clipSelect.innerHTML = '';
+  allEntries.forEach((e, i) => {
+    const opt = document.createElement('option');
+    const name = e.filename || e.id || `Clip ${i+1}`;
+    const dur = (e.duration_sec || e.duration) ? formatDuration(e.duration_sec || e.duration) : '?';
+    const segs = e.whisper_segments.length;
+    opt.value = i;
+    opt.textContent = `${name} | ${dur} | ${segs} segs`;
+    clipSelect.appendChild(opt);
+  });
+  clipSelect.disabled = false;
+  searchInput.disabled = false;
+}
 
-    // Build chapters from boundary indices
-    const result = [];
-    let prevIdx = 0;
-    for (let k = 0; k < boundaryIndices.length; k++) {
-        const bIdx = boundaryIndices[k];
-        result.push(buildChapter(result.length, segments, prevIdx, bIdx - 1));
-        prevIdx = bIdx;
+function selectClip(index) {
+  currentEntry = allEntries[index];
+  if (!currentEntry) return;
+  clipSelect.value = index;
+  chapters = detectChapters(currentEntry);
+  activeCard = null;
+  searchTerm = '';
+  searchInput.value = '';
+  searchClear.classList.remove('at_visible');
+  hitCount.textContent = '';
+  renderCards();
+  updateStats();
+  exportEdl.disabled = chapters.length === 0;
+  exportMarkers.disabled = chapters.length === 0;
+}
+
+/* ═══════════════════════════════════════════
+   CHAPTER DETECTION (auto-scaling)
+   ═══════════════════════════════════════════ */
+
+function detectChapters(entry) {
+  const segs = entry.whisper_segments;
+  if (!segs || segs.length === 0) return [];
+
+  const minGap = parseFloat(minGapInput.value) || 0.5;
+  const manualTarget = parseInt(targetInput.value) || 0;
+  const duration = entry.duration_sec || entry.duration || segs[segs.length - 1].end || 0;
+
+  // Auto-scale: ~1 chapter per 2 minutes, clamped 3–40
+  const autoTarget = Math.max(3, Math.min(40, Math.round(duration / 120)));
+  const targetCount = manualTarget > 0 ? manualTarget : autoTarget;
+
+  // Compute gaps between consecutive segments
+  const gaps = [];
+  for (let i = 1; i < segs.length; i++) {
+    const gap = segs[i].start - segs[i - 1].end;
+    // Also check for topic shift phrases at segment start
+    const text = (segs[i].text || '').toLowerCase().trim();
+    const hasShift = TOPIC_SHIFTS.some(p => text.startsWith(p));
+    gaps.push({ index: i, gap, hasShift });
+  }
+
+  // Filter to gaps >= minGap OR topic shifts with gap >= minGap * 0.5
+  let candidates = gaps.filter(g => g.gap >= minGap || (g.hasShift && g.gap >= minGap * 0.5));
+
+  // Score: gap size + bonus for topic shift
+  candidates.forEach(c => { c.score = c.gap + (c.hasShift ? 0.5 : 0); });
+
+  // Sort by score descending, take top (targetCount - 1)
+  candidates.sort((a, b) => b.score - a.score);
+  const breakCount = Math.min(candidates.length, targetCount - 1);
+  const breakIndices = candidates.slice(0, breakCount).map(c => c.index).sort((a, b) => a - b);
+
+  // Build raw groups from break points
+  const rawGroups = [];
+  let startIdx = 0;
+
+  for (let b = 0; b <= breakIndices.length; b++) {
+    const endIdx = b < breakIndices.length ? breakIndices[b] : segs.length;
+    const chapterSegs = segs.slice(startIdx, endIdx);
+    if (chapterSegs.length > 0) rawGroups.push(chapterSegs);
+    startIdx = endIdx;
+  }
+
+  // Merge groups with < 2 segments into nearest neighbor
+  const MIN_SEGS = 2;
+  const merged = [];
+  for (let g = 0; g < rawGroups.length; g++) {
+    if (rawGroups[g].length < MIN_SEGS && merged.length > 0) {
+      // Merge into previous group
+      merged[merged.length - 1] = merged[merged.length - 1].concat(rawGroups[g]);
+    } else if (rawGroups[g].length < MIN_SEGS && g + 1 < rawGroups.length) {
+      // Merge into next group
+      rawGroups[g + 1] = rawGroups[g].concat(rawGroups[g + 1]);
+    } else {
+      merged.push(rawGroups[g]);
     }
-    // Final chapter
-    result.push(buildChapter(result.length, segments, prevIdx, segments.length - 1));
+  }
 
-    // Merge runt chapters (<2 segments) into neighbors
-    return mergeRunts(result);
-}
+  // Build chapter objects
+  const chapterList = [];
+  merged.forEach(chapterSegs => {
+    const startSec = chapterSegs[0].start;
+    const endSec = chapterSegs[chapterSegs.length - 1].end;
+    const fullText = chapterSegs.map(s => (s.text || '').trim()).join(' ');
+    const label = generateChapterTitle(chapterSegs, fullText);
 
-function mergeRunts(chs) {
-    if (chs.length <= 1) return chs;
-    let merged = [];
-    for (const ch of chs) {
-        if (ch.segments.length < 2 && merged.length > 0) {
-            // Merge into previous
-            const prev = merged[merged.length - 1];
-            prev.segments = prev.segments.concat(ch.segments);
-            prev.end = ch.end;
-            prev.duration = prev.end - prev.start;
-            prev.label = extractLabel(prev.segments);
-            prev.text = prev.segments.map(s => s.text || "").join(" ");
-        } else {
-            merged.push(ch);
-        }
-    }
-    // Re-index
-    merged.forEach((ch, i) => ch.index = i);
-    return merged;
-}
-
-function buildChapter(index, segments, startIdx, endIdx) {
-    const segs = segments.slice(startIdx, endIdx + 1);
-    return {
-        index,
-        segments: segs,
-        start: segs[0].start,
-        end: segs[segs.length - 1].end,
-        duration: segs[segs.length - 1].end - segs[0].start,
-        label: extractLabel(segs),
-        text: segs.map(s => s.text || "").join(" "),
-    };
-}
-
-function extractLabel(segs) {
-    // Collect all words, filter stop/filler, pick top 3 by frequency
-    const freq = {};
-    for (const s of segs) {
-        const words = (s.text || "").toLowerCase().replace(/[^\w\s]/g, "").split(/\s+/);
-        for (const w of words) {
-            if (w.length < 3 || STOP_WORDS.has(w)) continue;
-            freq[w] = (freq[w] || 0) + 1;
-        }
-    }
-    const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
-    const top = sorted.slice(0, 3).map(e => e[0]);
-    return top.length > 0 ? top.join(", ") : "(silence)";
-}
-
-/* ===================================================================
-   Timecode helpers
-   =================================================================== */
-function secToTC(sec, fpsVal) {
-    const f = fpsVal || fps;
-    const totalFrames = Math.round(sec * f);
-    const fr = totalFrames % f;
-    const totalSec = Math.floor(totalFrames / f);
-    const ss = totalSec % 60;
-    const mm = Math.floor(totalSec / 60) % 60;
-    const hh = Math.floor(totalSec / 3600);
-    return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}:${pad2(fr)}`;
-}
-
-function pad2(n) { return String(n).padStart(2, "0"); }
-
-function fmtDur(sec) {
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${m}:${pad2(s)}`;
-}
-
-/* ===================================================================
-   Export: EDL (CMX 3600)
-   =================================================================== */
-function generateEDL(chList, title) {
-    const lines = [`TITLE: ${title || "Chapter Export"}`, "FCM: NON-DROP FRAME", ""];
-    chList.forEach((ch, i) => {
-        const num = String(i + 1).padStart(3, "0");
-        const src = secToTC(ch.start);
-        const srcEnd = secToTC(ch.end);
-        const recIn = secToTC(ch.start);
-        const recOut = secToTC(ch.end);
-        lines.push(`${num}  AX       V     C        ${src} ${srcEnd} ${recIn} ${recOut}`);
-        lines.push(`* FROM CLIP NAME: Chapter ${ch.index} — ${ch.label}`);
-        lines.push("");
+    chapterList.push({
+      id: `CH_${String(chapterList.length + 1).padStart(3, '0')}`,
+      index: chapterList.length,
+      label,
+      start_sec: startSec,
+      end_sec: endSec,
+      duration_sec: endSec - startSec,
+      segment_count: chapterSegs.length,
+      segments: chapterSegs,
+      transcript: fullText
     });
-    return lines.join("\n");
+  });
+
+  return chapterList;
 }
 
-/* ===================================================================
-   Export: Resolve Markers JSON
-   =================================================================== */
-function generateMarkers(chList) {
-    return chList.map(ch => ({
-        frame: Math.round(ch.start * fps),
-        color: "Blue",
-        name: `Ch ${ch.index}: ${ch.label}`,
-        note: ch.text.slice(0, 200),
-        duration: 1,
-    }));
-}
+/* ═══════════════════════════════════════════
+   CHAPTER TITLE GENERATION (sentence extraction)
+   ═══════════════════════════════════════════ */
 
-/* ===================================================================
-   Download helper
-   =================================================================== */
-function download(filename, content, mime) {
-    const blob = new Blob([content], { type: mime || "text/plain" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(a.href);
-}
+const FILLER_STARTS = [
+  'um','uh','so','like','well','okay','yeah','right',
+  'you know','i mean','basically','actually','anyway',
+  'alright','hey','hi','hello','thanks','thank you',
+  'oh','ah','hmm','huh','let me','wait','no','yes'
+];
 
-/* ===================================================================
-   Render
-   =================================================================== */
-function renderChapters() {
-    const query = $search.value.trim().toLowerCase();
-    $list.innerHTML = "";
-    let hits = 0;
+function generateChapterTitle(segments, fullText) {
+  if (!fullText || fullText.trim().length === 0) return '[No transcript data]';
 
-    chapters.forEach(ch => {
-        const textLower = ch.text.toLowerCase();
-        const labelLower = ch.label.toLowerCase();
-        const isHit = query && (textLower.includes(query) || labelLower.includes(query));
-        if (query && !isHit) return; // filter out non-matches
-        if (isHit) hits++;
+  // Split into sentence-like units
+  const sentences = fullText
+    .split(/(?<=[.!?])\s+|(?<=\w{15,}),\s+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 10);
 
-        const card = document.createElement("div");
-        card.className = "chapter-card" + (isHit ? " search-hit" : "");
+  if (sentences.length === 0) {
+    // No real sentences — use first N words as fallback
+    return buildFallback(fullText);
+  }
 
-        // Header
-        const header = document.createElement("div");
-        header.className = "card-header";
-        header.innerHTML = `
-            <span class="ch-pill">${ch.index}</span>
-            <span class="ch-label">${esc(ch.label)}</span>
-            <span class="ch-tc">${secToTC(ch.start)} → ${secToTC(ch.end)}</span>
-            <span class="ch-dur">${fmtDur(ch.duration)}</span>
-            <span class="ch-toggle">&#9654;</span>
-        `;
-        header.addEventListener("click", () => card.classList.toggle("open"));
+  // Score each sentence
+  const scored = sentences.map((sentence, i) => {
+    const words = sentence.split(/\s+/);
+    const wordCount = words.length;
+    const lower = sentence.toLowerCase();
 
-        // Body
-        const body = document.createElement("div");
-        body.className = "card-body";
+    // Skip short filler
+    const isFiller = FILLER_STARTS.some(f => lower.startsWith(f));
+    if (isFiller && wordCount < 8) return { sentence, score: -1 };
 
-        let snippetHTML = esc(ch.text.slice(0, 800));
-        if (query) {
-            const re = new RegExp(escRegex(query), "gi");
-            snippetHTML = snippetHTML.replace(re, m => `<mark>${m}</mark>`);
-        }
+    let score = 0;
 
-        body.innerHTML = `
-            <div class="snippet">${snippetHTML}</div>
-            <div class="card-actions">
-                <button class="btn btn-edl" title="Export this chapter as EDL">EDL</button>
-                <button class="btn btn-mark" title="Export this chapter as Resolve marker">MARKER</button>
-            </div>
-        `;
+    // Prefer 8-20 word sentences
+    if (wordCount >= 8 && wordCount <= 20) score += 3;
+    else if (wordCount >= 5 && wordCount <= 25) score += 1;
+    else if (wordCount < 5) score -= 2;
 
-        body.querySelector(".btn-edl").addEventListener("click", e => {
-            e.stopPropagation();
-            const name = currentEntry ? (currentEntry.filename || "clip") : "clip";
-            download(`ch${ch.index}_${name}.edl`, generateEDL([ch], `Ch ${ch.index}`), "text/plain");
-        });
-        body.querySelector(".btn-mark").addEventListener("click", e => {
-            e.stopPropagation();
-            const markers = generateMarkers([ch]);
-            download(`ch${ch.index}_markers.json`, JSON.stringify(markers, null, 2), "application/json");
-        });
+    // Boost early sentences (topic intro)
+    if (i === 0) score += 2;
+    if (i === 1) score += 1;
 
-        card.appendChild(header);
-        card.appendChild(body);
-        $list.appendChild(card);
+    // Boost sentences with content-rich words (>4 chars)
+    const contentWords = words.filter(w => w.replace(/[^a-zA-Z]/g, '').length > 4);
+    score += Math.min(contentWords.length, 4);
+
+    // Penalize if it's mostly stop words
+    const nonStop = words.filter(w => {
+      const clean = w.toLowerCase().replace(/[^a-z']/g, '');
+      return clean.length > 2 && !STOP_WORDS.has(clean);
     });
+    if (nonStop.length < 2) score -= 3;
 
-    // Stats
-    $stats.ch.textContent = chapters.length;
-    $stats.seg.textContent = currentEntry?.whisper_segments?.length || 0;
-    $stats.dur.textContent = currentEntry?.duration ? fmtDur(currentEntry.duration) : "—";
-    $stats.hits.textContent = query ? hits : "—";
+    return { sentence, score };
+  });
+
+  // Pick highest-scoring sentence
+  const best = scored
+    .filter(s => s.score >= 0)
+    .sort((a, b) => b.score - a.score)[0];
+
+  if (best && best.sentence) {
+    return cleanTitle(best.sentence);
+  }
+
+  // Fallback: first 15 words
+  return buildFallback(fullText);
 }
 
-function esc(s) {
-    const d = document.createElement("div");
-    d.textContent = s;
-    return d.innerHTML;
+function cleanTitle(raw) {
+  let title = raw.trim();
+  const words = title.split(/\s+/);
+  if (words.length > 25) {
+    title = words.slice(0, 25).join(' ') + '...';
+  }
+  title = title.charAt(0).toUpperCase() + title.slice(1);
+  if (!/[.!?]$/.test(title) && !title.endsWith('...')) {
+    title += '.';
+  }
+  return title;
 }
 
-function escRegex(s) {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function buildFallback(text) {
+  const words = text.split(/\s+/).slice(0, 15);
+  if (words.length === 0) return '[No transcript data]';
+  let fb = words.join(' ');
+  fb = fb.charAt(0).toUpperCase() + fb.slice(1);
+  if (!/[.!?]$/.test(fb)) fb += '...';
+  return fb;
 }
 
-/* ===================================================================
-   Event handlers
-   =================================================================== */
-$clip.addEventListener("change", () => {
-    const idx = parseInt($clip.value, 10);
-    if (isNaN(idx)) { chapters = []; $list.classList.add("hidden"); return; }
-    currentEntry = libraryData[idx];
-    runDetection();
-});
+/* ═══════════════════════════════════════════
+   RENDER CARDS
+   ═══════════════════════════════════════════ */
 
-$gap.addEventListener("input", () => {
-    $gapVal.textContent = parseFloat($gap.value).toFixed(1);
-    if (currentEntry) runDetection();
-});
+function renderCards() {
+  if (chapters.length === 0) {
+    cardList.style.display = 'none';
+    emptyState.style.display = '';
+    emptyState.innerHTML = '<div class="at_state_msg_large">[NO WHISPER SEGMENTS]</div>' +
+      '<div>Selected clip has no transcript segments to analyze</div>';
+    return;
+  }
 
-$target.addEventListener("change", () => { if (currentEntry) runDetection(); });
+  emptyState.style.display = 'none';
+  cardList.style.display = 'flex';
+  cardList.innerHTML = '';
 
-$fps.addEventListener("change", () => {
-    fps = parseInt($fps.value, 10) || 24;
-    if (chapters.length) renderChapters();
-});
+  const lowerSearch = searchTerm.toLowerCase();
+  let hits = 0;
 
-$search.addEventListener("input", () => renderChapters());
+  chapters.forEach((ch, i) => {
+    const matchesSearch = !lowerSearch ||
+      ch.label.toLowerCase().includes(lowerSearch) ||
+      ch.transcript.toLowerCase().includes(lowerSearch);
 
-$edlAll.addEventListener("click", () => {
-    if (!chapters.length) return;
-    const name = currentEntry ? (currentEntry.filename || "chapters") : "chapters";
-    download(`${name}_chapters.edl`, generateEDL(chapters, name), "text/plain");
-});
+    if (lowerSearch && matchesSearch) hits++;
 
-$markAll.addEventListener("click", () => {
-    if (!chapters.length) return;
-    const name = currentEntry ? (currentEntry.filename || "chapters") : "chapters";
-    download(`${name}_markers.json`, JSON.stringify(generateMarkers(chapters), null, 2), "application/json");
-});
+    const card = document.createElement('div');
+    card.className = 'at_card' +
+      (activeCard === i ? ' at_active' : '') +
+      (lowerSearch && !matchesSearch ? ' at_dimmed' : '');
+    card.dataset.index = i;
 
-function runDetection() {
-    const segments = currentEntry?.whisper_segments || [];
-    const minGap = parseFloat($gap.value) || 2;
-    const target = parseInt($target.value, 10) || 0;
-    fps = parseInt($fps.value, 10) || 24;
+    // Snippet: first 180 chars
+    const snippetText = ch.transcript.substring(0, 180) + (ch.transcript.length > 180 ? '...' : '');
+    const snippetHtml = lowerSearch && matchesSearch ? highlightText(snippetText, lowerSearch) : escapeHtml(snippetText);
 
-    chapters = detectChapters(segments, minGap, target);
-    $list.classList.remove("hidden");
-    $edlAll.disabled = chapters.length === 0;
-    $markAll.disabled = chapters.length === 0;
-    renderChapters();
+    card.innerHTML =
+      '<div class="at_card_header" data-action="toggle">' +
+        `<span class="at_card_index">${String(i + 1).padStart(2, '0')}</span>` +
+        `<span class="at_card_label">${lowerSearch && matchesSearch ? highlightText(ch.label, lowerSearch) : escapeHtml(ch.label)}</span>` +
+        `<span class="at_card_tc">${formatTC(ch.start_sec)}&ndash;${formatTC(ch.end_sec)}</span>` +
+        `<span class="at_card_meta">${ch.segment_count} segs &middot; ${formatDuration(ch.duration_sec)}</span>` +
+      '</div>' +
+      `<div class="at_card_snippet">${snippetHtml}</div>` +
+      '<div class="at_card_actions">' +
+        `<button class="at_btn at_expand_label" data-action="expand">EXPAND</button>` +
+        `<button class="at_btn" data-action="edl-single">EDL &darr;</button>` +
+        `<button class="at_btn" data-action="markers-single">MARKERS &darr;</button>` +
+        `<span class="at_card_id">${ch.id}</span>` +
+      '</div>' +
+      '<div class="at_card_transcript"></div>';
+
+    cardList.appendChild(card);
+  });
+
+  hitCount.textContent = lowerSearch ? `${hits} hit${hits !== 1 ? 's' : ''}` : '';
+
+  // Animate cards in with GSAP
+  gsap.fromTo('.at_card', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.25, stagger: 0.03, ease: 'power2.out' });
 }
 
-/* ===================================================================
-   Init
-   =================================================================== */
-tryFetch();
+function renderTranscript(card, chapterIndex) {
+  const ch = chapters[chapterIndex];
+  const container = card.querySelector('.at_card_transcript');
+  if (container.dataset.rendered) return; // already built
+
+  const lowerSearch = searchTerm.toLowerCase();
+  let html = '';
+  ch.segments.forEach(seg => {
+    const tc = formatTC(seg.start);
+    const text = (seg.text || '').trim();
+    const textHtml = lowerSearch ? highlightText(text, lowerSearch) : escapeHtml(text);
+    html += `<div class="at_seg_row"><span class="at_seg_tc">${tc}</span><span class="at_seg_text">${textHtml}</span></div>`;
+  });
+  container.innerHTML = html;
+  container.dataset.rendered = '1';
+}
+
+/* ═══════════════════════════════════════════
+   INTERACTIONS
+   ═══════════════════════════════════════════ */
+
+cardList.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const card = btn.closest('.at_card');
+  const idx = parseInt(card.dataset.index);
+  const action = btn.dataset.action;
+
+  if (action === 'toggle' || action === 'expand') {
+    // Toggle expand
+    const wasExpanded = card.classList.contains('at_expanded');
+    if (!wasExpanded) {
+      renderTranscript(card, idx);
+    }
+    card.classList.toggle('at_expanded');
+
+    // Set active
+    if (activeCard !== null && activeCard !== idx) {
+      const prev = cardList.querySelector(`.at_card[data-index="${activeCard}"]`);
+      if (prev) prev.classList.remove('at_active');
+    }
+    activeCard = wasExpanded ? null : idx;
+    card.classList.toggle('at_active', !wasExpanded);
+
+    // Animate transcript open/close
+    const transcript = card.querySelector('.at_card_transcript');
+    if (!wasExpanded) {
+      gsap.fromTo(transcript, { opacity: 0 }, { opacity: 1, duration: 0.2 });
+    }
+  } else if (action === 'edl-single') {
+    downloadEdl([chapters[idx]]);
+  } else if (action === 'markers-single') {
+    downloadMarkers([chapters[idx]]);
+  }
+});
+
+clipSelect.addEventListener('change', () => selectClip(parseInt(clipSelect.value)));
+
+searchInput.addEventListener('input', () => {
+  searchTerm = searchInput.value.trim();
+  searchClear.classList.toggle('at_visible', searchTerm.length > 0);
+  // Clear rendered transcript caches so highlights update
+  cardList.querySelectorAll('.at_card_transcript').forEach(el => { el.dataset.rendered = ''; });
+  renderCards();
+});
+
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchTerm = '';
+  searchClear.classList.remove('at_visible');
+  hitCount.textContent = '';
+  cardList.querySelectorAll('.at_card_transcript').forEach(el => { el.dataset.rendered = ''; });
+  renderCards();
+});
+
+exportEdl.addEventListener('click', () => downloadEdl(chapters));
+exportMarkers.addEventListener('click', () => downloadMarkers(chapters));
+refreshBtn.addEventListener('click', loadFromServer);
+
+// Re-detect chapters when settings change
+[minGapInput, targetInput].forEach(input => {
+  input.addEventListener('change', () => {
+    if (currentEntry) {
+      chapters = detectChapters(currentEntry);
+      activeCard = null;
+      renderCards();
+      updateStats();
+      exportEdl.disabled = chapters.length === 0;
+      exportMarkers.disabled = chapters.length === 0;
+    }
+  });
+});
+
+/* ═══════════════════════════════════════════
+   EDL EXPORT (24fps default)
+   ═══════════════════════════════════════════ */
+
+function secsToTC(secs) {
+  const fps = parseInt(fpsInput.value) || 24;
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  const f = Math.floor((secs % 1) * fps);
+  return `${pad2(h)}:${pad2(m)}:${pad2(s)}:${pad2(f)}`;
+}
+
+function generateEdl(chapterList) {
+  const title = currentEntry.filename || currentEntry.id || 'YD_CHAPTERS';
+  let edl = `TITLE: ${title}\nFCM: NON-DROP FRAME\n\n`;
+
+  chapterList.forEach((ch, i) => {
+    const num = String(i + 1).padStart(3, '0');
+    const srcIn = secsToTC(ch.start_sec);
+    const srcOut = secsToTC(ch.end_sec);
+    const recIn = secsToTC(ch.start_sec);
+    const recOut = secsToTC(ch.end_sec);
+
+    edl += `${num}  AX       V     C        ${srcIn} ${srcOut} ${recIn} ${recOut}\n`;
+    edl += `* FROM CLIP NAME: ${ch.label}\n`;
+    edl += `* COMMENT: ${ch.id} | ${ch.segment_count} segments | auto-label\n\n`;
+  });
+
+  return edl;
+}
+
+function downloadEdl(chapterList) {
+  const edl = generateEdl(chapterList);
+  const name = currentEntry.filename || currentEntry.id || 'chapters';
+  const filename = `${sanitizeFilename(name)}_chapters.edl`;
+  downloadFile(edl, filename, 'text/plain');
+}
+
+/* ═══════════════════════════════════════════
+   RESOLVE MARKERS EXPORT
+   ═══════════════════════════════════════════ */
+
+function generateMarkers(chapterList) {
+  return chapterList.map(ch => ({
+    name: ch.label,
+    start_tc: secsToTC(ch.start_sec),
+    end_tc: secsToTC(ch.end_sec),
+    color: 'Blue',
+    note: `${ch.id} | ${ch.segment_count} segs | auto-label`
+  }));
+}
+
+function downloadMarkers(chapterList) {
+  const markers = generateMarkers(chapterList);
+  const json = JSON.stringify(markers, null, 2);
+  const name = currentEntry.filename || currentEntry.id || 'chapters';
+  const filename = `${sanitizeFilename(name)}_markers.json`;
+  downloadFile(json, filename, 'application/json');
+}
+
+/* ═══════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════ */
+
+function formatTC(secs) {
+  if (secs == null || isNaN(secs)) return '00:00:00';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  if (h > 0) return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+  return `${pad2(m)}:${pad2(s)}`;
+}
+
+function formatDuration(secs) {
+  if (!secs || isNaN(secs)) return '0:00';
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m}:${pad2(s)}`;
+}
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function highlightText(text, term) {
+  if (!term) return escapeHtml(text);
+  const escaped = escapeHtml(text);
+  const termEscaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${termEscaped})`, 'gi');
+  return escaped.replace(regex, '<mark class="at_highlight">$1</mark>');
+}
+
+function sanitizeFilename(name) {
+  return name.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+}
+
+function downloadFile(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function setStatus(color, text) {
+  statusDot.className = `at_status_dot at_${color}`;
+  statsText.textContent = text;
+}
+
+function updateStats() {
+  if (!currentEntry) return;
+  const name = currentEntry.filename || currentEntry.id || '?';
+  const dur = formatDuration(currentEntry.duration_sec || currentEntry.duration || 0);
+  setStatus('green', `${name} | ${chapters.length} chapters | ${dur}`);
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════ */
+
+loadFromServer();
+
+})();
 </script>
 </body>
 </html>
