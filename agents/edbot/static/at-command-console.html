@@ -554,7 +554,6 @@ kbd {
    AT COMMAND CONSOLE -- CONFIG
    Edit these values. Everything else is wiring.
    ================================================================= */
-const BRIDGE_PORT = 8901;  // display only — used in status bar
 const OLLAMA_HOST = 'http://localhost:11434';
 const DEFAULT_AGENT = 'edbot';
 const SEND_SHORTCUT = 'ctrl+enter';  // 'ctrl+enter' or 'shift+enter'
@@ -628,49 +627,36 @@ async function sendCommandLive(command) {
     });
 
     if (!resp.ok) {
-      addEvent(entry, 'error', `HTTP ${resp.status}: ${resp.statusText}`);
+      const errText = await resp.text().catch(() => resp.statusText);
+      addEvent(entry, 'error', `HTTP ${resp.status}: ${errText}`);
       markEntryStatus(entry, 'error');
       return taskId;
     }
 
     const data = await resp.json();
-    const streamId = data.task_id || taskId;
-    addEvent(entry, 'assistant', `Task accepted: ${streamId}`);
+    addEvent(entry, 'assistant',
+      `[${data.translation_method}] mode=${data.mode}`);
 
-    // Stream SSE events
-    const es = new EventSource(`http://localhost:${BRIDGE_PORT}/stream/${streamId}`);
+    // Show planned decisions
+    if (data.plan) {
+      const decisions = data.plan.decisions || [data.plan];
+      decisions.forEach(d => {
+        addEvent(entry, 'tool_call',
+          `${d.type}: ${d.entry_filename || d.marker_name || d.label || ''}`);
+      });
+    }
 
-    es.addEventListener('message', (e) => {
-      try {
-        const evt = JSON.parse(e.data);
-        const type = evt.type || 'assistant';
-        const content = evt.content || evt.text || JSON.stringify(evt);
-        addEvent(entry, type, content);
-      } catch {
-        addEvent(entry, 'assistant', e.data);
-      }
-    });
+    // Show execution results
+    if (data.results && data.results.details) {
+      data.results.details.forEach(r => {
+        const evtType = r.status === 'error' ? 'error' : 'tool_result';
+        addEvent(entry, evtType, r.message || JSON.stringify(r));
+      });
+      addEvent(entry, 'assistant',
+        `Done: ${data.results.succeeded} ok, ${data.results.failed} failed, ${data.results.skipped} skipped`);
+    }
 
-    es.addEventListener('tool_call', (e) => {
-      addEvent(entry, 'tool_call', e.data);
-    });
-
-    es.addEventListener('tool_result', (e) => {
-      addEvent(entry, 'tool_result', e.data);
-    });
-
-    es.addEventListener('complete', () => {
-      es.close();
-      markEntryStatus(entry, 'complete');
-    });
-
-    es.addEventListener('error', () => {
-      es.close();
-      if (entry.status === 'pending') {
-        addEvent(entry, 'error', 'SSE connection closed');
-        markEntryStatus(entry, 'error');
-      }
-    });
+    markEntryStatus(entry, 'complete');
 
   } catch (err) {
     addEvent(entry, 'error', `Connection failed: ${err.message}`);
@@ -907,7 +893,14 @@ function setBridgeStatus(mode) {
   }[mode] || 'at_mode_mock');
 
   bridgeLabel.textContent = mode.toUpperCase();
-  bridgePort.textContent = `:${BRIDGE_PORT}`;
+  bridgePort.textContent = ':8901';
+
+  // Connect/disconnect WebSocket based on bridge status
+  if (mode === 'live') {
+    connectProgressWs();
+  } else {
+    disconnectProgressWs();
+  }
 }
 
 async function checkResolveStatus() {
@@ -947,6 +940,49 @@ async function checkOllamaStatus() {
   } catch {
     ollamaDot.className = 'at_dot at_dot_gray';
     ollamaLabel.textContent = 'offline';
+  }
+}
+
+/* =================================================================
+   WEBSOCKET -- PIPELINE PROGRESS STREAM
+   ================================================================= */
+let progressWs = null;
+
+function connectProgressWs() {
+  if (progressWs && progressWs.readyState <= WebSocket.OPEN) return;
+  try {
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    progressWs = new WebSocket(`${protocol}//${location.host}/ws/progress`);
+
+    progressWs.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'progress') {
+          const text = `[${msg.stage}] ${msg.status}${msg.detail ? ': ' + msg.detail : ''}`;
+          const active = logEntries.find(le => le.status === 'pending');
+          if (active) {
+            addEvent(active, 'assistant', text);
+          }
+        } else if (msg.type === 'new_output') {
+          const active = logEntries.find(le => le.status === 'pending');
+          if (active && msg.file) {
+            addEvent(active, 'tool_result', `New output: ${msg.file.name || JSON.stringify(msg.file)}`);
+          }
+        }
+      } catch { /* ignore malformed WS messages */ }
+    };
+
+    progressWs.onclose = () => { progressWs = null; };
+    progressWs.onerror = () => {
+      if (progressWs) { progressWs.close(); progressWs = null; }
+    };
+  } catch { progressWs = null; }
+}
+
+function disconnectProgressWs() {
+  if (progressWs) {
+    progressWs.close();
+    progressWs = null;
   }
 }
 
@@ -1104,12 +1140,20 @@ async function sendDecisionPayload(entry, payload, mode) {
       body: payload
     });
     if (!resp.ok) {
-      addEvent(entry, 'error', `HTTP ${resp.status}`);
+      const errText = await resp.text().catch(() => resp.statusText);
+      addEvent(entry, 'error', `HTTP ${resp.status}: ${errText}`);
       markEntryStatus(entry, 'error');
       return;
     }
     const data = await resp.json();
-    addEvent(entry, 'assistant', `Task ${data.task_id} accepted (${mode})`);
+    if (data.results && data.results.details) {
+      data.results.details.forEach(r => {
+        const evtType = r.status === 'error' ? 'error' : 'tool_result';
+        addEvent(entry, evtType, r.message || JSON.stringify(r));
+      });
+      addEvent(entry, 'assistant',
+        `Done (${mode}): ${data.results.succeeded} ok, ${data.results.failed} failed, ${data.results.skipped} skipped`);
+    }
     markEntryStatus(entry, 'complete');
   } catch (err) {
     addEvent(entry, 'error', `Connection failed: ${err.message}`);
