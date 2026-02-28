@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YD Chapter Nav</title>
+<style>
+/* --- Reset & Base --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    line-height: 1.4;
+    min-height: 100vh;
+}
+
+/* --- HUD Bar --- */
+.hud {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    background: #16213e;
+    border-bottom: 1px solid #0f3460;
+    flex-wrap: wrap;
+}
+.hud h1 {
+    font-size: 16px; font-weight: 600;
+    color: #e94560; letter-spacing: 0.5px; white-space: nowrap;
+}
+.hud select, .hud input[type="text"] {
+    padding: 5px 8px; font-size: 12px;
+    background: #0f3460; border: 1px solid #1a4080;
+    color: #e0e0e0; border-radius: 3px;
+}
+.hud select { max-width: 340px; }
+.hud input[type="text"] { width: 200px; }
+.hud input[type="text"]:focus, .hud select:focus { outline: none; border-color: #e94560; }
+.hud-stats {
+    font-size: 11px; color: #8899aa; margin-left: auto; white-space: nowrap;
+}
+.hud-stats span { color: #e0e0e0; font-weight: 600; }
+
+/* --- Settings Bar --- */
+.settings-bar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 6px 16px;
+    background: #16213e;
+    border-bottom: 1px solid #0f3460;
+    font-size: 12px; color: #8899aa;
+}
+.settings-bar label { display: flex; align-items: center; gap: 4px; }
+.settings-bar input[type="range"] { width: 100px; accent-color: #e94560; }
+.settings-bar input[type="number"] {
+    width: 54px; padding: 3px 5px; font-size: 12px;
+    background: #0f3460; border: 1px solid #1a4080;
+    color: #e0e0e0; border-radius: 3px; text-align: center;
+}
+.settings-bar input[type="number"]:focus { outline: none; border-color: #e94560; }
+.settings-bar .val { color: #e0e0e0; font-weight: 600; min-width: 28px; text-align: center; }
+
+/* --- Buttons --- */
+.btn {
+    padding: 5px 12px; font-size: 12px; font-weight: 600;
+    border: 1px solid #1a4080; border-radius: 3px;
+    cursor: pointer; background: #0f3460; color: #e0e0e0; white-space: nowrap;
+}
+.btn:hover { background: #1a4080; }
+.btn:active { background: #245090; }
+.btn-accent { background: #e94560; border-color: #e94560; color: #fff; }
+.btn-accent:hover { background: #d63050; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* --- Drop zone --- */
+.drop-zone {
+    margin: 40px auto; padding: 60px 20px;
+    max-width: 600px; text-align: center;
+    border: 2px dashed #0f3460; border-radius: 8px;
+    color: #8899aa; font-size: 14px;
+    transition: border-color 0.2s;
+}
+.drop-zone.over { border-color: #e94560; color: #e0e0e0; }
+.drop-zone p { margin-bottom: 8px; }
+
+/* --- Chapter list --- */
+.chapter-list { padding: 12px 16px; max-width: 1000px; margin: 0 auto; }
+
+.chapter-card {
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+}
+.chapter-card:hover { border-color: #1a4080; }
+.chapter-card.search-hit { border-color: #c08020; }
+
+.card-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    user-select: none;
+}
+.card-header:hover { background: rgba(255,255,255,0.02); }
+
+.ch-pill {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 28px; height: 22px; padding: 0 6px;
+    background: #e94560; color: #fff;
+    font-size: 11px; font-weight: 700;
+    border-radius: 11px; flex-shrink: 0;
+}
+.ch-label {
+    flex: 1; font-size: 13px; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ch-tc {
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 11px; color: #8899aa; white-space: nowrap;
+}
+.ch-dur { font-size: 11px; color: #667788; white-space: nowrap; }
+.ch-toggle { font-size: 10px; color: #667788; transition: transform 0.2s; }
+.chapter-card.open .ch-toggle { transform: rotate(90deg); }
+
+.card-body {
+    display: none; padding: 0 14px 12px;
+    font-size: 12px; color: #aabbcc;
+}
+.chapter-card.open .card-body { display: block; }
+
+.card-body .snippet {
+    background: #0d1b30; padding: 8px 10px;
+    border-radius: 4px; margin-bottom: 8px;
+    max-height: 160px; overflow-y: auto;
+    line-height: 1.5; white-space: pre-wrap;
+}
+.card-body .card-actions { display: flex; gap: 6px; }
+mark { background: #c08020; color: #fff; border-radius: 2px; padding: 0 1px; }
+
+/* --- Hidden --- */
+.hidden { display: none !important; }
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1a4080; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #245090; }
+</style>
+</head>
+<body>
+
+<!-- HUD -->
+<div class="hud">
+    <h1>YD Chapter Nav</h1>
+    <select id="clipSelect" title="Select clip"><option value="">-- select clip --</option></select>
+    <input type="text" id="searchInput" placeholder="Search chapters..." title="Filter chapters by keyword">
+    <div class="hud-stats">
+        <span id="statChapters">0</span> chapters &middot;
+        <span id="statSegments">0</span> segments &middot;
+        <span id="statDuration">0:00</span> &middot;
+        hits: <span id="statHits">0</span>
+    </div>
+    <button class="btn" id="btnExportAllEDL" disabled title="Export all chapters as CMX 3600 EDL">EDL</button>
+    <button class="btn" id="btnExportAllMarkers" disabled title="Export all chapters as Resolve markers JSON">MARKERS</button>
+</div>
+
+<!-- Settings -->
+<div class="settings-bar">
+    <label>Min gap (s):
+        <input type="range" id="sliderMinGap" min="0.5" max="10" step="0.5" value="2">
+        <span class="val" id="valMinGap">2.0</span>
+    </label>
+    <label>Target chapters:
+        <input type="number" id="inputTargetCh" min="0" max="100" value="0" title="0 = auto">
+    </label>
+    <label>FPS:
+        <input type="number" id="inputFPS" min="1" max="120" value="24">
+    </label>
+</div>
+
+<!-- Drop zone (shown when no data loaded) -->
+<div class="drop-zone" id="dropZone">
+    <p>Drop <code>raptor-library.json</code> here</p>
+    <p style="font-size:12px; color:#667788;">or loading from localhost:8080 ...</p>
+</div>
+
+<!-- Chapter list -->
+<div class="chapter-list hidden" id="chapterList"></div>
+
+<script>
+"use strict";
+
+/* ===================================================================
+   State
+   =================================================================== */
+let libraryData = [];      // parsed raptor-library entries
+let currentEntry = null;   // selected clip entry
+let chapters = [];         // detected chapters for current clip
+let fps = 24;
+
+/* ===================================================================
+   DOM refs
+   =================================================================== */
+const $clip     = document.getElementById("clipSelect");
+const $search   = document.getElementById("searchInput");
+const $list     = document.getElementById("chapterList");
+const $drop     = document.getElementById("dropZone");
+const $stats    = { ch: document.getElementById("statChapters"), seg: document.getElementById("statSegments"), dur: document.getElementById("statDuration"), hits: document.getElementById("statHits") };
+const $gap      = document.getElementById("sliderMinGap");
+const $gapVal   = document.getElementById("valMinGap");
+const $target   = document.getElementById("inputTargetCh");
+const $fps      = document.getElementById("inputFPS");
+const $edlAll   = document.getElementById("btnExportAllEDL");
+const $markAll  = document.getElementById("btnExportAllMarkers");
+
+/* ===================================================================
+   Data loading
+   =================================================================== */
+async function tryFetch() {
+    try {
+        const res = await fetch("raptor-library.json");
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();
+        ingestLibrary(data);
+    } catch {
+        // Show drop zone
+        $drop.classList.remove("hidden");
+    }
+}
+
+function ingestLibrary(data) {
+    libraryData = Array.isArray(data) ? data : (data.entries || data.clips || [data]);
+    $drop.classList.add("hidden");
+    populateClipSelect();
+}
+
+function populateClipSelect() {
+    $clip.innerHTML = '<option value="">-- select clip --</option>';
+    libraryData.forEach((entry, i) => {
+        const opt = document.createElement("option");
+        opt.value = i;
+        const dur = entry.duration ? ` (${fmtDur(entry.duration)})` : "";
+        const segs = entry.whisper_segments ? ` [${entry.whisper_segments.length} seg]` : "";
+        opt.textContent = (entry.filename || entry.name || `clip ${i}`) + dur + segs;
+        $clip.appendChild(opt);
+    });
+}
+
+/* Drop zone */
+$drop.addEventListener("dragover", e => { e.preventDefault(); $drop.classList.add("over"); });
+$drop.addEventListener("dragleave", () => $drop.classList.remove("over"));
+$drop.addEventListener("drop", e => {
+    e.preventDefault(); $drop.classList.remove("over");
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        try { ingestLibrary(JSON.parse(reader.result)); }
+        catch (err) { alert("Invalid JSON: " + err.message); }
+    };
+    reader.readAsText(file);
+});
+
+/* ===================================================================
+   Chapter detection (client-side)
+   =================================================================== */
+
+const STOP_WORDS = new Set([
+    "the","a","an","and","or","but","in","on","at","to","for","of","with",
+    "is","it","this","that","was","are","be","been","being","have","has",
+    "had","do","does","did","will","would","shall","should","may","might",
+    "can","could","i","you","he","she","we","they","me","him","her","us",
+    "them","my","your","his","its","our","their","not","no","so","if","then",
+    "than","very","just","about","um","uh","ah","like","basically","actually",
+    "well","really","okay","right","yeah",
+]);
+
+function detectChapters(segments, minGapSec, targetCount) {
+    if (!segments || segments.length === 0) return [];
+
+    const totalDur = segments[segments.length - 1].end - segments[0].start;
+
+    // Auto target: ~1 chapter per 2 minutes, clamped 3-40
+    let target = targetCount > 0 ? targetCount : Math.max(3, Math.min(40, Math.round(totalDur / 120)));
+    const numBoundaries = target - 1;
+
+    if (numBoundaries <= 0) {
+        return [buildChapter(0, segments, 0, segments.length - 1)];
+    }
+
+    // Compute gaps between consecutive segments
+    const gaps = [];
+    for (let i = 1; i < segments.length; i++) {
+        const gap = segments[i].start - segments[i - 1].end;
+        gaps.push({ index: i, gap: gap });
+    }
+
+    // Filter by minGapSec, then sort by gap size descending
+    const eligible = gaps.filter(g => g.gap >= minGapSec).sort((a, b) => b.gap - a.gap);
+
+    // Pick top N boundaries
+    const boundaryIndices = eligible.slice(0, numBoundaries).map(g => g.index).sort((a, b) => a - b);
+
+    // Build chapters from boundary indices
+    const result = [];
+    let prevIdx = 0;
+    for (let k = 0; k < boundaryIndices.length; k++) {
+        const bIdx = boundaryIndices[k];
+        result.push(buildChapter(result.length, segments, prevIdx, bIdx - 1));
+        prevIdx = bIdx;
+    }
+    // Final chapter
+    result.push(buildChapter(result.length, segments, prevIdx, segments.length - 1));
+
+    // Merge runt chapters (<2 segments) into neighbors
+    return mergeRunts(result);
+}
+
+function mergeRunts(chs) {
+    if (chs.length <= 1) return chs;
+    let merged = [];
+    for (const ch of chs) {
+        if (ch.segments.length < 2 && merged.length > 0) {
+            // Merge into previous
+            const prev = merged[merged.length - 1];
+            prev.segments = prev.segments.concat(ch.segments);
+            prev.end = ch.end;
+            prev.duration = prev.end - prev.start;
+            prev.label = extractLabel(prev.segments);
+            prev.text = prev.segments.map(s => s.text || "").join(" ");
+        } else {
+            merged.push(ch);
+        }
+    }
+    // Re-index
+    merged.forEach((ch, i) => ch.index = i);
+    return merged;
+}
+
+function buildChapter(index, segments, startIdx, endIdx) {
+    const segs = segments.slice(startIdx, endIdx + 1);
+    return {
+        index,
+        segments: segs,
+        start: segs[0].start,
+        end: segs[segs.length - 1].end,
+        duration: segs[segs.length - 1].end - segs[0].start,
+        label: extractLabel(segs),
+        text: segs.map(s => s.text || "").join(" "),
+    };
+}
+
+function extractLabel(segs) {
+    // Collect all words, filter stop/filler, pick top 3 by frequency
+    const freq = {};
+    for (const s of segs) {
+        const words = (s.text || "").toLowerCase().replace(/[^\w\s]/g, "").split(/\s+/);
+        for (const w of words) {
+            if (w.length < 3 || STOP_WORDS.has(w)) continue;
+            freq[w] = (freq[w] || 0) + 1;
+        }
+    }
+    const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+    const top = sorted.slice(0, 3).map(e => e[0]);
+    return top.length > 0 ? top.join(", ") : "(silence)";
+}
+
+/* ===================================================================
+   Timecode helpers
+   =================================================================== */
+function secToTC(sec, fpsVal) {
+    const f = fpsVal || fps;
+    const totalFrames = Math.round(sec * f);
+    const fr = totalFrames % f;
+    const totalSec = Math.floor(totalFrames / f);
+    const ss = totalSec % 60;
+    const mm = Math.floor(totalSec / 60) % 60;
+    const hh = Math.floor(totalSec / 3600);
+    return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}:${pad2(fr)}`;
+}
+
+function pad2(n) { return String(n).padStart(2, "0"); }
+
+function fmtDur(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${pad2(s)}`;
+}
+
+/* ===================================================================
+   Export: EDL (CMX 3600)
+   =================================================================== */
+function generateEDL(chList, title) {
+    const lines = [`TITLE: ${title || "Chapter Export"}`, "FCM: NON-DROP FRAME", ""];
+    chList.forEach((ch, i) => {
+        const num = String(i + 1).padStart(3, "0");
+        const src = secToTC(ch.start);
+        const srcEnd = secToTC(ch.end);
+        const recIn = secToTC(ch.start);
+        const recOut = secToTC(ch.end);
+        lines.push(`${num}  AX       V     C        ${src} ${srcEnd} ${recIn} ${recOut}`);
+        lines.push(`* FROM CLIP NAME: Chapter ${ch.index} — ${ch.label}`);
+        lines.push("");
+    });
+    return lines.join("\n");
+}
+
+/* ===================================================================
+   Export: Resolve Markers JSON
+   =================================================================== */
+function generateMarkers(chList) {
+    return chList.map(ch => ({
+        frame: Math.round(ch.start * fps),
+        color: "Blue",
+        name: `Ch ${ch.index}: ${ch.label}`,
+        note: ch.text.slice(0, 200),
+        duration: 1,
+    }));
+}
+
+/* ===================================================================
+   Download helper
+   =================================================================== */
+function download(filename, content, mime) {
+    const blob = new Blob([content], { type: mime || "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+/* ===================================================================
+   Render
+   =================================================================== */
+function renderChapters() {
+    const query = $search.value.trim().toLowerCase();
+    $list.innerHTML = "";
+    let hits = 0;
+
+    chapters.forEach(ch => {
+        const textLower = ch.text.toLowerCase();
+        const labelLower = ch.label.toLowerCase();
+        const isHit = query && (textLower.includes(query) || labelLower.includes(query));
+        if (query && !isHit) return; // filter out non-matches
+        if (isHit) hits++;
+
+        const card = document.createElement("div");
+        card.className = "chapter-card" + (isHit ? " search-hit" : "");
+
+        // Header
+        const header = document.createElement("div");
+        header.className = "card-header";
+        header.innerHTML = `
+            <span class="ch-pill">${ch.index}</span>
+            <span class="ch-label">${esc(ch.label)}</span>
+            <span class="ch-tc">${secToTC(ch.start)} → ${secToTC(ch.end)}</span>
+            <span class="ch-dur">${fmtDur(ch.duration)}</span>
+            <span class="ch-toggle">&#9654;</span>
+        `;
+        header.addEventListener("click", () => card.classList.toggle("open"));
+
+        // Body
+        const body = document.createElement("div");
+        body.className = "card-body";
+
+        let snippetHTML = esc(ch.text.slice(0, 800));
+        if (query) {
+            const re = new RegExp(escRegex(query), "gi");
+            snippetHTML = snippetHTML.replace(re, m => `<mark>${m}</mark>`);
+        }
+
+        body.innerHTML = `
+            <div class="snippet">${snippetHTML}</div>
+            <div class="card-actions">
+                <button class="btn btn-edl" title="Export this chapter as EDL">EDL</button>
+                <button class="btn btn-mark" title="Export this chapter as Resolve marker">MARKER</button>
+            </div>
+        `;
+
+        body.querySelector(".btn-edl").addEventListener("click", e => {
+            e.stopPropagation();
+            const name = currentEntry ? (currentEntry.filename || "clip") : "clip";
+            download(`ch${ch.index}_${name}.edl`, generateEDL([ch], `Ch ${ch.index}`), "text/plain");
+        });
+        body.querySelector(".btn-mark").addEventListener("click", e => {
+            e.stopPropagation();
+            const markers = generateMarkers([ch]);
+            download(`ch${ch.index}_markers.json`, JSON.stringify(markers, null, 2), "application/json");
+        });
+
+        card.appendChild(header);
+        card.appendChild(body);
+        $list.appendChild(card);
+    });
+
+    // Stats
+    $stats.ch.textContent = chapters.length;
+    $stats.seg.textContent = currentEntry?.whisper_segments?.length || 0;
+    $stats.dur.textContent = currentEntry?.duration ? fmtDur(currentEntry.duration) : "—";
+    $stats.hits.textContent = query ? hits : "—";
+}
+
+function esc(s) {
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+function escRegex(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/* ===================================================================
+   Event handlers
+   =================================================================== */
+$clip.addEventListener("change", () => {
+    const idx = parseInt($clip.value, 10);
+    if (isNaN(idx)) { chapters = []; $list.classList.add("hidden"); return; }
+    currentEntry = libraryData[idx];
+    runDetection();
+});
+
+$gap.addEventListener("input", () => {
+    $gapVal.textContent = parseFloat($gap.value).toFixed(1);
+    if (currentEntry) runDetection();
+});
+
+$target.addEventListener("change", () => { if (currentEntry) runDetection(); });
+
+$fps.addEventListener("change", () => {
+    fps = parseInt($fps.value, 10) || 24;
+    if (chapters.length) renderChapters();
+});
+
+$search.addEventListener("input", () => renderChapters());
+
+$edlAll.addEventListener("click", () => {
+    if (!chapters.length) return;
+    const name = currentEntry ? (currentEntry.filename || "chapters") : "chapters";
+    download(`${name}_chapters.edl`, generateEDL(chapters, name), "text/plain");
+});
+
+$markAll.addEventListener("click", () => {
+    if (!chapters.length) return;
+    const name = currentEntry ? (currentEntry.filename || "chapters") : "chapters";
+    download(`${name}_markers.json`, JSON.stringify(generateMarkers(chapters), null, 2), "application/json");
+});
+
+function runDetection() {
+    const segments = currentEntry?.whisper_segments || [];
+    const minGap = parseFloat($gap.value) || 2;
+    const target = parseInt($target.value, 10) || 0;
+    fps = parseInt($fps.value, 10) || 24;
+
+    chapters = detectChapters(segments, minGap, target);
+    $list.classList.remove("hidden");
+    $edlAll.disabled = chapters.length === 0;
+    $markAll.disabled = chapters.length === 0;
+    renderChapters();
+}
+
+/* ===================================================================
+   Init
+   =================================================================== */
+tryFetch();
+</script>
+</body>
+</html>

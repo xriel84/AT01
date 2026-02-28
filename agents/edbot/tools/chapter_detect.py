@@ -19,7 +19,11 @@ from typing import Any
 DEFAULT_MIN_CHAPTER_DURATION = 30.0
 DEFAULT_SILENCE_GAP_THRESHOLD = 2.0
 FALLBACK_SILENCE_RATIO = 0.8
-TITLE_WORD_LIMIT = 8
+TITLE_WORD_LIMIT = 25
+TITLE_FILLER_WORDS = frozenset({
+    "um", "uh", "ah", "like", "basically", "actually",
+    "so", "well", "just", "really", "okay", "right", "yeah",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -63,19 +67,44 @@ def _find_boundaries_from_chunks(
 
 
 def _chunk_title(chunks: list[dict], chunk_ids: list[int]) -> str:
-    """Generate a chapter title from the first speech chunk in the range.
+    """Generate a chapter title from speech chunks in the range.
 
-    Returns the first *TITLE_WORD_LIMIT* words from the first chunk that
-    has speech text. Returns an empty string if no speech is found.
+    Collects words across multiple chunks (up to *TITLE_WORD_LIMIT*),
+    strips leading filler words, applies sentence case, and ensures a
+    trailing period. Returns an empty string if no usable speech is found.
     """
-    # Build a quick lookup by chunk id.
     by_id: dict[int, dict] = {c["id"]: c for c in chunks}
+    words: list[str] = []
     for cid in chunk_ids:
         chunk = by_id.get(cid)
         if chunk and chunk.get("has_speech") and chunk.get("text", "").strip():
-            words = chunk["text"].split()
-            return " ".join(words[:TITLE_WORD_LIMIT])
-    return ""
+            words.extend(chunk["text"].split())
+            if len(words) >= TITLE_WORD_LIMIT:
+                break
+
+    if not words:
+        return ""
+
+    # Cap at word limit.
+    words = words[:TITLE_WORD_LIMIT]
+
+    # Strip leading filler words.
+    while words and words[0].lower() in TITLE_FILLER_WORDS:
+        words.pop(0)
+
+    if not words:
+        return ""
+
+    title = " ".join(words)
+
+    # Sentence case: capitalize first character, preserve rest.
+    title = title[0].upper() + title[1:]
+
+    # Add trailing period if not already punctuated.
+    if title[-1] not in ".!?":
+        title += "."
+
+    return title
 
 
 def _resolve_duration(
@@ -217,6 +246,22 @@ def detect_chapters(
             "chunk_ids": chunk_ids,
             "title": _chunk_title(sorted_chunks, chunk_ids),
         })
+
+    # Step 6: Deduplicate titles — append "(ch N)" suffix on collisions.
+    title_counts: dict[str, int] = {}
+    for ch in chapters:
+        t = ch["title"]
+        title_counts[t] = title_counts.get(t, 0) + 1
+
+    # Only disambiguate titles that appear more than once (skip empty titles).
+    dupes = {t for t, count in title_counts.items() if count > 1 and t}
+    if dupes:
+        seen: dict[str, int] = {}
+        for ch in chapters:
+            t = ch["title"]
+            if t in dupes:
+                seen[t] = seen.get(t, 0) + 1
+                ch["title"] = f"{t[:-1]} (ch {ch['chapter_id']})." if t.endswith(".") else f"{t} (ch {ch['chapter_id']})"
 
     return chapters
 

@@ -252,7 +252,7 @@ class TestSingleChunkInput:
         assert chapters[0]["start"] == 0.0
         assert chapters[0]["end"] == 10.0
         assert chapters[0]["chunk_ids"] == [0]
-        assert chapters[0]["title"] == "Hello world welcome to the show"
+        assert chapters[0]["title"] == "Hello world welcome to the show."
 
     def test_single_chunk_with_silence_map(self):
         """Single chunk with silence_map still produces one chapter."""
@@ -295,18 +295,18 @@ class TestChapterTitleGeneration:
         chapters = detect_chapters(chunks, min_chapter_duration=5.0)
 
         assert len(chapters) == 1
-        assert chapters[0]["title"] == "Hello everyone welcome to the big grand opening"
+        assert chapters[0]["title"] == "Hello everyone welcome to the big grand opening ceremony today."
 
-    def test_title_truncated_to_8_words(self):
-        """Title is capped at 8 words even if text is longer."""
-        text = "one two three four five six seven eight nine ten eleven"
+    def test_title_truncated_to_25_words(self):
+        """Title is capped at 25 words even if text is longer."""
+        text = " ".join(f"word{i}" for i in range(30))
         chunks = [_make_chunk(0, text=text)]
 
         chapters = detect_chapters(chunks)
 
         title = chapters[0]["title"]
-        assert len(title.split()) == 8
-        assert title == "one two three four five six seven eight"
+        # 25 words + trailing period
+        assert len(title.rstrip(".").split()) == 25
 
     def test_title_empty_when_no_speech(self):
         """Title is empty string when no chunks have speech."""
@@ -325,7 +325,61 @@ class TestChapterTitleGeneration:
 
         chapters = detect_chapters(chunks)
 
-        assert chapters[0]["title"] == "Hi there"
+        assert chapters[0]["title"] == "Hi there."
+
+    def test_title_strips_leading_filler(self):
+        """Leading filler words (um, so, basically) are removed."""
+        chunks = [_make_chunk(0, text="um so basically the project is amazing")]
+
+        chapters = detect_chapters(chunks)
+
+        assert chapters[0]["title"] == "The project is amazing."
+
+    def test_title_has_trailing_period(self):
+        """All non-empty titles end with a period (or punctuation)."""
+        chunks = [_make_chunk(0, text="Welcome to the show")]
+
+        chapters = detect_chapters(chunks)
+
+        assert chapters[0]["title"].endswith(".")
+
+    def test_title_sentence_case(self):
+        """First character is uppercased."""
+        chunks = [_make_chunk(0, text="hello world")]
+
+        chapters = detect_chapters(chunks)
+
+        assert chapters[0]["title"][0].isupper()
+        assert chapters[0]["title"] == "Hello world."
+
+    def test_title_multi_chunk_concatenation(self):
+        """Title gathers words from multiple chunks when first is short."""
+        chunks = [
+            _make_chunk(0, text="Start here"),
+            _make_chunk(1, text="continue there"),
+        ]
+
+        title = _chunk_title(chunks, [0, 1])
+
+        assert "Start" in title
+        assert "continue" in title
+
+    def test_title_capped_at_25_words(self):
+        """Long text across chunks is capped at 25 words."""
+        text = " ".join(f"word{i}" for i in range(40))
+        chunks = [_make_chunk(0, text=text)]
+
+        title = _chunk_title(chunks, [0])
+
+        assert len(title.rstrip(".").split()) == 25
+
+    def test_title_all_filler_returns_empty(self):
+        """Chunks with only filler words produce an empty title."""
+        chunks = [_make_chunk(0, text="um uh like")]
+
+        chapters = detect_chapters(chunks)
+
+        assert chapters[0]["title"] == ""
 
 
 class TestNoSilenceGaps:
