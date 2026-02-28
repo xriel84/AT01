@@ -495,7 +495,7 @@ async function loadFromServer() {
   setStatus('amber', '[LOADING...]');
   try {
     const params = new URLSearchParams(window.location.search);
-    const url = params.get('library') || 'yd-library.json';
+    const url = params.get('library') || '/static/yd-library.json';
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();

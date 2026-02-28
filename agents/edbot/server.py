@@ -21,6 +21,8 @@ Endpoints:
     WS   /ws/progress         -> real-time progress + new_output events
     GET  /                    -> serve viewer HTML
     GET  /video/{path}        -> serve video files with byte-range support
+    GET  /static/{path}       -> static files (agents/edbot/static/)
+    GET  /frontend/{path}     -> frontend HTML tools (same dir, html=True)
 """
 
 import asyncio
@@ -36,6 +38,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -1391,6 +1394,14 @@ async def shutdown_event():
     watcher = get_watcher()
     watcher.stop()
     logger.info("OutputWatcher stopped with server")
+
+
+# ---------------------------------------------------------------------------
+# Static file mounts (after all API routes to avoid shadowing)
+# ---------------------------------------------------------------------------
+
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+app.mount("/frontend", StaticFiles(directory=str(STATIC_DIR), html=True), name="frontend")
 
 
 # ---------------------------------------------------------------------------
