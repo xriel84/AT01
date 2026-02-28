@@ -554,8 +554,7 @@ kbd {
    AT COMMAND CONSOLE -- CONFIG
    Edit these values. Everything else is wiring.
    ================================================================= */
-const BRIDGE_PORT = 8901;
-const DEV_SERVER = 'http://localhost:8901';
+const BRIDGE_PORT = 8901;  // display only — used in status bar
 const OLLAMA_HOST = 'http://localhost:11434';
 const DEFAULT_AGENT = 'edbot';
 const SEND_SHORTCUT = 'ctrl+enter';  // 'ctrl+enter' or 'shift+enter'
@@ -622,10 +621,10 @@ async function sendCommandLive(command) {
   const entry = createLogEntry(taskId, command);
 
   try {
-    const resp = await fetch(`http://localhost:${BRIDGE_PORT}/task`, {
+    const resp = await fetch('/api/resolve/command', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ command, agent: currentAgent })
+      body: JSON.stringify({ command })
     });
 
     if (!resp.ok) {
@@ -872,7 +871,7 @@ async function checkBridgeStatus() {
     // Check for /docs — FastAPI auto-generates this endpoint.
     // If something else is on the port (D3 conflict), /docs won't exist
     // or won't have CORS headers, so fetch rejects -> mock mode.
-    const resp = await fetch(`http://localhost:${BRIDGE_PORT}/docs`, {
+    const resp = await fetch('/docs', {
       method: 'GET',
       signal: AbortSignal.timeout(3000)
     });
@@ -913,7 +912,7 @@ function setBridgeStatus(mode) {
 
 async function checkResolveStatus() {
   try {
-    const resp = await fetch(`http://localhost:${BRIDGE_PORT}/resolve/state`, {
+    const resp = await fetch('/api/resolve/status', {
       signal: AbortSignal.timeout(3000)
     });
     if (resp.ok) {
@@ -1053,9 +1052,8 @@ dryRunBtn.addEventListener('click', () => {
   if (!loadedDecisions) return;
   const cmd = 'apply decisions --dry-run --file inline';
   const payload = JSON.stringify({
-    command: cmd,
-    agent: currentAgent,
-    decisions: loadedDecisions
+    decisions: loadedDecisions,
+    mode: 'dry-run'
   });
 
   // Log and send
@@ -1085,9 +1083,8 @@ sendDecisionsBtn.addEventListener('click', () => {
 
   if (bridgeMode === 'live' && !forceMock) {
     const payload = JSON.stringify({
-      command: cmd,
-      agent: currentAgent,
-      decisions: loadedDecisions
+      decisions: loadedDecisions,
+      mode: 'confirm'
     });
     sendDecisionPayload(entry, payload, 'confirm');
   } else {
@@ -1101,7 +1098,7 @@ sendDecisionsBtn.addEventListener('click', () => {
 
 async function sendDecisionPayload(entry, payload, mode) {
   try {
-    const resp = await fetch(`http://localhost:${BRIDGE_PORT}/task`, {
+    const resp = await fetch('/api/resolve/command', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: payload
