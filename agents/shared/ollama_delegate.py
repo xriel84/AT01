@@ -107,12 +107,12 @@ def _log_delegation(result: dict) -> None:
     try:
         log = []
         if DELEGATION_LOG.exists():
-            with open(DELEGATION_LOG) as f:
+            with open(DELEGATION_LOG, encoding="utf-8") as f:
                 log = json.load(f)
         log.append(result)
         if len(log) > 200:
             log = log[-200:]
-        with open(DELEGATION_LOG, "w") as f:
+        with open(DELEGATION_LOG, "w", encoding="utf-8") as f:
             json.dump(log, f, indent=2)
     except Exception:
         pass

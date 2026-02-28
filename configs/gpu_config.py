@@ -25,7 +25,7 @@ def _detect_machine_id() -> str:
     hostname = socket.gethostname().lower()
     if "enki" in hostname:
         return "rielt"
-    return "stran"
+    return "yd"
 
 
 def get_gpu_config(machine_id: Optional[str] = None) -> dict:
@@ -41,7 +41,7 @@ def get_gpu_config(machine_id: Optional[str] = None) -> dict:
     ]
     for path in candidates:
         if path.exists():
-            with open(path) as f:
+            with open(path, encoding="utf-8") as f:
                 config = json.load(f)
             if not machine_id:
                 _CONFIG_CACHE = config

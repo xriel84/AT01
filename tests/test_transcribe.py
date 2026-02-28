@@ -178,11 +178,11 @@ class TestOutputFilesWritten:
         assert transcript_path.exists(), "transcript.json was not written"
 
         # Validate they are parseable JSON.
-        with open(chunks_path) as f:
+        with open(chunks_path, encoding="utf-8") as f:
             cdata = json.load(f)
         assert "chunks" in cdata
 
-        with open(transcript_path) as f:
+        with open(transcript_path, encoding="utf-8") as f:
             tdata = json.load(f)
         assert "words" in tdata
         assert len(tdata["words"]) == len(MOCK_WORDS)

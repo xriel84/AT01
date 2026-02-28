@@ -178,7 +178,7 @@ class TestOutputFileWritten:
         assert map_path.exists(), "silence_map.json was not written"
 
         # Validate it is parseable JSON with expected keys.
-        with open(map_path) as f:
+        with open(map_path, encoding="utf-8") as f:
             data = json.load(f)
 
         assert "source" in data

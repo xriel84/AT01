@@ -316,7 +316,7 @@ class TestAutoName:
 
         for stem in ["video1", "video2"]:
             transcript = _make_transcript(["Jensen Huang keynote at NVIDIA"])
-            with open(tmp_path / f"{stem}_chunks.json", "w") as f:
+            with open(tmp_path / f"{stem}_chunks.json", "w", encoding="utf-8") as f:
                 json.dump(transcript, f)
 
         manifest = {
@@ -363,7 +363,7 @@ class TestAutoChapter:
             "NVIDIA announces breakthrough in ray tracing.",
         ], duration_per_chunk=30.0)
 
-        with open(tmp_path / "test_chunks.json", "w") as f:
+        with open(tmp_path / "test_chunks.json", "w", encoding="utf-8") as f:
             json.dump(transcript, f)
 
         with patch("auto_chapter._load_nlp") as mock_nlp:
@@ -384,7 +384,7 @@ class TestAutoChapter:
         transcript = _make_transcript(
             ["Text chunk one.", "Text chunk two."], duration_per_chunk=40.0
         )
-        with open(tmp_path / "vid_chunks.json", "w") as f:
+        with open(tmp_path / "vid_chunks.json", "w", encoding="utf-8") as f:
             json.dump(transcript, f)
 
         with patch("auto_chapter._load_nlp", return_value=_MockNLP()):
@@ -401,7 +401,7 @@ class TestAutoChapter:
             "Jensen Huang presents the keynote at GTC conference.",
         ], duration_per_chunk=60.0)
 
-        with open(tmp_path / "talk_chunks.json", "w") as f:
+        with open(tmp_path / "talk_chunks.json", "w", encoding="utf-8") as f:
             json.dump(transcript, f)
 
         mock_entities = [
@@ -422,7 +422,7 @@ class TestAutoChapter:
         transcript = _make_transcript([
             "This is the first sentence. Then more content follows.",
         ], duration_per_chunk=60.0)
-        with open(tmp_path / "s_chunks.json", "w") as f:
+        with open(tmp_path / "s_chunks.json", "w", encoding="utf-8") as f:
             json.dump(transcript, f)
 
         with patch("auto_chapter._load_nlp", return_value=_MockNLP()):
@@ -439,7 +439,7 @@ class TestAutoChapter:
         transcript = _make_transcript([
             "NVIDIA CEO Jensen Huang at SIGGRAPH in Los Angeles."
         ], duration_per_chunk=60.0)
-        with open(tmp_path / "ent_chunks.json", "w") as f:
+        with open(tmp_path / "ent_chunks.json", "w", encoding="utf-8") as f:
             json.dump(transcript, f)
 
         mock_entities = [
@@ -463,7 +463,7 @@ class TestAutoChapter:
         transcript = _make_transcript(
             ["Short clip content."], duration_per_chunk=15.0
         )
-        with open(tmp_path / "short_chunks.json", "w") as f:
+        with open(tmp_path / "short_chunks.json", "w", encoding="utf-8") as f:
             json.dump(transcript, f)
 
         with patch("auto_chapter._load_nlp", return_value=_MockNLP()):
@@ -478,7 +478,7 @@ class TestAutoChapter:
         transcript = _make_transcript([
             "Some content about video editing and production.",
         ], duration_per_chunk=60.0)
-        with open(tmp_path / "fb_chunks.json", "w") as f:
+        with open(tmp_path / "fb_chunks.json", "w", encoding="utf-8") as f:
             json.dump(transcript, f)
 
         with patch("auto_chapter._load_nlp", return_value=None):
@@ -498,7 +498,7 @@ class TestTranscriptIndex:
     def _write_chunks(self, tmp_path, stem, texts):
         """Helper to write chunk files."""
         transcript = _make_transcript(texts)
-        with open(tmp_path / f"{stem}_chunks.json", "w") as f:
+        with open(tmp_path / f"{stem}_chunks.json", "w", encoding="utf-8") as f:
             json.dump(transcript, f)
 
     @patch("transcript_index._load_nlp", return_value=None)
@@ -653,7 +653,7 @@ class TestShotMatcher:
     def _write_chunks(self, tmp_path, stem, texts):
         """Helper to write chunk files."""
         transcript = _make_transcript(texts)
-        with open(tmp_path / f"{stem}_chunks.json", "w") as f:
+        with open(tmp_path / f"{stem}_chunks.json", "w", encoding="utf-8") as f:
             json.dump(transcript, f)
 
     def test_match_basic(self, tmp_path):

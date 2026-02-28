@@ -142,7 +142,7 @@ def load_transcript_json(path: Path) -> list[dict]:
 
     Expected format: [{"word": str, "start": float, "end": float}, ...]
     """
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     return data
 

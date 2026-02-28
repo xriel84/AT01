@@ -525,7 +525,7 @@ class TestRealVideo:
         p = Path("C:/AT01/temp/chunks.json")
         if not p.exists():
             pytest.skip("Real chunks.json not available — run pipeline first")
-        with open(p) as f:
+        with open(p, encoding="utf-8") as f:
             return json.load(f)
 
     @pytest.fixture
@@ -534,7 +534,7 @@ class TestRealVideo:
         p = Path("C:/AT01/temp/silence_map.json")
         if not p.exists():
             pytest.skip("Real silence_map.json not available — run pipeline first")
-        with open(p) as f:
+        with open(p, encoding="utf-8") as f:
             return json.load(f)
 
     def test_real_chunks_schema(self, real_chunks):

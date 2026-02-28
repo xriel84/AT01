@@ -49,7 +49,7 @@ def sample_chunks_dir(tmp_path):
              "word_count": 0, "silence_ratio": 1.0, "has_speech": False},
         ],
     }
-    with open(tmp_path / "demo_chunks.json", "w") as f:
+    with open(tmp_path / "demo_chunks.json", "w", encoding="utf-8") as f:
         json.dump(chunks_data, f)
     return tmp_path
 
@@ -123,7 +123,7 @@ class TestAutoBuildIndex:
 
     def test_auto_build_from_manifest(self, sample_chunks_dir):
         manifest = {"files": [{"filename": "demo.mov"}]}
-        with open(sample_chunks_dir / "batch_manifest.json", "w") as f:
+        with open(sample_chunks_dir / "batch_manifest.json", "w", encoding="utf-8") as f:
             json.dump(manifest, f)
 
         index = auto_build_index(str(sample_chunks_dir))
@@ -146,7 +146,7 @@ class TestAutoBuildIndex:
         auto_build_index(str(sample_chunks_dir))
         index_path = sample_chunks_dir / "transcript_index.json"
         assert index_path.exists()
-        with open(index_path) as f:
+        with open(index_path, encoding="utf-8") as f:
             data = json.load(f)
         assert "words" in data
         assert "chunk_texts" in data

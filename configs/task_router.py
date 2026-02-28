@@ -8,7 +8,7 @@ ROUTES_PATH = Path(__file__).parent / "task_routing.json"
 
 def load_routes() -> dict:
     """Load all task routes from JSON config."""
-    with open(ROUTES_PATH) as f:
+    with open(ROUTES_PATH, encoding="utf-8") as f:
         return json.load(f)["routes"]
 
 

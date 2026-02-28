@@ -516,7 +516,7 @@ class TestOutputFileWritten:
         map_path = out / "speaker_map.json"
         assert map_path.exists(), "speaker_map.json was not written"
 
-        with open(map_path) as f:
+        with open(map_path, encoding="utf-8") as f:
             data = json.load(f)
 
         assert data["source"] == "clip.mp4"

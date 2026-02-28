@@ -167,7 +167,7 @@ def run_comparison(
     if output_path is None:
         output_path = "benchmarks/model_comparison.json"
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump({"results": results, "video": Path(video_path).name,
                     "duration_s": round(duration, 1)}, f, indent=2)
     print(f"\nResults saved to {output_path}")

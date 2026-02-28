@@ -287,7 +287,7 @@ class TestSearchEndpoint:
         }
         with tempfile.TemporaryDirectory() as tmpdir:
             index_path = Path(tmpdir) / "transcript_index.json"
-            with open(index_path, "w") as f:
+            with open(index_path, "w", encoding="utf-8") as f:
                 json.dump(mock_index, f)
 
             with patch("agents.edbot.server.Path") as MockPath:

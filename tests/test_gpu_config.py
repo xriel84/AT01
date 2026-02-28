@@ -51,7 +51,7 @@ class TestGpuConfig:
     def test_config_files_valid_json(self):
         config_dir = Path(__file__).parent.parent / "configs"
         for f in config_dir.glob("gpu_capabilities*.json"):
-            with open(f) as fh:
+            with open(f, encoding="utf-8") as fh:
                 data = json.load(fh)
             assert "schema_version" in data
             assert "gpu" in data
@@ -60,16 +60,16 @@ class TestGpuConfig:
     def test_tier_2_config_has_large_v3(self):
         config_dir = Path(__file__).parent.parent / "configs"
         main = config_dir / "gpu_capabilities.json"
-        with open(main) as f:
+        with open(main, encoding="utf-8") as f:
             data = json.load(f)
         assert data["ml_capabilities"]["whisper_model"] == "large-v3"
 
-    def test_stran_config_filled(self):
-        """Verify stran config has real values (no remaining placeholders)."""
+    def test_yd_config_filled(self):
+        """Verify YD config has real values (no remaining placeholders)."""
         config_dir = Path(__file__).parent.parent / "configs"
-        stran = config_dir / "gpu_capabilities_stran.json"
+        stran = config_dir / "gpu_capabilities_yd.json"
         if stran.exists():
-            with open(stran) as f:
+            with open(stran, encoding="utf-8") as f:
                 content = f.read()
             assert "__YD_" not in content
             data = json.loads(content)
@@ -111,7 +111,7 @@ class TestTaskRouter:
 
     def test_routing_json_valid(self):
         routing = Path(__file__).parent.parent / "configs" / "task_routing.json"
-        with open(routing) as f:
+        with open(routing, encoding="utf-8") as f:
             data = json.load(f)
         assert "routes" in data
         for name, route in data["routes"].items():
@@ -125,7 +125,7 @@ class TestTaskRouter:
 
     def test_all_routes_have_tier_0(self):
         routing = Path(__file__).parent.parent / "configs" / "task_routing.json"
-        with open(routing) as f:
+        with open(routing, encoding="utf-8") as f:
             data = json.load(f)
         for name, route in data["routes"].items():
             assert "0" in route["tiers"], f"Route {name} missing tier 0 fallback"

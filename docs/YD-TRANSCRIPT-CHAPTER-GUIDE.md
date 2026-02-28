@@ -637,7 +637,7 @@ Commit with: `[yd] P3 test results — chapters + GPU framework`
 
 **Machine:** DESKTOP-BD76CV3 (RTX 4080 16GB) — **Tier 1**
 
-**Config file:** `configs/gpu_capabilities_stran.json`
+**Config file:** `configs/gpu_capabilities_yd.json`
 
 | Tool | GPU? | Your Tier 1 Setting |
 |------|------|-------------------|
@@ -649,7 +649,7 @@ Commit with: `[yd] P3 test results — chapters + GPU framework`
 | video_prober | No | CPU-only (ffprobe) |
 | manifest_writer | No | CPU-only |
 
-**Whisper model on your hardware:** `medium` with `int8` compute type. Auto-detected from `gpu_capabilities_stran.json`. If GPU fails, falls back to `small`/`cpu` automatically.
+**Whisper model on your hardware:** `medium` with `int8` compute type. Auto-detected from `gpu_capabilities_yd.json`. If GPU fails, falls back to `small`/`cpu` automatically.
 
 **Task routing:** See `configs/task_routing.json` for the full tier map across all 34 tools.
 

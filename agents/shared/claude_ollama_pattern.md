@@ -45,6 +45,6 @@ py -3.12 -m pytest -q -m "not gpu_tier_2"
 ## YD Setup
 
 1. `ollama list` — note models
-2. Edit `configs/gpu_capabilities_stran.json` — fill `__YD_*__` fields
+2. Edit `configs/gpu_capabilities_yd.json` — fill `__YD_*__` fields
 3. `py -3.12 -m pytest tests/test_gpu_config.py -v` — verify
 4. `py -3.12 -m pytest -q` — full suite, check tier-2 skips

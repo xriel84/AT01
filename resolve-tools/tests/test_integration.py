@@ -75,9 +75,9 @@ class TestDeliverManifestSchema(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as td:
             path = os.path.join(td, "_manifest.json")
-            with open(path, "w") as f:
+            with open(path, "w", encoding="utf-8") as f:
                 json.dump(manifest, f)
-            with open(path) as f:
+            with open(path, encoding="utf-8") as f:
                 loaded = json.load(f)
 
             self.assertEqual(loaded["session_id"], "S1")
