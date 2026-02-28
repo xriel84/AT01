@@ -13,7 +13,7 @@
     "2": "Workstation GPU 24GB+ — whisper large-v3 float16, 70B Ollama, VACE 14B, ComfyUI SDXL"
   },
   "ollama": {
-    "host": "0.0.0.0",
+    "host": "127.0.0.1",
     "port": 11434,
     "max_model_for_planning": "llama3.3:70b",
     "max_model_for_coding": "qwen2.5-coder:32b",
