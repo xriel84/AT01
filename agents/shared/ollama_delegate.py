@@ -62,6 +62,21 @@ def delegate_to_ollama(
             data = json.loads(resp.read())
         duration = time.time() - start
         result = _result("pass", data.get("response", ""), model, duration, task_type)
+        try:
+            from metrics.agent_logger import log_agent_action
+            log_agent_action(
+                agent="ollama",
+                task_type=task_type,
+                task_desc=full_prompt[:120],
+                model=model,
+                tokens_in=data.get("prompt_eval_count", 0),
+                tokens_out=data.get("eval_count", 0),
+                cost_usd=0.0,
+                duration_ms=int(data.get("total_duration", 0) / 1_000_000),
+                source="ollama-api",
+            )
+        except Exception:
+            pass
     except Exception as e:
         duration = time.time() - start
         result = _result("error", str(e), model, duration, task_type)
