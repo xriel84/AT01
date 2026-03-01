@@ -206,6 +206,46 @@
     vertical-align: middle;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .help-section {
+    margin-bottom: 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .help-section summary {
+    cursor: pointer;
+    padding: 8px 14px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    user-select: none;
+  }
+  .help-section summary:hover { color: var(--accent); }
+  .help-content {
+    padding: 8px 14px 14px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .help-group { font-size: 0.7rem; }
+  .help-title { font-weight: bold; color: var(--accent); margin-bottom: 4px; }
+  .help-example { color: var(--text); margin-bottom: 2px; }
+  .help-example::before { content: '"'; color: var(--text-dim); }
+  .help-example::after { content: '"'; color: var(--text-dim); }
+  .help-note { color: var(--text-dim); font-size: 0.6rem; margin-top: 2px; }
+  .engine-status {
+    font-size: 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 0.5rem;
+  }
+  .engine-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #555;
+    display: inline-block;
+  }
+  .engine-dot.online { background: #0f0; }
+  .engine-dot.offline { background: var(--warn); }
 </style>
 </head>
 <body>
@@ -216,6 +256,7 @@
       <h1>Command Console</h1>
       <span class="mode-badge dryrun">DRY-RUN</span>
       <span class="mode-badge offline" id="resolveStatus" style="display:none">RESOLVE OFFLINE</span>
+      <span class="engine-status" id="engineStatus"><span class="engine-dot" id="engineDot"></span><span id="engineLabel">AI Engine: checking...</span></span>
     </div>
   </header>
 
@@ -232,7 +273,40 @@
     <button class="preset" onclick="usePreset('color code clips by speaker')">Color code speakers</button>
     <button class="preset" onclick="usePreset('create subclips from chapters')">Create subclips</button>
     <button class="preset" onclick="usePreset('set timeline to 24fps')">Set 24fps</button>
+    <button class="preset" onclick="usePreset('add green markers for act 1 scenes')">Mark act 1</button>
+    <button class="preset" onclick="usePreset('create subclips for all interview segments')">Interview subclips</button>
+    <button class="preset" onclick="usePreset('color code rehearsal clips blue')">Color rehearsals</button>
   </div>
+
+  <details class="help-section">
+    <summary>What can I say?</summary>
+    <div class="help-content">
+      <div class="help-group">
+        <div class="help-title">Markers</div>
+        <div class="help-example">"add markers at chapter boundaries"</div>
+        <div class="help-example">"add green markers for act 1"</div>
+        <div class="help-note">Triggers template: chapters_to_markers</div>
+      </div>
+      <div class="help-group">
+        <div class="help-title">Clip Colors</div>
+        <div class="help-example">"color code clips by speaker"</div>
+        <div class="help-example">"color rehearsal clips blue"</div>
+        <div class="help-note">Triggers template: speakers_to_clip_colors</div>
+      </div>
+      <div class="help-group">
+        <div class="help-title">Subclips</div>
+        <div class="help-example">"create subclips from chapters"</div>
+        <div class="help-example">"create subclips for interview segments"</div>
+        <div class="help-note">Triggers template: chapters_to_subclips</div>
+      </div>
+      <div class="help-group">
+        <div class="help-title">Free-form (AI)</div>
+        <div class="help-example">"set timeline to 24fps"</div>
+        <div class="help-example">"remove all clips shorter than 3 seconds"</div>
+        <div class="help-note">Interpreted by Ollama (requires AI engine online)</div>
+      </div>
+    </div>
+  </details>
 
   <div class="history" id="history"></div>
 
@@ -413,6 +487,27 @@ document.getElementById('commandInput').addEventListener('keydown', (e) => {
 });
 
 checkResolve();
+
+async function checkOllama() {
+  const dot = document.getElementById('engineDot');
+  const label = document.getElementById('engineLabel');
+  try {
+    const r = await fetch('http://127.0.0.1:11434/api/tags', { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      const d = await r.json();
+      const count = d.models ? d.models.length : 0;
+      dot.className = 'engine-dot online';
+      label.textContent = 'AI Engine: Online (' + count + ' models)';
+    } else {
+      dot.className = 'engine-dot offline';
+      label.textContent = 'AI Engine: Offline — templates only';
+    }
+  } catch {
+    dot.className = 'engine-dot offline';
+    label.textContent = 'AI Engine: Offline — templates only';
+  }
+}
+checkOllama();
 </script>
 </body>
 </html>

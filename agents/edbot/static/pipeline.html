@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AT01 — Pipeline</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #14141f;
+    --border: #2a2a3a;
+    --text: #e0e0e0;
+    --text-dim: #888;
+    --accent: #00d4aa;
+    --warn: #ffaa00;
+    --ready: #00d4aa;
+    --soon: #ffaa00;
+    --grey: #555;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'IBM Plex Mono', 'Consolas', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 1.5rem;
+  }
+  header { margin-bottom: 1.5rem; }
+  h1 { font-size: 1.2rem; margin-bottom: 0.3rem; }
+  .subtitle { font-size: 0.8rem; color: var(--text-dim); }
+  .back-link {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-decoration: none;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+  .back-link:hover { color: var(--accent); }
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-width: 600px;
+  }
+  .stage {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+  .stage-line {
+    width: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .stage-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--grey);
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    margin-top: 14px;
+  }
+  .stage-dot.ready { background: var(--ready); border-color: var(--ready); }
+  .stage-dot.soon { background: var(--soon); border-color: var(--soon); }
+  .stage-connector {
+    width: 2px;
+    flex: 1;
+    background: var(--border);
+    min-height: 8px;
+  }
+  .stage:last-child .stage-connector { display: none; }
+  .stage-card {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border-left: 3px solid var(--grey);
+  }
+  .stage-card.ready { border-left-color: var(--ready); }
+  .stage-card.soon { border-left-color: var(--soon); }
+  .stage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .stage-name {
+    font-size: 0.85rem;
+    font-weight: bold;
+  }
+  .stage-badge {
+    font-size: 0.6rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    padding: 1px 6px;
+    border: 1px solid;
+  }
+  .stage-badge.ready { border-color: var(--ready); color: var(--ready); }
+  .stage-badge.soon { border-color: var(--soon); color: var(--soon); }
+  .stage-tool {
+    font-size: 0.7rem;
+    color: var(--accent);
+    margin-bottom: 2px;
+  }
+  .stage-desc {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+  .stats-section {
+    margin-top: 2rem;
+    max-width: 600px;
+  }
+  .section-title {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .stats-grid {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem 1.5rem;
+    min-width: 120px;
+  }
+  .stat-value {
+    font-size: 1.4rem;
+    color: var(--accent);
+    font-weight: bold;
+  }
+  .stat-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+</style>
+</head>
+<body>
+  <header>
+    <a href="/frontend/index.html" class="back-link">Dashboard</a>
+    <h1>Pipeline</h1>
+    <p class="subtitle">Automated video post-production workflow</p>
+  </header>
+
+  <div class="pipeline">
+    <div class="stage">
+      <div class="stage-line"><div class="stage-dot ready"></div><div class="stage-connector"></div></div>
+      <div class="stage-card ready">
+        <div class="stage-header"><span class="stage-name">Ingest</span><span class="stage-badge ready">READY</span></div>
+        <div class="stage-tool">library_generator.py, ffprobe</div>
+        <div class="stage-desc">Scan directories, probe metadata, catalog footage into searchable library</div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-line"><div class="stage-dot ready"></div><div class="stage-connector"></div></div>
+      <div class="stage-card ready">
+        <div class="stage-header"><span class="stage-name">Transcribe</span><span class="stage-badge ready">READY</span></div>
+        <div class="stage-tool">faster-whisper (large-v3, float16)</div>
+        <div class="stage-desc">GPU-accelerated speech-to-text with word-level timestamps</div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-line"><div class="stage-dot ready"></div><div class="stage-connector"></div></div>
+      <div class="stage-card ready">
+        <div class="stage-header"><span class="stage-name">Silence Detect</span><span class="stage-badge ready">READY</span></div>
+        <div class="stage-tool">silence_detect.py, ffmpeg</div>
+        <div class="stage-desc">Identify and mark silent gaps for removal or chapter boundary detection</div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-line"><div class="stage-dot ready"></div><div class="stage-connector"></div></div>
+      <div class="stage-card ready">
+        <div class="stage-header"><span class="stage-name">Chapter Detect</span><span class="stage-badge ready">READY</span></div>
+        <div class="stage-tool">chapter_detect.py</div>
+        <div class="stage-desc">AI scene boundary detection with descriptive topic titles</div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-line"><div class="stage-dot ready"></div><div class="stage-connector"></div></div>
+      <div class="stage-card ready">
+        <div class="stage-header"><span class="stage-name">NLP Search</span><span class="stage-badge ready">READY</span></div>
+        <div class="stage-tool">/api/library/search</div>
+        <div class="stage-desc">Natural language queries across transcripts, chapters, and metadata</div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-line"><div class="stage-dot ready"></div><div class="stage-connector"></div></div>
+      <div class="stage-card ready">
+        <div class="stage-header"><span class="stage-name">NLP Command</span><span class="stage-badge ready">READY</span></div>
+        <div class="stage-tool">resolve_nlp.py, Ollama</div>
+        <div class="stage-desc">English commands translated to DaVinci Resolve edit decisions</div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-line"><div class="stage-dot ready"></div><div class="stage-connector"></div></div>
+      <div class="stage-card ready">
+        <div class="stage-header"><span class="stage-name">Resolve Edit</span><span class="stage-badge ready">READY</span></div>
+        <div class="stage-tool">resolve_bridge.py, pybmd</div>
+        <div class="stage-desc">Execute edit plan in DaVinci Resolve via Python scripting API</div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-line"><div class="stage-dot soon"></div><div class="stage-connector"></div></div>
+      <div class="stage-card soon">
+        <div class="stage-header"><span class="stage-name">Export</span><span class="stage-badge soon">COMING SOON</span></div>
+        <div class="stage-tool">render queue, ffmpeg</div>
+        <div class="stage-desc">Render and publish to YouTube, TikTok, and LinkedIn with auto-metadata</div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-line"><div class="stage-dot soon"></div></div>
+      <div class="stage-card soon">
+        <div class="stage-header"><span class="stage-name">Analytics</span><span class="stage-badge soon">COMING SOON</span></div>
+        <div class="stage-tool">agent_logger.py</div>
+        <div class="stage-desc">Track performance metrics and feed back into editing decisions</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-section">
+    <div class="section-title">Pipeline Stats</div>
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card"><div class="stat-value" id="statVideos">-</div><div class="stat-label">videos catalogued</div></div>
+      <div class="stat-card"><div class="stat-value" id="statSegments">-</div><div class="stat-label">segments indexed</div></div>
+      <div class="stat-card"><div class="stat-value" id="statChapters">-</div><div class="stat-label">chapters detected</div></div>
+      <div class="stat-card"><div class="stat-value" id="statDuration">-</div><div class="stat-label">total duration</div></div>
+    </div>
+  </div>
+
+<script>
+function fmtDuration(sec) {
+  if (sec < 60) return Math.round(sec) + 's';
+  if (sec < 3600) return Math.floor(sec / 60) + 'm ' + Math.round(sec % 60) + 's';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return h + 'h ' + m + 'm';
+}
+
+async function loadStats() {
+  try {
+    const [libResp, chapResp] = await Promise.all([
+      fetch('/api/library'),
+      fetch('/api/library/chapters')
+    ]);
+    const lib = await libResp.json();
+    const chap = await chapResp.json();
+    const entries = lib.entries || [];
+    let totalSegs = 0, totalDur = 0;
+    entries.forEach(e => {
+      totalSegs += (e.whisper_segments || []).length;
+      totalDur += e.duration || 0;
+    });
+    document.getElementById('statVideos').textContent = lib.count;
+    document.getElementById('statSegments').textContent = totalSegs.toLocaleString();
+    document.getElementById('statChapters').textContent = chap.total_chapters || 0;
+    document.getElementById('statDuration').textContent = fmtDuration(totalDur);
+  } catch {
+    document.getElementById('statVideos').textContent = '?';
+  }
+}
+loadStats();
+</script>
+</body>
+</html>

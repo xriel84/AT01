@@ -1,0 +1,1027 @@
+{
+  "generated": "2026-02-28T21:01:10",
+  "source_dir": "C:\\AT01\\input\\footage",
+  "file_count": 20,
+  "entries": [
+    {
+      "id": "CAROL_6484EEF5",
+      "filename": "2024-12-06 19-02-33 (3).mp4",
+      "two_word_name": "2024 12",
+      "duration": 13.46,
+      "resolution": "3840x2160",
+      "file_size_mb": 15.6,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 3.78,
+          "text": "No, it I was apprentice. Yeah"
+        },
+        {
+          "start": 7.08,
+          "end": 9.06,
+          "text": "Why it's all fizzy"
+        },
+        {
+          "start": 9.06,
+          "end": 12.06,
+          "text": "This is hard by it's fizzy week alive again"
+        }
+      ],
+      "language": "en",
+      "summary": "No, it I was apprentice. Yeah Why it's all fizzy This is hard by it's fizzy week alive again"
+    },
+    {
+      "id": "CAROL_BCEFF724",
+      "filename": "2024-12-06 19-02-33 (4).mp4",
+      "two_word_name": "2024 12",
+      "duration": 38.66,
+      "resolution": "3840x2160",
+      "file_size_mb": 55.2,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 7.0,
+          "text": "Oh, he was a German five minutes, nothing could be hearty, a wonderful party, wonderful"
+        },
+        {
+          "start": 7.0,
+          "end": 12.48,
+          "text": "games, wonderful unanimity, wonderful happiness."
+        },
+        {
+          "start": 12.48,
+          "end": 21.92,
+          "text": "But he was early at the office next morning, oh yes he was, only he could be there first"
+        },
+        {
+          "start": 21.92,
+          "end": 27.32,
+          "text": "to catch Bob Cratchit coming late, and yes he did, that was the thing he had his heart"
+        },
+        {
+          "start": 27.32,
+          "end": 34.28,
+          "text": "set on and he did it, yes he did, he was a full 18 minutes and a half behind his tongue."
+        },
+        {
+          "start": 34.28,
+          "end": 38.64,
+          "text": "And what do you mean by coming here at this time?"
+        }
+      ],
+      "language": "en",
+      "summary": "Oh, he was a German five minutes, nothing could be hearty, a wonderful party, wonderful games, wonderful unanimity, wonderful happiness. But he was early at the office next morning, oh yes he was, only he could be there first to catch Bob Cratchit coming late, and yes he did, that..."
+    },
+    {
+      "id": "CAROL_857DAF30",
+      "filename": "2024-12-06 19-02-33 (5).mp4",
+      "two_word_name": "2024 12",
+      "duration": 29.29,
+      "resolution": "3840x2160",
+      "file_size_mb": 72.5,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 10.12,
+          "text": "I expect a purse, tomorrow, when the bell throws one, or could I have them all at once"
+        },
+        {
+          "start": 10.12,
+          "end": 13.58,
+          "text": "and get it over and take it?"
+        },
+        {
+          "start": 13.58,
+          "end": 22.28,
+          "text": "The second, on the next night at the same hour, the third, up on the next night when"
+        },
+        {
+          "start": 22.28,
+          "end": 28.12,
+          "text": "the last oak of 12 has ceased to buy paint."
+        }
+      ],
+      "language": "en",
+      "summary": "I expect a purse, tomorrow, when the bell throws one, or could I have them all at once and get it over and take it? The second, on the next night at the same hour, the third, up on the next night when the last oak of 12 has ceased..."
+    },
+    {
+      "id": "CAROL_09D3FCD2",
+      "filename": "2024-12-07 13-59-34 (2).mp4",
+      "two_word_name": "2024 12",
+      "duration": 132.48,
+      "resolution": "3840x2160",
+      "file_size_mb": 181.7,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 5.0,
+          "text": "This produced an immediate effect for a Genskroot soil himself."
+        },
+        {
+          "start": 5.0,
+          "end": 7.0,
+          "text": "Ah, he was older now."
+        },
+        {
+          "start": 7.0,
+          "end": 12.0,
+          "text": "A man in the prime of life. His face had not the harsh lines of late years,"
+        },
+        {
+          "start": 12.0,
+          "end": 18.0,
+          "text": "but it had begun to wear the signs of care and avarice."
+        },
+        {
+          "start": 18.0,
+          "end": 23.0,
+          "text": "He sat by the side of a fair young girl in his eyes."
+        },
+        {
+          "start": 23.0,
+          "end": 26.0,
+          "text": "There were tears."
+        },
+        {
+          "start": 26.0,
+          "end": 33.0,
+          "text": "Another idol has displeased me, and if it can comfort you in time to come"
+        },
+        {
+          "start": 33.0,
+          "end": 39.0,
+          "text": "and advise I would have tried to do, I have no just cause to grieve."
+        },
+        {
+          "start": 39.0,
+          "end": 47.0,
+          "text": "No, no, no, no, no. No, what idol has displaced you?"
+        },
+        {
+          "start": 47.0,
+          "end": 50.0,
+          "text": "A golden one."
+        },
+        {
+          "start": 50.0,
+          "end": 57.0,
+          "text": "I've seen your nobler aspirations fall off one by one until the master passion"
+        },
+        {
+          "start": 57.0,
+          "end": 61.0,
+          "text": "gain, engrosses you."
+        },
+        {
+          "start": 61.0,
+          "end": 66.0,
+          "text": "Our contract is an old one. It was made when we were both poor"
+        },
+        {
+          "start": 66.0,
+          "end": 69.0,
+          "text": "and content to be so."
+        },
+        {
+          "start": 69.0,
+          "end": 72.0,
+          "text": "What changed?"
+        },
+        {
+          "start": 72.0,
+          "end": 77.0,
+          "text": "I release you with a full heart."
+        },
+        {
+          "start": 77.0,
+          "end": 80.0,
+          "text": "Me, you'll be happy in the life you've chosen."
+        },
+        {
+          "start": 80.0,
+          "end": 83.0,
+          "text": "And she parted."
+        },
+        {
+          "start": 83.0,
+          "end": 86.0,
+          "text": "No, no, no, come back."
+        },
+        {
+          "start": 86.0,
+          "end": 87.0,
+          "text": "Fear it."
+        },
+        {
+          "start": 87.0,
+          "end": 90.0,
+          "text": "Show me no more."
+        },
+        {
+          "start": 90.0,
+          "end": 93.0,
+          "text": "That connects me home."
+        },
+        {
+          "start": 93.0,
+          "end": 99.0,
+          "text": "I told you that these were shadows of things that have been seen."
+        },
+        {
+          "start": 99.0,
+          "end": 103.0,
+          "text": "But they are what they are."
+        },
+        {
+          "start": 103.0,
+          "end": 106.0,
+          "text": "Do not blame me."
+        },
+        {
+          "start": 108.0,
+          "end": 111.0,
+          "text": "Conduct me home."
+        },
+        {
+          "start": 111.0,
+          "end": 113.0,
+          "text": "Remove me."
+        },
+        {
+          "start": 113.0,
+          "end": 115.0,
+          "text": "I cannot bear it."
+        },
+        {
+          "start": 115.0,
+          "end": 118.0,
+          "text": "Hunt me no longer."
+        },
+        {
+          "start": 118.0,
+          "end": 125.0,
+          "text": "He turned upon the ghost, and seeing that it looked upon him with a face"
+        },
+        {
+          "start": 125.0,
+          "end": 130.0,
+          "text": "that had fragments of all the faces that it looked at him and looked at him,"
+        },
+        {
+          "start": 130.0,
+          "end": 133.0,
+          "text": "he wrestled with it."
+        }
+      ],
+      "language": "en",
+      "summary": "This produced an immediate effect for a Genskroot soil himself. Ah, he was older now. A man in the prime of life. His face had not the harsh lines of late years, but it had begun to wear the signs of care and avarice. He sat by the side of..."
+    },
+    {
+      "id": "CAROL_D070213B",
+      "filename": "2024-12-07 13-59-34.mp4",
+      "two_word_name": "2024 12",
+      "duration": 32.9,
+      "resolution": "3840x2160",
+      "file_size_mb": 39.4,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 11.46,
+          "text": "nothing love you I cannot we be friends hmm good afternoon hmm well it saddens"
+        },
+        {
+          "start": 11.46,
+          "end": 17.54,
+          "text": "me all my heart to find you so resolute but I'll keep my Christmas human till"
+        },
+        {
+          "start": 17.54,
+          "end": 28.98,
+          "text": "the last so a Merry Christmas uncle good afternoon and happy new year good"
+        },
+        {
+          "start": 28.98,
+          "end": 34.66,
+          "text": "afternoon hmm I'm Merry Christmas Bob"
+        }
+      ],
+      "language": "en",
+      "summary": "nothing love you I cannot we be friends hmm good afternoon hmm well it saddens me all my heart to find you so resolute but I'll keep my Christmas human till the last so a Merry Christmas uncle good afternoon and happy new year good afternoon hmm I'm Merry Christmas..."
+    },
+    {
+      "id": "CAROL_2B6685E7",
+      "filename": "accvr-clip 01.mp4",
+      "two_word_name": "Accvr Clip",
+      "duration": 10.6,
+      "resolution": "1920x1080",
+      "file_size_mb": 23.1,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 2.0,
+          "text": "Ha ha ha ha!"
+        },
+        {
+          "start": 3.44,
+          "end": 5.02,
+          "text": "Are you the..."
+        },
+        {
+          "start": 5.02,
+          "end": 6.18,
+          "text": "...uh..."
+        },
+        {
+          "start": 6.18,
+          "end": 7.6,
+          "text": "...uh..."
+        },
+        {
+          "start": 7.6,
+          "end": 10.08,
+          "text": "...coming was thought old to me."
+        },
+        {
+          "start": 10.08,
+          "end": 12.08,
+          "text": "You"
+        }
+      ],
+      "language": "en",
+      "summary": "Ha ha ha ha! Are you the... ...uh... ...uh... ...coming was thought old to me. You"
+    },
+    {
+      "id": "CAROL_7E12F9A3",
+      "filename": "accvr-clip 02.mp4",
+      "two_word_name": "Accvr Clip",
+      "duration": 4.43,
+      "resolution": "1920x1080",
+      "file_size_mb": 8.7,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 4.0,
+          "text": "I am the ghost of Christmas past!"
+        }
+      ],
+      "language": "en",
+      "summary": "I am the ghost of Christmas past!"
+    },
+    {
+      "id": "CAROL_4D768D79",
+      "filename": "accvr-Clip 03.mp4",
+      "two_word_name": "Accvr Clip",
+      "duration": 9.7,
+      "resolution": "1920x1080",
+      "file_size_mb": 21.0,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 1.0,
+          "text": "Hmmm."
+        },
+        {
+          "start": 5.0,
+          "end": 7.0,
+          "text": "Oh, no."
+        },
+        {
+          "start": 7.0,
+          "end": 10.0,
+          "text": "What do you want with me?"
+        }
+      ],
+      "language": "en",
+      "summary": "Hmmm. Oh, no. What do you want with me?"
+    },
+    {
+      "id": "CAROL_E041D1BF",
+      "filename": "accvr-clip 05.mp4",
+      "two_word_name": "Accvr Clip",
+      "duration": 5.67,
+      "resolution": "1920x1080",
+      "file_size_mb": 12.1,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 3.0,
+          "text": "I was your partner."
+        },
+        {
+          "start": 3.0,
+          "end": 5.0,
+          "text": "Take a party."
+        }
+      ],
+      "language": "en",
+      "summary": "I was your partner. Take a party."
+    },
+    {
+      "id": "CAROL_9D6A4D74",
+      "filename": "accvr-clip 06.mp4",
+      "two_word_name": "Accvr Clip",
+      "duration": 11.53,
+      "resolution": "1920x1080",
+      "file_size_mb": 28.2,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 5.8,
+          "text": "Take heed, but arise and walk with me!"
+        },
+        {
+          "start": 5.8,
+          "end": 9.32,
+          "text": "With the words of smoking the task through the wall,"
+        },
+        {
+          "start": 9.32,
+          "end": 11.52,
+          "text": "instead of on an open country road."
+        }
+      ],
+      "language": "en",
+      "summary": "Take heed, but arise and walk with me! With the words of smoking the task through the wall, instead of on an open country road."
+    },
+    {
+      "id": "CAROL_E9AE0D99",
+      "filename": "accvr-clips teaser 01.mp4",
+      "two_word_name": "Accvr Clips",
+      "duration": 19.07,
+      "resolution": "1920x1080",
+      "file_size_mb": 40.5,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 19.0,
+          "text": "MUSIC"
+        }
+      ],
+      "language": "en",
+      "summary": "MUSIC"
+    },
+    {
+      "id": "CAROL_43C019F3",
+      "filename": "ALCCR talkback.mp4",
+      "two_word_name": "Alccr Talkback",
+      "duration": 211.87,
+      "resolution": "1920x1080",
+      "file_size_mb": 151.1,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 2.0,
+          "text": "You"
+        },
+        {
+          "start": 30.0,
+          "end": 32.0,
+          "text": "You"
+        },
+        {
+          "start": 60.0,
+          "end": 62.0,
+          "text": "You"
+        },
+        {
+          "start": 90.0,
+          "end": 92.0,
+          "text": "You"
+        },
+        {
+          "start": 120.0,
+          "end": 122.0,
+          "text": "You"
+        },
+        {
+          "start": 150.0,
+          "end": 152.0,
+          "text": "You"
+        },
+        {
+          "start": 180.0,
+          "end": 182.0,
+          "text": "You"
+        },
+        {
+          "start": 210.0,
+          "end": 212.0,
+          "text": "You"
+        }
+      ],
+      "language": "en",
+      "summary": "You You You You You You You You"
+    },
+    {
+      "id": "CAROL_A28EC497",
+      "filename": "auditorium-com.oculus.vrshell-20240424-140747.mp4",
+      "two_word_name": "Auditorium Com.Oculus.Vrshell",
+      "duration": 468.76,
+      "resolution": "1024x1024",
+      "file_size_mb": 311.7,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 11.76,
+          "text": "Alright, so we got our little auditorium here and we'll see what happens if I set"
+        },
+        {
+          "start": 11.76,
+          "end": 15.92,
+          "text": "this up as a new room."
+        },
+        {
+          "start": 17.36,
+          "end": 26.72,
+          "text": "So we need to go setting space, set up a new space, great new space, start scaling."
+        },
+        {
+          "start": 27.2,
+          "end": 33.76,
+          "text": "Alright, so we're just going to walk around, see if it figures out what these are,"
+        },
+        {
+          "start": 35.36,
+          "end": 46.88,
+          "text": "right? Will it understand that I'm in like a theater, right? Will it get that? I wonder."
+        },
+        {
+          "start": 46.88,
+          "end": 59.28,
+          "text": "Move in, move in, move in, move in, move in, move in because we want to see if we can get this to be"
+        },
+        {
+          "start": 61.28,
+          "end": 68.0,
+          "text": "a theater we could put stuff in like other characters and people and audience members"
+        },
+        {
+          "start": 68.72,
+          "end": 75.52,
+          "text": "and other stuff like that and also don't trip because the meshes are not the same height as"
+        },
+        {
+          "start": 75.52,
+          "end": 78.56,
+          "text": "the real world."
+        },
+        {
+          "start": 86.56,
+          "end": 92.32,
+          "text": "Yeah, you think they're scared enough to continue? I'm going to keep scanning though. What of it?"
+        },
+        {
+          "start": 92.32,
+          "end": 102.88,
+          "text": "Yeah, hopefully it sees these are stairs."
+        },
+        {
+          "start": 106.88,
+          "end": 115.2,
+          "text": "Some of these meshes is having a little bit of trouble with but if we just get a few, we'll be in good shape."
+        },
+        {
+          "start": 115.2,
+          "end": 120.96,
+          "text": "Doo doo doo doo doo doo doo doo doo doo doo."
+        },
+        {
+          "start": 124.16,
+          "end": 129.76,
+          "text": "Yeah, there's a little bit shaky but we're getting a lot of data."
+        },
+        {
+          "start": 131.12,
+          "end": 138.96,
+          "text": "Alright, let's try to walk over here, get this wall, get a podium,"
+        },
+        {
+          "start": 139.84,
+          "end": 141.84,
+          "text": "get all this."
+        },
+        {
+          "start": 148.16,
+          "end": 160.32,
+          "text": "Doo doo doo doo doo doo doo doo doo doo doo doo."
+        },
+        {
+          "start": 160.32,
+          "end": 166.88,
+          "text": "Don't don't don't don't don't don't don't don't don't I don't think we need to do anything with"
+        },
+        {
+          "start": 168.28,
+          "end": 170.28,
+          "text": "Windows or anything like that"
+        },
+        {
+          "start": 176.24,
+          "end": 180.8,
+          "text": "Okay, it would probably maxed out what it could recognize"
+        },
+        {
+          "start": 185.48,
+          "end": 187.48,
+          "text": "It's like okay, that's enough"
+        },
+        {
+          "start": 188.48,
+          "end": 191.28,
+          "text": "Let's try adding some more furniture"
+        },
+        {
+          "start": 206.68,
+          "end": 212.88,
+          "text": "Call this a chair can we call it a chair pet screen table lamp plant storage"
+        },
+        {
+          "start": 218.48,
+          "end": 220.48,
+          "text": "Other"
+        },
+        {
+          "start": 232.72,
+          "end": 243.08,
+          "text": "Also other that table here, let's try to manually set this up as a couch"
+        },
+        {
+          "start": 247.48,
+          "end": 249.48,
+          "text": "I"
+        },
+        {
+          "start": 277.48,
+          "end": 282.4,
+          "text": "Think objects here we got some stuff"
+        },
+        {
+          "start": 286.0,
+          "end": 289.8,
+          "text": "All right, tell us what they are. What's the thing these are over here?"
+        },
+        {
+          "start": 293.16,
+          "end": 295.16,
+          "text": "Table no table"
+        },
+        {
+          "start": 297.16,
+          "end": 303.16,
+          "text": "We'll call this the the common area"
+        },
+        {
+          "start": 307.48,
+          "end": 310.48,
+          "text": "Oh"
+        },
+        {
+          "start": 337.48,
+          "end": 339.48,
+          "text": "Oh"
+        },
+        {
+          "start": 367.48,
+          "end": 369.84,
+          "text": "Opening table table"
+        },
+        {
+          "start": 397.48,
+          "end": 399.48,
+          "text": "Oh"
+        },
+        {
+          "start": 427.48,
+          "end": 429.48,
+          "text": "Oh"
+        },
+        {
+          "start": 457.48,
+          "end": 459.48,
+          "text": "Oh"
+        }
+      ],
+      "language": "en",
+      "summary": "Alright, so we got our little auditorium here and we'll see what happens if I set this up as a new room. So we need to go setting space, set up a new space, great new space, start scaling. Alright, so we're just going to walk around, see if it..."
+    },
+    {
+      "id": "CAROL_ED281BBE",
+      "filename": "auditorium-com.oculus.vrshell-20240424-204905.mp4",
+      "two_word_name": "Auditorium Com.Oculus.Vrshell",
+      "duration": 15.96,
+      "resolution": "1024x1024",
+      "file_size_mb": 9.8,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 15.76,
+          "text": "🎵"
+        }
+      ],
+      "language": "en",
+      "summary": "🎵"
+    },
+    {
+      "id": "CAROL_9A83895D",
+      "filename": "auditorium-com.oculus.vrshell-20240425-115804.mp4",
+      "two_word_name": "Auditorium Com.Oculus.Vrshell",
+      "duration": 51.67,
+      "resolution": "1024x1024",
+      "file_size_mb": 30.2,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 2.0,
+          "text": "You"
+        },
+        {
+          "start": 30.0,
+          "end": 32.0,
+          "text": "You"
+        }
+      ],
+      "language": "en",
+      "summary": "You You"
+    },
+    {
+      "id": "CAROL_482EF083",
+      "filename": "auditorium-com.oculus.vrshell-20240425-120018.mp4",
+      "two_word_name": "Auditorium Com.Oculus.Vrshell",
+      "duration": 64.44,
+      "resolution": "1024x1024",
+      "file_size_mb": 37.6,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 7.0,
+          "text": "Thanks for watching!"
+        },
+        {
+          "start": 30.0,
+          "end": 50.84,
+          "text": "Thank you very much."
+        }
+      ],
+      "language": "en",
+      "summary": "Thanks for watching! Thank you very much."
+    },
+    {
+      "id": "CAROL_9383BA0B",
+      "filename": "auditorium-com.oculus.vrshell-20240425-120141.mp4",
+      "two_word_name": "Auditorium Com.Oculus.Vrshell",
+      "duration": 293.31,
+      "resolution": "1024x1024",
+      "file_size_mb": 181.0,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 10.32,
+          "text": "Thank you very much."
+        },
+        {
+          "start": 30.0,
+          "end": 37.0,
+          "text": "Thank you."
+        },
+        {
+          "start": 60.0,
+          "end": 67.0,
+          "text": "Thank you."
+        },
+        {
+          "start": 90.0,
+          "end": 97.0,
+          "text": "Thank you."
+        },
+        {
+          "start": 120.0,
+          "end": 127.0,
+          "text": "Thank you."
+        },
+        {
+          "start": 150.0,
+          "end": 157.0,
+          "text": "Thank you."
+        },
+        {
+          "start": 180.0,
+          "end": 187.0,
+          "text": "Thank you."
+        },
+        {
+          "start": 210.0,
+          "end": 217.0,
+          "text": "Thank you."
+        },
+        {
+          "start": 240.0,
+          "end": 247.0,
+          "text": "Thank you."
+        },
+        {
+          "start": 270.0,
+          "end": 291.0,
+          "text": "Thank you."
+        },
+        {
+          "start": 291.0,
+          "end": 306.0,
+          "text": "Thank you."
+        }
+      ],
+      "language": "en",
+      "summary": "Thank you very much. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you. Thank you."
+    },
+    {
+      "id": "CAROL_36F0E90C",
+      "filename": "backroom-com.oculus.vrshell-20240425-144335.mp4",
+      "two_word_name": "Backroom Com.Oculus.Vrshell",
+      "duration": 259.32,
+      "resolution": "1024x1024",
+      "file_size_mb": 193.6,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 2.0,
+          "text": "Thank you."
+        },
+        {
+          "start": 30.0,
+          "end": 32.0,
+          "text": "You"
+        },
+        {
+          "start": 60.0,
+          "end": 62.0,
+          "text": "You"
+        },
+        {
+          "start": 90.0,
+          "end": 92.0,
+          "text": "You"
+        },
+        {
+          "start": 120.0,
+          "end": 122.0,
+          "text": "You"
+        },
+        {
+          "start": 150.0,
+          "end": 152.0,
+          "text": "You"
+        },
+        {
+          "start": 180.0,
+          "end": 182.0,
+          "text": "You"
+        },
+        {
+          "start": 210.0,
+          "end": 212.0,
+          "text": "You"
+        },
+        {
+          "start": 240.0,
+          "end": 242.0,
+          "text": "You"
+        }
+      ],
+      "language": "en",
+      "summary": "Thank you. You You You You You You You You"
+    },
+    {
+      "id": "CAROL_45E5DEEB",
+      "filename": "backroom-com.oculus.vrshell-20240425-144957.mp4",
+      "two_word_name": "Backroom Com.Oculus.Vrshell",
+      "duration": 172.15,
+      "resolution": "1024x1024",
+      "file_size_mb": 116.6,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 7.0,
+          "text": "Thanks for watching, and I'll see you in the next video."
+        },
+        {
+          "start": 30.0,
+          "end": 51.84,
+          "text": "Thank you."
+        },
+        {
+          "start": 60.0,
+          "end": 62.0,
+          "text": "You"
+        },
+        {
+          "start": 90.0,
+          "end": 92.0,
+          "text": "You"
+        },
+        {
+          "start": 120.0,
+          "end": 122.0,
+          "text": "You"
+        },
+        {
+          "start": 150.0,
+          "end": 152.0,
+          "text": "You"
+        }
+      ],
+      "language": "en",
+      "summary": "Thanks for watching, and I'll see you in the next video. Thank you. You You You You"
+    },
+    {
+      "id": "CAROL_ED81CB00",
+      "filename": "wip-com.oculus.vrshell-20240424-161052.mp4",
+      "two_word_name": "Wip Com.Oculus.Vrshell",
+      "duration": 59.51,
+      "resolution": "1024x1024",
+      "file_size_mb": 36.3,
+      "has_audio": true,
+      "content_type": "[PLACEHOLDER]",
+      "whisper_segments": [
+        {
+          "start": 0.0,
+          "end": 7.2,
+          "text": "Okay, cool. So we have June. June is a green ball. I have controllers here, but I think if I"
+        },
+        {
+          "start": 7.2,
+          "end": 13.76,
+          "text": "enable hand tracking. Nope. In theory, if I enable hand tracking, then I'll see hands, but"
+        },
+        {
+          "start": 13.76,
+          "end": 21.2,
+          "text": "I've got my characters here. They're doing a thing. Yeah."
+        },
+        {
+          "start": 21.2,
+          "end": 36.32,
+          "text": "And there's the hands, mixed reality hands, and I can make them pink. And then June, let"
+        },
+        {
+          "start": 36.32,
+          "end": 44.56,
+          "text": "me just see you move your mouth. Right. And so then we're, oh, it literally just moved."
+        },
+        {
+          "start": 44.56,
+          "end": 49.48,
+          "text": "Are you in Quest 3 or Quest Pro? Yeah. So it should do it based on your mouth actual,"
+        },
+        {
+          "start": 49.48,
+          "end": 55.16,
+          "text": "your actual mouth. Mm hmm. Yep. Right. So I can tell you're moving your mouth even though"
+        },
+        {
+          "start": 55.16,
+          "end": 59.24,
+          "text": "you're not talking. Cool. All right. Neat. I call that progress."
+        }
+      ],
+      "language": "en",
+      "summary": "Okay, cool. So we have June. June is a green ball. I have controllers here, but I think if I enable hand tracking. Nope. In theory, if I enable hand tracking, then I'll see hands, but I've got my characters here. They're doing a thing. Yeah. And there's the hands,..."
+    }
+  ]
+}

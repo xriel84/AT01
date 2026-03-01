@@ -55,6 +55,22 @@
   .dot.ok { background: #0f0; }
   .dot.warn { background: var(--warn); }
   .dot.err { background: #f44; }
+  .status-item .tooltip {
+    display: none;
+    position: absolute;
+    background: #1a1a2e;
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    z-index: 10;
+  }
+  .status-item { position: relative; }
+  .status-item:hover .tooltip { display: block; }
   .section-title {
     font-size: 0.75rem;
     color: var(--text-dim);
@@ -124,11 +140,11 @@
   <p style="color:var(--text-dim);font-size:0.8rem;margin-bottom:1.5rem">AI-assisted video editing dashboard</p>
 
   <div class="status-bar" id="statusBar">
-    <div class="status-item"><div class="dot" id="dotServer"></div><span>FastAPI</span></div>
-    <div class="status-item"><div class="dot" id="dotOllama"></div><span>Ollama</span></div>
-    <div class="status-item"><div class="dot" id="dotResolve"></div><span>Resolve</span></div>
-    <div class="status-item"><div class="dot" id="dotComfyUI"></div><span>ComfyUI</span></div>
-    <div class="status-item"><div class="dot" id="dotLibrary"></div><span>Library</span></div>
+    <div class="status-item"><div class="dot" id="dotServer"></div><span>FastAPI</span><span class="tooltip" id="tipServer">Backend API server (:8901)</span></div>
+    <div class="status-item"><div class="dot" id="dotOllama"></div><span>Ollama</span><span class="tooltip" id="tipOllama">Local AI engine (:11434) — powers free-form NLP commands</span></div>
+    <div class="status-item"><div class="dot" id="dotResolve"></div><span>Resolve</span><span class="tooltip" id="tipResolve">DaVinci Resolve Studio — edit execution target</span></div>
+    <div class="status-item"><div class="dot" id="dotComfyUI"></div><span>ComfyUI</span><span class="tooltip" id="tipComfyUI">Image generation server (:8188) — ArtBot pipeline</span></div>
+    <div class="status-item"><div class="dot" id="dotLibrary"></div><span>Library</span><span class="tooltip" id="tipLibrary">Video footage catalog with transcripts</span></div>
   </div>
 
   <div class="library-summary" id="libSummary" style="display:none">
@@ -163,6 +179,10 @@
     <a class="card" href="/frontend/nlp-search.html">
       <h2>NLP Search</h2>
       <p>Search across all video transcripts by topic. Find matching chapters and segments with timecodes.</p>
+    </a>
+    <a class="card" href="/frontend/pipeline.html">
+      <h2>Pipeline</h2>
+      <p>View the 9-stage automated video pipeline. Track which stages are ready and live processing stats.</p>
     </a>
     <a class="card" href="/docs">
       <h2>API Docs</h2>
@@ -207,24 +227,25 @@ async function checkStatus() {
       const d = await r.json();
       const count = d.models ? d.models.length : 0;
       dot('dotOllama', 'ok');
+      tip('tipOllama', 'Online — ' + count + ' models loaded');
       info.push('Ollama: ' + count + ' models');
-    } else { dot('dotOllama', 'err'); info.push('Ollama: error'); }
-  } catch { dot('dotOllama', 'warn'); info.push('Ollama: offline'); }
+    } else { dot('dotOllama', 'err'); tip('tipOllama', 'Error — template commands still work'); info.push('Ollama: error'); }
+  } catch { dot('dotOllama', 'warn'); tip('tipOllama', 'Offline — template commands still work, free-form needs Ollama'); info.push('Ollama: offline'); }
 
   // Resolve
   try {
     const r = await fetch('/api/resolve/status');
     const d = await r.json();
-    if (d.available) { dot('dotResolve', 'ok'); info.push('Resolve: ' + d.version); }
-    else { dot('dotResolve', 'warn'); info.push('Resolve: offline'); }
-  } catch { dot('dotResolve', 'warn'); info.push('Resolve: check failed'); }
+    if (d.available) { dot('dotResolve', 'ok'); tip('tipResolve', 'Connected — ' + d.version); info.push('Resolve: ' + d.version); }
+    else { dot('dotResolve', 'warn'); tip('tipResolve', 'Offline — dry-run preview still works, launch Resolve to execute edits'); info.push('Resolve: offline'); }
+  } catch { dot('dotResolve', 'warn'); tip('tipResolve', 'Offline — dry-run preview still works'); info.push('Resolve: check failed'); }
 
   // ComfyUI
   try {
     const r = await fetch('http://127.0.0.1:8188/system_stats', { signal: AbortSignal.timeout(3000) });
-    if (r.ok) { dot('dotComfyUI', 'ok'); info.push('ComfyUI: up'); }
-    else { dot('dotComfyUI', 'warn'); info.push('ComfyUI: error'); }
-  } catch { dot('dotComfyUI', 'warn'); info.push('ComfyUI: offline'); }
+    if (r.ok) { dot('dotComfyUI', 'ok'); tip('tipComfyUI', 'Online — ready for image generation'); info.push('ComfyUI: up'); }
+    else { dot('dotComfyUI', 'warn'); tip('tipComfyUI', 'Error — ArtBot unavailable'); info.push('ComfyUI: error'); }
+  } catch { dot('dotComfyUI', 'warn'); tip('tipComfyUI', 'Offline — ArtBot image generation unavailable, not needed for video editing'); info.push('ComfyUI: offline'); }
 
   // Library
   try {
@@ -264,6 +285,9 @@ async function checkStatus() {
 
 function dot(id, cls) {
   document.getElementById(id).className = 'dot ' + cls;
+}
+function tip(id, text) {
+  document.getElementById(id).textContent = text;
 }
 
 checkStatus();
