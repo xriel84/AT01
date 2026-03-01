@@ -55,6 +55,34 @@
   .dot.ok { background: #0f0; }
   .dot.warn { background: var(--warn); }
   .dot.err { background: #f44; }
+  .section-title {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    margin-top: 1.5rem;
+  }
+  .section-title:first-of-type { margin-top: 0; }
+  .library-summary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+  .stat { text-align: left; }
+  .stat-value {
+    font-size: 1.4rem;
+    color: var(--accent);
+    font-weight: bold;
+  }
+  .stat-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
   .cards {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -74,6 +102,13 @@
   .card:hover { border-color: var(--accent); }
   .card h2 { font-size: 1rem; margin-bottom: 0.5rem; color: var(--accent); }
   .card p { font-size: 0.8rem; color: var(--text-dim); line-height: 1.5; }
+  .metrics-placeholder {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
   .footer {
     font-size: 0.7rem;
     color: var(--text-dim);
@@ -89,11 +124,33 @@
   <p style="color:var(--text-dim);font-size:0.8rem;margin-bottom:1.5rem">AI-assisted video editing dashboard</p>
 
   <div class="status-bar" id="statusBar">
-    <div class="status-item"><div class="dot" id="dotServer"></div><span>Server</span></div>
+    <div class="status-item"><div class="dot" id="dotServer"></div><span>FastAPI</span></div>
+    <div class="status-item"><div class="dot" id="dotOllama"></div><span>Ollama</span></div>
     <div class="status-item"><div class="dot" id="dotResolve"></div><span>Resolve</span></div>
+    <div class="status-item"><div class="dot" id="dotComfyUI"></div><span>ComfyUI</span></div>
     <div class="status-item"><div class="dot" id="dotLibrary"></div><span>Library</span></div>
   </div>
 
+  <div class="library-summary" id="libSummary" style="display:none">
+    <div class="stat">
+      <div class="stat-value" id="statVideos">-</div>
+      <div class="stat-label">videos</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="statSegments">-</div>
+      <div class="stat-label">transcript segments</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="statDuration">-</div>
+      <div class="stat-label">total duration</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="statChapters">-</div>
+      <div class="stat-label">chapters</div>
+    </div>
+  </div>
+
+  <div class="section-title">Tools</div>
   <div class="cards">
     <a class="card" href="/frontend/chapter-viewer.html">
       <h2>Chapter Viewer</h2>
@@ -113,48 +170,102 @@
     </a>
   </div>
 
+  <div class="section-title">Agent Activity</div>
+  <div class="metrics-placeholder" id="metricsSection">
+    Agent metrics: coming soon (Iteration 2)
+  </div>
+
   <div class="footer">
     <div id="statusDetail"></div>
   </div>
 
 <script>
+function fmtDuration(sec) {
+  if (sec < 60) return Math.round(sec) + 's';
+  if (sec < 3600) return Math.floor(sec / 60) + 'm ' + Math.round(sec % 60) + 's';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return h + 'h ' + m + 'm';
+}
+
 async function checkStatus() {
-  const dotServer = document.getElementById('dotServer');
-  const dotResolve = document.getElementById('dotResolve');
-  const dotLibrary = document.getElementById('dotLibrary');
   const detail = document.getElementById('statusDetail');
   const banner = document.getElementById('demoBanner');
   const info = [];
 
-  // Server
+  // FastAPI server
   try {
     const r = await fetch('/api/health');
-    if (r.ok) { dotServer.className = 'dot ok'; info.push('Server: up'); }
-    else { dotServer.className = 'dot err'; info.push('Server: error'); }
-  } catch { dotServer.className = 'dot err'; info.push('Server: unreachable'); }
+    if (r.ok) { dot('dotServer', 'ok'); info.push('FastAPI: up'); }
+    else { dot('dotServer', 'err'); info.push('FastAPI: error'); }
+  } catch { dot('dotServer', 'err'); info.push('FastAPI: unreachable'); }
+
+  // Ollama
+  try {
+    const r = await fetch('http://127.0.0.1:11434/api/tags', { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      const d = await r.json();
+      const count = d.models ? d.models.length : 0;
+      dot('dotOllama', 'ok');
+      info.push('Ollama: ' + count + ' models');
+    } else { dot('dotOllama', 'err'); info.push('Ollama: error'); }
+  } catch { dot('dotOllama', 'warn'); info.push('Ollama: offline'); }
 
   // Resolve
   try {
     const r = await fetch('/api/resolve/status');
     const d = await r.json();
-    if (d.available) { dotResolve.className = 'dot ok'; info.push('Resolve: ' + d.version); }
-    else { dotResolve.className = 'dot warn'; info.push('Resolve: not available'); }
-  } catch { dotResolve.className = 'dot warn'; info.push('Resolve: check failed'); }
+    if (d.available) { dot('dotResolve', 'ok'); info.push('Resolve: ' + d.version); }
+    else { dot('dotResolve', 'warn'); info.push('Resolve: offline'); }
+  } catch { dot('dotResolve', 'warn'); info.push('Resolve: check failed'); }
+
+  // ComfyUI
+  try {
+    const r = await fetch('http://127.0.0.1:8188/system_stats', { signal: AbortSignal.timeout(3000) });
+    if (r.ok) { dot('dotComfyUI', 'ok'); info.push('ComfyUI: up'); }
+    else { dot('dotComfyUI', 'warn'); info.push('ComfyUI: error'); }
+  } catch { dot('dotComfyUI', 'warn'); info.push('ComfyUI: offline'); }
 
   // Library
   try {
     const r = await fetch('/api/library');
     const d = await r.json();
     if (d.count > 0) {
-      dotLibrary.className = 'dot ok';
+      dot('dotLibrary', 'ok');
       info.push('Library: ' + d.count + ' entries');
-      if (d.demo_mode) { banner.style.display = 'block'; }
-      else { banner.style.display = 'none'; }
-    } else { dotLibrary.className = 'dot warn'; info.push('Library: empty'); }
-  } catch { dotLibrary.className = 'dot err'; info.push('Library: load failed'); }
+      if (d.demo_mode) banner.style.display = 'block';
+      else banner.style.display = 'none';
+
+      // Compute summary stats
+      const entries = d.entries || [];
+      let totalSegs = 0, totalDur = 0;
+      entries.forEach(e => {
+        totalSegs += (e.whisper_segments || []).length;
+        totalDur += e.duration || 0;
+      });
+      document.getElementById('statVideos').textContent = d.count;
+      document.getElementById('statSegments').textContent = totalSegs.toLocaleString();
+      document.getElementById('statDuration').textContent = fmtDuration(totalDur);
+      document.getElementById('libSummary').style.display = 'flex';
+
+      // Fetch chapters for chapter count
+      try {
+        const cr = await fetch('/api/library/chapters');
+        const cd = await cr.json();
+        document.getElementById('statChapters').textContent = cd.total_chapters || 0;
+      } catch {
+        document.getElementById('statChapters').textContent = '?';
+      }
+    } else { dot('dotLibrary', 'warn'); info.push('Library: empty'); }
+  } catch { dot('dotLibrary', 'err'); info.push('Library: load failed'); }
 
   detail.textContent = info.join(' | ');
 }
+
+function dot(id, cls) {
+  document.getElementById(id).className = 'dot ' + cls;
+}
+
 checkStatus();
 </script>
 </body>

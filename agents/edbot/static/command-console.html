@@ -45,6 +45,8 @@
   }
   .mode-badge.dryrun { border-color: var(--accent); color: var(--accent); }
   .mode-badge.offline { border-color: var(--warn); color: var(--warn); }
+  .mode-badge.template { border-color: #0af; color: #0af; }
+  .mode-badge.ollama { border-color: #c78fff; color: #c78fff; }
   header {
     display: flex;
     justify-content: space-between;
@@ -103,31 +105,83 @@
     border: 1px solid var(--border);
     padding: 1rem;
   }
+  .entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
   .entry-cmd {
     font-size: 0.8rem;
     color: var(--accent);
-    margin-bottom: 0.5rem;
+  }
+  .entry-badges {
+    display: flex;
+    gap: 4px;
+    align-items: center;
   }
   .entry-meta {
     font-size: 0.65rem;
     color: var(--text-dim);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
   }
   .entry-result {
     font-size: 0.75rem;
     line-height: 1.6;
   }
-  .entry-result pre {
-    background: #0d0d18;
-    padding: 8px;
-    overflow-x: auto;
-    font-size: 0.7rem;
-    margin-top: 4px;
-    max-height: 300px;
-    overflow-y: auto;
-  }
   .result-ok { color: var(--accent); }
   .result-err { color: var(--error); }
+  .decisions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 0.5rem;
+  }
+  .decision-card {
+    background: #0d0d18;
+    border-left: 3px solid var(--accent);
+    padding: 8px 12px;
+    font-size: 0.75rem;
+  }
+  .decision-card.status-failed { border-left-color: var(--error); }
+  .decision-card.status-skipped { border-left-color: var(--text-dim); }
+  .decision-type {
+    font-size: 0.65rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .decision-card.status-failed .decision-type { color: var(--error); }
+  .decision-summary { color: var(--text); }
+  .decision-params {
+    color: var(--text-dim);
+    font-size: 0.65rem;
+    margin-top: 2px;
+  }
+  .decision-status {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .result-summary {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .result-count {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border: 1px solid;
+  }
+  .result-count.ok { border-color: var(--accent); color: var(--accent); }
+  .result-count.fail { border-color: var(--error); color: var(--error); }
+  .result-count.skip { border-color: var(--text-dim); color: var(--text-dim); }
   .status-line {
     font-size: 0.7rem;
     color: var(--text-dim);
@@ -141,6 +195,17 @@
     text-decoration: none;
   }
   .back-link:hover { color: var(--accent); }
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -162,11 +227,11 @@
   </div>
 
   <div class="presets">
-    <button class="preset" onclick="usePreset('add chapter markers to timeline')">Add chapter markers</button>
-    <button class="preset" onclick="usePreset('color code speakers')">Color code speakers</button>
-    <button class="preset" onclick="usePreset('create subclips for each chapter')">Create subclips</button>
-    <button class="preset" onclick="usePreset('find all segments about VR theater')">Find VR theater</button>
-    <button class="preset" onclick="usePreset('find all segments about motion capture')">Find motion capture</button>
+    <button class="preset" onclick="usePreset('remove silences over 2 seconds')">Remove silences</button>
+    <button class="preset" onclick="usePreset('add markers at chapter boundaries')">Add chapter markers</button>
+    <button class="preset" onclick="usePreset('color code clips by speaker')">Color code speakers</button>
+    <button class="preset" onclick="usePreset('create subclips from chapters')">Create subclips</button>
+    <button class="preset" onclick="usePreset('set timeline to 24fps')">Set 24fps</button>
   </div>
 
   <div class="history" id="history"></div>
@@ -186,9 +251,11 @@ async function sendCommand() {
 
   const btn = document.getElementById('sendBtn');
   btn.disabled = true;
+  btn.textContent = 'SENDING...';
   input.value = '';
 
-  const entry = { command: cmd, time: new Date().toISOString(), result: null, error: null };
+  const entry = { command: cmd, time: new Date().toISOString(), result: null, error: null, durationMs: 0 };
+  const t0 = performance.now();
 
   try {
     const resp = await fetch('/api/resolve/command', {
@@ -196,6 +263,7 @@ async function sendCommand() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ command: cmd, mode: 'dry-run' })
     });
+    entry.durationMs = Math.round(performance.now() - t0);
     const data = await resp.json();
     if (resp.ok) {
       entry.result = data;
@@ -203,12 +271,51 @@ async function sendCommand() {
       entry.error = data.detail || data;
     }
   } catch (err) {
-    entry.error = { message: err.message };
+    entry.durationMs = Math.round(performance.now() - t0);
+    entry.error = { message: 'Server unreachable: ' + err.message };
   }
 
   commandHistory.unshift(entry);
   renderHistory();
   btn.disabled = false;
+  btn.textContent = 'SEND';
+}
+
+function describeDecision(d) {
+  switch (d.type) {
+    case 'add_marker':
+      return 'Add ' + esc(d.color || '') + ' marker "' + esc(d.name || '') + '" at frame ' + d.frame_in;
+    case 'set_clip_color':
+      return 'Set clip ' + esc(d.entry_filename || '') + ' color to ' + esc(d.color || '');
+    case 'create_subclip':
+      return 'Create subclip "' + esc(d.subclip_name || '') + '" (frames ' + d.frame_in + '–' + d.frame_out + ')';
+    case 'add_to_timeline':
+      return 'Add ' + esc(d.entry_filename || '') + ' to track ' + (d.track_index || 1) + ' (frames ' + d.frame_in + '–' + d.frame_out + ')';
+    default:
+      return esc(d.type || 'unknown') + ': ' + esc(JSON.stringify(d));
+  }
+}
+
+function decisionParams(d) {
+  const parts = [];
+  if (d.entry_filename) parts.push('file: ' + d.entry_filename);
+  if (d.note) parts.push('note: ' + d.note);
+  if (d.target_bin) parts.push('bin: ' + d.target_bin);
+  if (d.target_timeline) parts.push('timeline: ' + d.target_timeline);
+  if (d.marker_target && d.marker_target !== 'timeline') parts.push('target: ' + d.marker_target);
+  if (d.duration && d.duration > 1) parts.push('duration: ' + d.duration + ' frames');
+  return parts.join(' | ');
+}
+
+function methodBadge(method) {
+  if (!method) return '';
+  if (method === 'template' || method.startsWith('template'))
+    return '<span class="mode-badge template">TEMPLATE</span>';
+  if (method === 'ollama' || method === 'ollama_nlp')
+    return '<span class="mode-badge ollama">AI INTERPRETED</span>';
+  if (method === 'direct')
+    return '<span class="mode-badge dryrun">DIRECT</span>';
+  return '<span class="mode-badge dryrun">' + esc(method.toUpperCase()) + '</span>';
 }
 
 function renderHistory() {
@@ -222,31 +329,61 @@ function renderHistory() {
     if (entry.error) {
       const errMsg = typeof entry.error === 'string' ? entry.error :
         entry.error.error || entry.error.message || JSON.stringify(entry.error);
-      resultHtml = '<div class="result-err">Error: ' + escHtml(errMsg) + '</div>';
+      resultHtml = '<div class="result-err">Error: ' + esc(errMsg) + '</div>';
     } else if (entry.result) {
       const r = entry.result;
-      let summary = '';
-      if (r.translation_method) summary += 'Method: ' + r.translation_method + ' | ';
-      if (r.mode) summary += 'Mode: ' + r.mode + ' | ';
-      if (r.results) {
-        summary += r.results.succeeded + ' ok, ' + r.results.failed + ' failed, ' + r.results.skipped + ' skipped';
+      const decisions = (r.plan && r.plan.decisions) || [];
+      const res = r.results || {};
+
+      // Summary counts
+      let summaryHtml = '<div class="result-summary">';
+      if (res.succeeded !== undefined) summaryHtml += '<span class="result-count ok">' + res.succeeded + ' planned</span>';
+      if (res.failed > 0) summaryHtml += '<span class="result-count fail">' + res.failed + ' failed</span>';
+      if (res.skipped > 0) summaryHtml += '<span class="result-count skip">' + res.skipped + ' skipped</span>';
+      summaryHtml += '</div>';
+
+      // Decision cards
+      let cardsHtml = '';
+      if (decisions.length > 0) {
+        cardsHtml = '<div class="decisions-list">';
+        decisions.forEach((d, i) => {
+          const detail = (res.details && res.details[i]) || {};
+          const statusClass = detail.status === 'failed' ? ' status-failed' :
+            detail.status === 'skipped' ? ' status-skipped' : '';
+          cardsHtml +=
+            '<div class="decision-card' + statusClass + '">' +
+              '<div class="decision-type">' + esc(d.type || 'unknown') + '</div>' +
+              '<div class="decision-summary">' + describeDecision(d) + '</div>' +
+              (decisionParams(d) ? '<div class="decision-params">' + esc(decisionParams(d)) + '</div>' : '') +
+              (detail.message ? '<div class="decision-status">' + esc(detail.status + ': ' + detail.message) + '</div>' : '') +
+            '</div>';
+        });
+        cardsHtml += '</div>';
+      } else {
+        cardsHtml = '<div style="color:var(--text-dim);font-size:0.75rem;margin-top:4px">No decisions generated (check library data or Resolve connection)</div>';
       }
-      resultHtml =
-        '<div class="result-ok">' + escHtml(summary) + '</div>' +
-        '<pre>' + escHtml(JSON.stringify(r.plan || r, null, 2)) + '</pre>';
+
+      resultHtml = summaryHtml + cardsHtml;
     }
 
+    const timingStr = entry.durationMs ? entry.durationMs + 'ms' : '';
     div.innerHTML =
-      '<div class="entry-cmd">&gt; ' + escHtml(entry.command) + '</div>' +
-      '<div class="entry-meta">' + entry.time + '</div>' +
+      '<div class="entry-header">' +
+        '<div class="entry-cmd">&gt; ' + esc(entry.command) + '</div>' +
+        '<div class="entry-badges">' +
+          (entry.result ? methodBadge(entry.result.translation_method) : '') +
+          (timingStr ? '<span style="font-size:0.6rem;color:var(--text-dim)">' + timingStr + '</span>' : '') +
+        '</div>' +
+      '</div>' +
       '<div class="entry-result">' + resultHtml + '</div>';
     container.appendChild(div);
   });
 }
 
-function escHtml(s) {
+function esc(s) {
+  if (s == null) return '';
   const d = document.createElement('div');
-  d.textContent = s;
+  d.textContent = String(s);
   return d.innerHTML;
 }
 
@@ -267,6 +404,7 @@ async function checkResolve() {
   } catch {
     document.getElementById('resolveStatus').style.display = 'inline-block';
     document.getElementById('demoBanner').style.display = 'block';
+    document.getElementById('statusLine').textContent = 'Server: unreachable | Mode: dry-run (preview only)';
   }
 }
 
