@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AT01 — Chapter Viewer</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #14141f;
+    --border: #2a2a3a;
+    --text: #e0e0e0;
+    --text-dim: #888;
+    --accent: #00d4aa;
+    --accent-dim: #00d4aa22;
+    --warn: #ffaa00;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'IBM Plex Mono', 'Consolas', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 1.5rem;
+  }
+  .demo-banner {
+    background: var(--warn);
+    color: #000;
+    font-weight: bold;
+    text-align: center;
+    padding: 6px;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    margin-bottom: 1rem;
+    display: none;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  h1 { font-size: 1.2rem; }
+  .search-box {
+    display: flex;
+    gap: 0.5rem;
+  }
+  input[type="text"] {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    width: 250px;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+  .file-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .file-tab {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 12px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .file-tab.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .timeline {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+  }
+  .timeline-bar {
+    height: 32px;
+    background: #1a1a2a;
+    position: relative;
+    min-width: 100%;
+  }
+  .timeline-chapter {
+    position: absolute;
+    height: 100%;
+    background: var(--accent-dim);
+    border-left: 2px solid var(--accent);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding-left: 6px;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    overflow: hidden;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .timeline-chapter:hover { background: #00d4aa44; }
+  .timeline-chapter.selected { background: #00d4aa55; }
+  .chapters-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .chapter-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .chapter-card:hover, .chapter-card.selected { border-color: var(--accent); }
+  .chapter-card h3 {
+    font-size: 0.85rem;
+    margin-bottom: 0.3rem;
+    color: var(--accent);
+  }
+  .chapter-meta {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    display: flex;
+    gap: 1rem;
+  }
+  .chapter-segments {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+    display: none;
+  }
+  .chapter-card.expanded .chapter-segments { display: block; }
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-dim);
+  }
+  .back-link {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-decoration: none;
+  }
+  .back-link:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="demo-banner" id="demoBanner">DEMO MODE — TEST DATA</div>
+  <header>
+    <div>
+      <a href="/frontend/index.html" class="back-link">Dashboard</a>
+      <h1>Chapter Viewer</h1>
+    </div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Filter chapters..." />
+    </div>
+  </header>
+
+  <div class="file-tabs" id="fileTabs"></div>
+  <div class="timeline" id="timelineContainer">
+    <div class="timeline-bar" id="timelineBar"></div>
+  </div>
+  <div class="chapters-list" id="chaptersList"></div>
+  <div class="empty-state" id="emptyState" style="display:none">No chapters found. Load a library with transcript data.</div>
+
+<script>
+let libraryData = null;
+let chaptersData = null;
+let currentFileIdx = 0;
+
+function formatTC(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+async function init() {
+  try {
+    const [libResp, chapResp] = await Promise.all([
+      fetch('/api/library'),
+      fetch('/api/library/chapters')
+    ]);
+    libraryData = await libResp.json();
+    chaptersData = await chapResp.json();
+
+    if (libraryData.demo_mode) {
+      document.getElementById('demoBanner').style.display = 'block';
+    }
+
+    if (!chaptersData.files || chaptersData.files.length === 0) {
+      document.getElementById('emptyState').style.display = 'block';
+      return;
+    }
+
+    renderFileTabs();
+    selectFile(0);
+  } catch (err) {
+    document.getElementById('emptyState').textContent = 'Failed to load library: ' + err.message;
+    document.getElementById('emptyState').style.display = 'block';
+  }
+}
+
+function renderFileTabs() {
+  const container = document.getElementById('fileTabs');
+  container.innerHTML = '';
+  chaptersData.files.forEach((file, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'file-tab' + (idx === currentFileIdx ? ' active' : '');
+    btn.textContent = file.filename;
+    btn.onclick = () => selectFile(idx);
+    container.appendChild(btn);
+  });
+}
+
+function selectFile(idx) {
+  currentFileIdx = idx;
+  renderFileTabs();
+  renderTimeline();
+  renderChapters();
+}
+
+function renderTimeline() {
+  const bar = document.getElementById('timelineBar');
+  bar.innerHTML = '';
+  const file = chaptersData.files[currentFileIdx];
+  if (!file) return;
+  const totalDur = file.duration || 1;
+  file.chapters.forEach((ch, i) => {
+    const div = document.createElement('div');
+    div.className = 'timeline-chapter';
+    div.style.left = (ch.start / totalDur * 100) + '%';
+    div.style.width = Math.max((ch.duration / totalDur * 100), 1) + '%';
+    div.textContent = 'Ch' + ch.chapter_id;
+    div.title = ch.title;
+    div.onclick = () => highlightChapter(i);
+    bar.appendChild(div);
+  });
+}
+
+function renderChapters(filter) {
+  const container = document.getElementById('chaptersList');
+  container.innerHTML = '';
+  const file = chaptersData.files[currentFileIdx];
+  if (!file) return;
+  const q = (filter || '').toLowerCase();
+  file.chapters.forEach((ch, i) => {
+    if (q && !ch.title.toLowerCase().includes(q)) return;
+    const card = document.createElement('div');
+    card.className = 'chapter-card';
+    card.id = 'chapter-' + ch.chapter_id;
+    card.innerHTML =
+      '<h3>Chapter ' + ch.chapter_id + '</h3>' +
+      '<div class="chapter-meta">' +
+        '<span>' + formatTC(ch.start) + ' — ' + formatTC(ch.end) + '</span>' +
+        '<span>' + formatTC(ch.duration) + '</span>' +
+        '<span>' + ch.segment_count + ' segments</span>' +
+      '</div>' +
+      '<div class="chapter-segments">' + ch.title + '</div>';
+    card.onclick = () => {
+      card.classList.toggle('expanded');
+      highlightChapter(i);
+    };
+    container.appendChild(card);
+  });
+}
+
+function highlightChapter(idx) {
+  document.querySelectorAll('.timeline-chapter').forEach((el, i) => {
+    el.classList.toggle('selected', i === idx);
+  });
+  document.querySelectorAll('.chapter-card').forEach((el, i) => {
+    el.classList.toggle('selected', i === idx);
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  renderChapters(e.target.value);
+});
+
+// Handle deep links: #chapter-3
+if (location.hash) {
+  const el = document.getElementById(location.hash.slice(1));
+  if (el) { el.scrollIntoView(); el.classList.add('selected', 'expanded'); }
+}
+
+init();
+</script>
+</body>
+</html>

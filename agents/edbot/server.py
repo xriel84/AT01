@@ -21,11 +21,15 @@ Endpoints:
     WS   /ws/progress         -> real-time progress + new_output events
     GET  /                    -> serve viewer HTML
     GET  /video/{path}        -> serve video files with byte-range support
+    GET  /api/library         -> library entries (demo or real)
+    GET  /api/library/chapters -> chapter boundaries for library entries
+    GET  /api/library/search  -> keyword search across library transcripts
     GET  /static/{path}       -> static files (agents/edbot/static/)
     GET  /frontend/{path}     -> frontend HTML tools (same dir, html=True)
 """
 
 import asyncio
+import json
 import logging
 import mimetypes
 import os
@@ -1102,6 +1106,116 @@ def api_catalog_search(req: CatalogSearchRequest):
         error_response(400, "query must not be empty", "INVALID_INPUT")
     result = search_catalog(req.query)
     return result
+
+
+# ---------------------------------------------------------------------------
+# Library API (demo scaffold — serves library JSON for frontend viewers)
+# ---------------------------------------------------------------------------
+
+_LIBRARY_PATH_ENV = os.environ.get("LIBRARY_PATH", "demo-library.json")
+
+
+def _load_library() -> list[dict]:
+    """Load library JSON from LIBRARY_PATH env var or default demo file."""
+    lib_path = Path(_LIBRARY_PATH_ENV)
+    if not lib_path.is_absolute():
+        lib_path = STATIC_DIR / lib_path
+    if not lib_path.exists():
+        return []
+    with open(lib_path, encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict) and "entries" in data:
+        return data["entries"]
+    return []
+
+
+@app.get("/api/library")
+def api_library():
+    """Return the current library JSON (entries array)."""
+    entries = _load_library()
+    is_demo = any(e.get("source") == "demo-scaffold" for e in entries)
+    return {"entries": entries, "count": len(entries), "demo_mode": is_demo}
+
+
+@app.get("/api/library/chapters")
+def api_library_chapters():
+    """Return chapter boundaries for all library entries."""
+    entries = _load_library()
+    chapters = []
+    for entry in entries:
+        segs = entry.get("whisper_segments", [])
+        if not segs:
+            continue
+        # Simple gap-based chapter detection inline (no chunks.json needed)
+        entry_chapters = []
+        ch_start = segs[0]["start"]
+        ch_segs: list[dict] = [segs[0]]
+        for i in range(1, len(segs)):
+            gap = segs[i]["start"] - segs[i - 1]["end"]
+            if gap >= 20.0:  # 20s gap = chapter boundary
+                title = ch_segs[0]["text"][:80]
+                entry_chapters.append({
+                    "chapter_id": len(entry_chapters) + 1,
+                    "start": ch_start,
+                    "end": segs[i - 1]["end"],
+                    "duration": segs[i - 1]["end"] - ch_start,
+                    "title": title,
+                    "segment_count": len(ch_segs),
+                })
+                ch_start = segs[i]["start"]
+                ch_segs = [segs[i]]
+            else:
+                ch_segs.append(segs[i])
+        # Final chapter
+        title = ch_segs[0]["text"][:80]
+        entry_chapters.append({
+            "chapter_id": len(entry_chapters) + 1,
+            "start": ch_start,
+            "end": segs[-1]["end"],
+            "duration": segs[-1]["end"] - ch_start,
+            "title": title,
+            "segment_count": len(ch_segs),
+        })
+        chapters.append({
+            "filename": entry.get("filename", ""),
+            "duration": entry.get("duration", 0),
+            "chapters": entry_chapters,
+        })
+    return {"files": chapters, "total_chapters": sum(len(f["chapters"]) for f in chapters)}
+
+
+@app.get("/api/library/search")
+def api_library_search(q: str = ""):
+    """Search library entries by keyword across transcript text and filenames."""
+    if not q.strip():
+        return {"results": [], "query": q, "count": 0}
+    query = q.strip().lower()
+    entries = _load_library()
+    results = []
+    for entry in entries:
+        matches = []
+        # Search filename
+        if query in entry.get("filename", "").lower():
+            matches.append({"field": "filename", "text": entry["filename"]})
+        # Search transcript segments
+        for seg in entry.get("whisper_segments", []):
+            if query in seg.get("text", "").lower():
+                matches.append({
+                    "field": "transcript",
+                    "start": seg["start"],
+                    "end": seg["end"],
+                    "text": seg["text"],
+                })
+        if matches:
+            results.append({
+                "filename": entry.get("filename", ""),
+                "duration": entry.get("duration", 0),
+                "match_count": len(matches),
+                "matches": matches,
+            })
+    return {"results": results, "query": q, "count": len(results)}
 
 
 # ---------------------------------------------------------------------------

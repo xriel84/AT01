@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AT01 EdBot — Demo Dashboard</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #14141f;
+    --border: #2a2a3a;
+    --text: #e0e0e0;
+    --text-dim: #888;
+    --accent: #00d4aa;
+    --accent-dim: #00d4aa44;
+    --warn: #ffaa00;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'IBM Plex Mono', 'Consolas', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+  .demo-banner {
+    background: var(--warn);
+    color: #000;
+    font-weight: bold;
+    text-align: center;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    margin-bottom: 1.5rem;
+    display: none;
+  }
+  .status-bar {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+  }
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #555;
+  }
+  .dot.ok { background: #0f0; }
+  .dot.warn { background: var(--warn); }
+  .dot.err { background: #f44; }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    text-decoration: none;
+    color: var(--text);
+    display: block;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card h2 { font-size: 1rem; margin-bottom: 0.5rem; color: var(--accent); }
+  .card p { font-size: 0.8rem; color: var(--text-dim); line-height: 1.5; }
+  .footer {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+    margin-top: 2rem;
+  }
+</style>
+</head>
+<body>
+  <div class="demo-banner" id="demoBanner">DEMO MODE — USING TEST DATA</div>
+  <h1>AT01 EdBot Pipeline</h1>
+  <p style="color:var(--text-dim);font-size:0.8rem;margin-bottom:1.5rem">AI-assisted video editing dashboard</p>
+
+  <div class="status-bar" id="statusBar">
+    <div class="status-item"><div class="dot" id="dotServer"></div><span>Server</span></div>
+    <div class="status-item"><div class="dot" id="dotResolve"></div><span>Resolve</span></div>
+    <div class="status-item"><div class="dot" id="dotLibrary"></div><span>Library</span></div>
+  </div>
+
+  <div class="cards">
+    <a class="card" href="/frontend/chapter-viewer.html">
+      <h2>Chapter Viewer</h2>
+      <p>Navigate chapter boundaries, view timeline, search transcripts. Export EDL and marker JSON for Resolve.</p>
+    </a>
+    <a class="card" href="/frontend/command-console.html">
+      <h2>Command Console</h2>
+      <p>Type NLP commands to generate edit decisions. Dry-run preview before applying to Resolve timeline.</p>
+    </a>
+    <a class="card" href="/frontend/nlp-search.html">
+      <h2>NLP Search</h2>
+      <p>Search across all video transcripts by topic. Find matching chapters and segments with timecodes.</p>
+    </a>
+    <a class="card" href="/docs">
+      <h2>API Docs</h2>
+      <p>Swagger UI for all EdBot endpoints. Test API calls directly from the browser.</p>
+    </a>
+  </div>
+
+  <div class="footer">
+    <div id="statusDetail"></div>
+  </div>
+
+<script>
+async function checkStatus() {
+  const dotServer = document.getElementById('dotServer');
+  const dotResolve = document.getElementById('dotResolve');
+  const dotLibrary = document.getElementById('dotLibrary');
+  const detail = document.getElementById('statusDetail');
+  const banner = document.getElementById('demoBanner');
+  const info = [];
+
+  // Server
+  try {
+    const r = await fetch('/api/health');
+    if (r.ok) { dotServer.className = 'dot ok'; info.push('Server: up'); }
+    else { dotServer.className = 'dot err'; info.push('Server: error'); }
+  } catch { dotServer.className = 'dot err'; info.push('Server: unreachable'); }
+
+  // Resolve
+  try {
+    const r = await fetch('/api/resolve/status');
+    const d = await r.json();
+    if (d.available) { dotResolve.className = 'dot ok'; info.push('Resolve: ' + d.version); }
+    else { dotResolve.className = 'dot warn'; info.push('Resolve: not available'); }
+  } catch { dotResolve.className = 'dot warn'; info.push('Resolve: check failed'); }
+
+  // Library
+  try {
+    const r = await fetch('/api/library');
+    const d = await r.json();
+    if (d.count > 0) {
+      dotLibrary.className = 'dot ok';
+      info.push('Library: ' + d.count + ' entries');
+      if (d.demo_mode) { banner.style.display = 'block'; }
+      else { banner.style.display = 'none'; }
+    } else { dotLibrary.className = 'dot warn'; info.push('Library: empty'); }
+  } catch { dotLibrary.className = 'dot err'; info.push('Library: load failed'); }
+
+  detail.textContent = info.join(' | ');
+}
+checkStatus();
+</script>
+</body>
+</html>

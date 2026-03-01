@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AT01 — Command Console</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #14141f;
+    --border: #2a2a3a;
+    --text: #e0e0e0;
+    --text-dim: #888;
+    --accent: #00d4aa;
+    --warn: #ffaa00;
+    --error: #ff4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'IBM Plex Mono', 'Consolas', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 1.5rem;
+  }
+  .demo-banner {
+    background: var(--warn);
+    color: #000;
+    font-weight: bold;
+    text-align: center;
+    padding: 6px;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    margin-bottom: 1rem;
+    display: none;
+  }
+  .mode-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 0.65rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    border: 1px solid;
+    margin-left: 0.5rem;
+  }
+  .mode-badge.dryrun { border-color: var(--accent); color: var(--accent); }
+  .mode-badge.offline { border-color: var(--warn); color: var(--warn); }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  h1 { font-size: 1.2rem; display: inline; }
+  .input-area {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  #commandInput {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    font-family: inherit;
+    font-size: 0.85rem;
+  }
+  #commandInput:focus { outline: none; border-color: var(--accent); }
+  .btn {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 10px 20px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.8rem;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #00d4aa22; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .presets {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .preset {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 10px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .preset:hover { border-color: var(--accent); color: var(--text); }
+  .history { display: flex; flex-direction: column; gap: 1rem; }
+  .entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem;
+  }
+  .entry-cmd {
+    font-size: 0.8rem;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+  .entry-meta {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+  .entry-result {
+    font-size: 0.75rem;
+    line-height: 1.6;
+  }
+  .entry-result pre {
+    background: #0d0d18;
+    padding: 8px;
+    overflow-x: auto;
+    font-size: 0.7rem;
+    margin-top: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .result-ok { color: var(--accent); }
+  .result-err { color: var(--error); }
+  .status-line {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 1rem;
+  }
+  .back-link {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-decoration: none;
+  }
+  .back-link:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="demo-banner" id="demoBanner">DEMO MODE — RESOLVE NOT CONNECTED</div>
+  <header>
+    <div>
+      <a href="/frontend/index.html" class="back-link">Dashboard</a>
+      <h1>Command Console</h1>
+      <span class="mode-badge dryrun">DRY-RUN</span>
+      <span class="mode-badge offline" id="resolveStatus" style="display:none">RESOLVE OFFLINE</span>
+    </div>
+  </header>
+
+  <div class="status-line" id="statusLine"></div>
+
+  <div class="input-area">
+    <input type="text" id="commandInput" placeholder="Type a command... (e.g., add chapter markers)" />
+    <button class="btn" id="sendBtn" onclick="sendCommand()">SEND</button>
+  </div>
+
+  <div class="presets">
+    <button class="preset" onclick="usePreset('add chapter markers to timeline')">Add chapter markers</button>
+    <button class="preset" onclick="usePreset('color code speakers')">Color code speakers</button>
+    <button class="preset" onclick="usePreset('create subclips for each chapter')">Create subclips</button>
+    <button class="preset" onclick="usePreset('find all segments about VR theater')">Find VR theater</button>
+    <button class="preset" onclick="usePreset('find all segments about motion capture')">Find motion capture</button>
+  </div>
+
+  <div class="history" id="history"></div>
+
+<script>
+let commandHistory = [];
+
+function usePreset(cmd) {
+  document.getElementById('commandInput').value = cmd;
+  document.getElementById('commandInput').focus();
+}
+
+async function sendCommand() {
+  const input = document.getElementById('commandInput');
+  const cmd = input.value.trim();
+  if (!cmd) return;
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  input.value = '';
+
+  const entry = { command: cmd, time: new Date().toISOString(), result: null, error: null };
+
+  try {
+    const resp = await fetch('/api/resolve/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: cmd, mode: 'dry-run' })
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      entry.result = data;
+    } else {
+      entry.error = data.detail || data;
+    }
+  } catch (err) {
+    entry.error = { message: err.message };
+  }
+
+  commandHistory.unshift(entry);
+  renderHistory();
+  btn.disabled = false;
+}
+
+function renderHistory() {
+  const container = document.getElementById('history');
+  container.innerHTML = '';
+  commandHistory.forEach(entry => {
+    const div = document.createElement('div');
+    div.className = 'entry';
+
+    let resultHtml = '';
+    if (entry.error) {
+      const errMsg = typeof entry.error === 'string' ? entry.error :
+        entry.error.error || entry.error.message || JSON.stringify(entry.error);
+      resultHtml = '<div class="result-err">Error: ' + escHtml(errMsg) + '</div>';
+    } else if (entry.result) {
+      const r = entry.result;
+      let summary = '';
+      if (r.translation_method) summary += 'Method: ' + r.translation_method + ' | ';
+      if (r.mode) summary += 'Mode: ' + r.mode + ' | ';
+      if (r.results) {
+        summary += r.results.succeeded + ' ok, ' + r.results.failed + ' failed, ' + r.results.skipped + ' skipped';
+      }
+      resultHtml =
+        '<div class="result-ok">' + escHtml(summary) + '</div>' +
+        '<pre>' + escHtml(JSON.stringify(r.plan || r, null, 2)) + '</pre>';
+    }
+
+    div.innerHTML =
+      '<div class="entry-cmd">&gt; ' + escHtml(entry.command) + '</div>' +
+      '<div class="entry-meta">' + entry.time + '</div>' +
+      '<div class="entry-result">' + resultHtml + '</div>';
+    container.appendChild(div);
+  });
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function checkResolve() {
+  try {
+    const r = await fetch('/api/resolve/status');
+    const d = await r.json();
+    const el = document.getElementById('resolveStatus');
+    const status = document.getElementById('statusLine');
+    if (d.available) {
+      el.style.display = 'none';
+      status.textContent = 'Resolve: ' + d.version + ' | Mode: dry-run';
+    } else {
+      el.style.display = 'inline-block';
+      document.getElementById('demoBanner').style.display = 'block';
+      status.textContent = 'Resolve: offline | Mode: dry-run (preview only)';
+    }
+  } catch {
+    document.getElementById('resolveStatus').style.display = 'inline-block';
+    document.getElementById('demoBanner').style.display = 'block';
+  }
+}
+
+document.getElementById('commandInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendCommand();
+});
+
+checkResolve();
+</script>
+</body>
+</html>

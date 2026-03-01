@@ -550,3 +550,25 @@ Search the video catalog by filename or CLIP frame label.
 ```bash
 curl -X POST http://127.0.0.1:8901/api/catalog/search -H "Content-Type: application/json" -d "{\"query\": \"interview\"}"
 ```
+
+### GET /api/library
+Return the current library JSON (demo or real footage). Controlled by `LIBRARY_PATH` env var (default: `demo-library.json`).
+**Response:** `{"entries": [...], "count": 4, "demo_mode": true}`
+```bash
+curl http://127.0.0.1:8901/api/library
+```
+
+### GET /api/library/chapters
+Return chapter boundaries for all library entries, computed from transcript gap analysis (20s silence = chapter break).
+**Response:** `{"files": [{"filename": "...", "duration": 432.0, "chapters": [{"chapter_id": 1, "start": 0.0, "end": 63.0, "duration": 63.0, "title": "...", "segment_count": 7}]}], "total_chapters": 20}`
+```bash
+curl http://127.0.0.1:8901/api/library/chapters
+```
+
+### GET /api/library/search
+Search library entries by keyword across transcript text and filenames.
+**Query params:** `q` (search term, case-insensitive)
+**Response:** `{"results": [{"filename": "...", "duration": 295.0, "match_count": 3, "matches": [{"field": "transcript", "start": 50.0, "end": 55.0, "text": "..."}]}], "query": "Scrooge", "count": 2}`
+```bash
+curl "http://127.0.0.1:8901/api/library/search?q=Scrooge"
+```

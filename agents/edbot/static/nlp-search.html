@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AT01 — NLP Search</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #14141f;
+    --border: #2a2a3a;
+    --text: #e0e0e0;
+    --text-dim: #888;
+    --accent: #00d4aa;
+    --warn: #ffaa00;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'IBM Plex Mono', 'Consolas', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 1.5rem;
+  }
+  .demo-banner {
+    background: var(--warn);
+    color: #000;
+    font-weight: bold;
+    text-align: center;
+    padding: 6px;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    margin-bottom: 1rem;
+    display: none;
+  }
+  header {
+    margin-bottom: 1.5rem;
+  }
+  h1 { font-size: 1.2rem; margin-bottom: 0.3rem; }
+  .subtitle { font-size: 0.8rem; color: var(--text-dim); }
+  .search-area {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  #searchInput {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 16px;
+    font-family: inherit;
+    font-size: 0.9rem;
+  }
+  #searchInput:focus { outline: none; border-color: var(--accent); }
+  .btn {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 12px 24px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.85rem;
+  }
+  .btn:hover { background: #00d4aa22; }
+  .suggestions {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .suggestion {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 10px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .suggestion:hover { border-color: var(--accent); color: var(--text); }
+  .results-summary {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+  }
+  .results { display: flex; flex-direction: column; gap: 0.75rem; }
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    transition: border-color 0.2s;
+  }
+  .result-card:hover { border-color: var(--accent); }
+  .result-filename {
+    font-size: 0.85rem;
+    color: var(--accent);
+    margin-bottom: 0.3rem;
+  }
+  .result-meta {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+  .result-matches { display: flex; flex-direction: column; gap: 4px; }
+  .match-item {
+    font-size: 0.75rem;
+    line-height: 1.5;
+    padding: 4px 8px;
+    background: #0d0d18;
+    cursor: pointer;
+  }
+  .match-item:hover { background: #1a1a2a; }
+  .match-tc {
+    color: var(--accent);
+    font-size: 0.65rem;
+    margin-right: 8px;
+  }
+  .highlight { background: #00d4aa33; padding: 0 2px; }
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-dim);
+  }
+  .empty-state p { margin-bottom: 0.5rem; }
+  .back-link {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-decoration: none;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+  .back-link:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="demo-banner" id="demoBanner">DEMO MODE — SEARCHING TEST DATA</div>
+  <header>
+    <a href="/frontend/index.html" class="back-link">Dashboard</a>
+    <h1>NLP Search</h1>
+    <p class="subtitle">Search across all video transcripts by topic</p>
+  </header>
+
+  <div class="search-area">
+    <input type="text" id="searchInput" placeholder="Search transcripts... (e.g., VR theater, motion capture, Scrooge)" />
+    <button class="btn" onclick="doSearch()">SEARCH</button>
+  </div>
+
+  <div class="suggestions">
+    <button class="suggestion" onclick="quickSearch('VR theater')">VR theater</button>
+    <button class="suggestion" onclick="quickSearch('motion capture')">motion capture</button>
+    <button class="suggestion" onclick="quickSearch('chapter')">chapter</button>
+    <button class="suggestion" onclick="quickSearch('Scrooge')">Scrooge</button>
+    <button class="suggestion" onclick="quickSearch('Resolve')">Resolve</button>
+    <button class="suggestion" onclick="quickSearch('costume')">costume</button>
+  </div>
+
+  <div class="results-summary" id="resultsSummary"></div>
+  <div class="results" id="resultsContainer"></div>
+  <div class="empty-state" id="emptyState" style="display:none">
+    <p>No results found.</p>
+    <p>Try different keywords or check the suggestions above.</p>
+  </div>
+
+<script>
+let isDemoMode = false;
+
+function formatTC(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function highlightText(text, query) {
+  if (!query) return escHtml(text);
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp('(' + escaped + ')', 'gi');
+  return escHtml(text).replace(re, '<span class="highlight">$1</span>');
+}
+
+function quickSearch(q) {
+  document.getElementById('searchInput').value = q;
+  doSearch();
+}
+
+async function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+
+  const container = document.getElementById('resultsContainer');
+  const summary = document.getElementById('resultsSummary');
+  const empty = document.getElementById('emptyState');
+  container.innerHTML = '';
+  summary.textContent = 'Searching...';
+  empty.style.display = 'none';
+
+  try {
+    const resp = await fetch('/api/library/search?q=' + encodeURIComponent(q));
+    const data = await resp.json();
+
+    if (data.count === 0) {
+      summary.textContent = '';
+      empty.style.display = 'block';
+      return;
+    }
+
+    const totalMatches = data.results.reduce((s, r) => s + r.match_count, 0);
+    summary.textContent = data.count + ' file' + (data.count > 1 ? 's' : '') +
+      ', ' + totalMatches + ' match' + (totalMatches > 1 ? 'es' : '') +
+      ' for "' + q + '"';
+
+    data.results.forEach(result => {
+      const card = document.createElement('div');
+      card.className = 'result-card';
+
+      let matchesHtml = '';
+      result.matches.forEach(m => {
+        if (m.field === 'transcript') {
+          matchesHtml += '<div class="match-item" onclick="goToChapter(\'' +
+            escHtml(result.filename) + '\', ' + m.start + ')">' +
+            '<span class="match-tc">' + formatTC(m.start) + '</span>' +
+            highlightText(m.text, q) + '</div>';
+        } else {
+          matchesHtml += '<div class="match-item">' +
+            '<span class="match-tc">filename</span>' +
+            highlightText(m.text, q) + '</div>';
+        }
+      });
+
+      card.innerHTML =
+        '<div class="result-filename">' + escHtml(result.filename) + '</div>' +
+        '<div class="result-meta">' +
+          formatTC(result.duration) + ' | ' +
+          result.match_count + ' match' + (result.match_count > 1 ? 'es' : '') +
+        '</div>' +
+        '<div class="result-matches">' + matchesHtml + '</div>';
+      container.appendChild(card);
+    });
+  } catch (err) {
+    summary.textContent = 'Search failed: ' + err.message;
+  }
+}
+
+function goToChapter(filename, startTime) {
+  // Deep link to chapter viewer — find the chapter containing this timestamp
+  window.location.href = '/frontend/chapter-viewer.html#t=' + startTime;
+}
+
+async function checkDemo() {
+  try {
+    const r = await fetch('/api/library');
+    const d = await r.json();
+    if (d.demo_mode) {
+      document.getElementById('demoBanner').style.display = 'block';
+      isDemoMode = true;
+    }
+  } catch {}
+}
+
+document.getElementById('searchInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') doSearch();
+});
+
+checkDemo();
+</script>
+</body>
+</html>
